@@ -1,4 +1,13 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.10"
+# dependencies = [
+#   "pydantic",
+#   "python-dotenv",
+#   "click",
+#   "rich",
+# ]
+# ///
 """
 Plan-Implement workflow with Teamwork task updates.
 
@@ -96,7 +105,7 @@ def main(
         plan_response = execute_template(plan_request)
 
         if not plan_response.success:
-            error_message = f"Planning failed: {plan_response.error}"
+            error_message = f"Planning failed: {plan_response.output}"
             logger.error(error_message)
             raise Exception(error_message)
 
@@ -136,7 +145,7 @@ def main(
         implement_response = execute_template(implement_request)
 
         if not implement_response.success:
-            error_message = f"Implementation failed: {implement_response.error}"
+            error_message = f"Implementation failed: {implement_response.output}"
             logger.error(error_message)
             raise Exception(error_message)
 
@@ -201,7 +210,7 @@ def main(
     if update_response.success:
         logger.info(f"Successfully updated Teamwork task {task_id} to {update_status}")
     else:
-        logger.error(f"Failed to update Teamwork task: {update_response.error}")
+        logger.error(f"Failed to update Teamwork task: {update_response.output}")
 
     logger.info("=== Plan-Implement Workflow Complete ===")
 

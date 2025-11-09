@@ -517,9 +517,9 @@ class TeamworkTask(BaseModel):
 
     def is_eligible_for_processing(self) -> bool:
         """Check if task is ready for agent processing."""
-        eligible_statuses = ["New", "To Do", "Review"]
+        eligible_statuses = ["new", "to do", "review"]
         return (
-            self.status in eligible_statuses and
+            self.status and self.status.lower() in eligible_statuses and
             self.execution_trigger in ["execute", "continue"]
         )
 
@@ -632,8 +632,8 @@ class TeamworkCronConfig(BaseModel):
     )
 
     status_filter: List[str] = Field(
-        default_factory=lambda: ["New", "To Do", "Review"],
-        description="Teamwork statuses to poll for"
+        default_factory=lambda: ["new", "to do", "review"],
+        description="Teamwork statuses to poll for (case-insensitive)"
     )
     enable_hil_review: bool = Field(
         default=True, description="Enable HIL (Human-in-the-Loop) review support"

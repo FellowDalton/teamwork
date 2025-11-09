@@ -1,4 +1,13 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.10"
+# dependencies = [
+#   "pydantic",
+#   "python-dotenv",
+#   "click",
+#   "rich",
+# ]
+# ///
 """
 Build workflow with Teamwork task updates.
 
@@ -74,7 +83,7 @@ def main(
         build_response = execute_template(build_request)
 
         if not build_response.success:
-            error_message = f"Build failed: {build_response.error}"
+            error_message = f"Build failed: {build_response.output}"
             logger.error(error_message)
         else:
             logger.info("Build completed successfully")
@@ -133,7 +142,7 @@ def main(
     if update_response.success:
         logger.info(f"Successfully updated Teamwork task {task_id} to {update_status}")
     else:
-        logger.error(f"Failed to update Teamwork task: {update_response.error}")
+        logger.error(f"Failed to update Teamwork task: {update_response.output}")
 
     logger.info("=== Build Workflow Complete ===")
 

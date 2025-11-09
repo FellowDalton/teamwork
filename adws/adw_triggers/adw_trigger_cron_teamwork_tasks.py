@@ -1,4 +1,14 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.10"
+# dependencies = [
+#   "pydantic",
+#   "python-dotenv",
+#   "click",
+#   "rich",
+#   "schedule",
+# ]
+# ///
 """
 Teamwork Task Monitor - Continuous polling for agent-ready tasks.
 
@@ -64,7 +74,7 @@ class TeamworkTaskManager:
             response = execute_template(request)
 
             if not response.success:
-                logger.error(f"Failed to fetch Teamwork tasks: {response.error}")
+                logger.error(f"Failed to fetch Teamwork tasks: {response.output}")
                 return []
 
             # Parse JSON response
@@ -108,7 +118,7 @@ class TeamworkTaskManager:
             return tasks
 
         except Exception as e:
-            logger.error(f"Exception while fetching tasks: {e}")
+            logger.error(f"Exception while fetching tasks: {e}", exc_info=True)
             return []
 
     def update_task_status(
@@ -145,7 +155,7 @@ class TeamworkTaskManager:
                 logger.info(f"Successfully updated task {task_id} to {teamwork_status}")
                 return True
             else:
-                logger.error(f"Failed to update task {task_id}: {response.error}")
+                logger.error(f"Failed to update task {task_id}: {response.output}")
                 return False
 
         except Exception as e:

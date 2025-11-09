@@ -110,8 +110,8 @@ def get_safe_subprocess_env() -> Dict[str, str]:
 # Load environment variables
 load_dotenv()
 
-# Get Claude Code CLI path from environment
-CLAUDE_PATH = os.getenv("CLAUDE_CODE_PATH", "claude")
+# Get Claude Code CLI path from environment (handle empty string as missing)
+CLAUDE_PATH = os.getenv("CLAUDE_CODE_PATH") or "claude"
 
 # Output file name constants (matching adw_prompt.py and adw_slash_command.py)
 OUTPUT_JSONL = "cc_raw_output.jsonl"
@@ -420,16 +420,21 @@ def prompt_claude_code(request: AgentPromptRequest) -> AgentPromptResponse:
     try:
         # Open output file for streaming
         with open(request.output_file, "w") as output_f:
+            # Build subprocess kwargs
+            subprocess_kwargs = {
+                "stdin": subprocess.DEVNULL,  # Don't wait for stdin
+                "stdout": output_f,  # Stream directly to file
+                "stderr": subprocess.PIPE,
+                "text": True,
+                "env": env,
+            }
+
+            # Only set cwd if working_dir is not None and not empty
+            if request.working_dir:
+                subprocess_kwargs["cwd"] = request.working_dir
+
             # Execute Claude Code and stream output to file
-            result = subprocess.run(
-                cmd,
-                stdin=subprocess.DEVNULL,  # Don't wait for stdin
-                stdout=output_f,  # Stream directly to file
-                stderr=subprocess.PIPE,
-                text=True,
-                env=env,
-                cwd=request.working_dir,  # Use working_dir if provided
-            )
+            result = subprocess.run(cmd, **subprocess_kwargs)
 
         if result.returncode == 0:
 
@@ -579,7 +584,7 @@ def prompt_claude_code(request: AgentPromptRequest) -> AgentPromptResponse:
             retry_code=RetryCode.TIMEOUT_ERROR,
         )
     except Exception as e:
-        error_msg = f"Error executing Claude Code: {e}"
+        error_msg = f"Error executing Claude Code: {e} (output_file={request.output_file!r}, working_dir={request.working_dir!r})"
         return AgentPromptResponse(
             output=error_msg,
             success=False,

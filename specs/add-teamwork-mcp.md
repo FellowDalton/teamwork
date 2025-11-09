@@ -23,24 +23,24 @@ Replace all Notion integration with Teamwork MCP server for task management, mai
 ### Data Flow
 ```
 Notion Database (tasks with status filter)
-    “ (poll every 15s)
+    ï¿½ (poll every 15s)
 adw_trigger_cron_notion_tasks.py
-    “ (fetch via /get_notion_tasks)
+    ï¿½ (fetch via /get_notion_tasks)
 NotionTaskManager.get_eligible_tasks()
-    “ (claim task by updating status)
+    ï¿½ (claim task by updating status)
 NotionTaskManager.update_task_status("In progress")
-    “ (spawn detached subprocess)
+    ï¿½ (spawn detached subprocess)
 Workflow Script (build or plan-implement)
-    “ (execute slash commands)
-/plan ’ /implement ’ /update_notion_task
-    “ (post results back)
+    ï¿½ (execute slash commands)
+/plan ï¿½ /implement ï¿½ /update_notion_task
+    ï¿½ (post results back)
 Notion Page (updated with status, commit, results)
 ```
 
 ### Critical Features to Preserve
 1. **Execution Triggers**: `execute` and `continue` in task description
 2. **Inline Tags**: `{{prototype: vite_vue}}`, `{{model: opus}}`, etc.
-3. **Status Flow**: Not started ’ In progress ’ Done/Failed/HIL Review
+3. **Status Flow**: Not started ï¿½ In progress ï¿½ Done/Failed/HIL Review
 4. **Concurrency Control**: Immediate task claiming to prevent duplicates
 5. **ADW ID Tracking**: Unique 8-char identifier for each execution
 6. **Worktree Isolation**: Separate git worktrees per task
@@ -78,16 +78,16 @@ Notion Page (updated with status, commit, results)
 ```javascript
 // Priority order:
 1. Teamwork native tags: ["prototype:vite_vue", "model:opus"]
-   ’ tags.prototype = "vite_vue", tags.model = "opus"
+   ï¿½ tags.prototype = "vite_vue", tags.model = "opus"
 2. Inline tags in description: "{{worktree: feat-auth}}"
-   ’ tags.worktree = "feat-auth" (only if not in native tags)
+   ï¿½ tags.worktree = "feat-auth" (only if not in native tags)
 ```
 
 **Execution Trigger Detection**:
 - Check last line or last paragraph of description
-- If ends with `execute` ’ `execution_trigger: "execute"`
-- If contains `continue - <text>` ’ `execution_trigger: "continue"`, `task_prompt: "<text>"`
-- Otherwise ’ skip task (not eligible)
+- If ends with `execute` ï¿½ `execution_trigger: "execute"`
+- If contains `continue - <text>` ï¿½ `execution_trigger: "continue"`, `task_prompt: "<text>"`
+- Otherwise ï¿½ skip task (not eligible)
 
 **Response Format**:
 ```json
@@ -137,12 +137,12 @@ Notion Page (updated with status, commit, results)
 
 **Status Mapping** (to be verified during implementation):
 ```javascript
-System Status ’ Teamwork Status
-"Not started" ’ "New" or "To Do"
-"In progress" ’ "In Progress"
-"Done" ’ "Complete" or "Done"
-"HIL Review" ’ "Review" or "Waiting On"
-"Failed" ’ "Blocked" or custom status
+System Status ï¿½ Teamwork Status
+"Not started" ï¿½ "New" or "To Do"
+"In progress" ï¿½ "In Progress"
+"Done" ï¿½ "Complete" or "Done"
+"HIL Review" ï¿½ "Review" or "Waiting On"
+"Failed" ï¿½ "Blocked" or custom status
 ```
 
 **Functionality**:
@@ -154,7 +154,7 @@ System Status ’ Teamwork Status
 
 **Comment Format**:
 ```markdown
-=€ **Status Update: In progress**
+=ï¿½ **Status Update: In progress**
 - **ADW ID**: abc12345
 - **Timestamp**: 2025-01-15T14:30:00Z
 - **Model**: sonnet
@@ -166,11 +166,11 @@ System Status ’ Teamwork Status
 ```
 
 **Comment Emoji Map**:
-- "In progress" ’ =€
-- "Done" ’ 
-- "Failed" ’ L
-- "HIL Review" ’ =d
-- "Blocked" ’ =«
+- "In progress" ï¿½ =ï¿½
+- "Done" ï¿½ 
+- "Failed" ï¿½ L
+- "HIL Review" ï¿½ =d
+- "Blocked" ï¿½ =ï¿½
 
 **Example Update Content**:
 ```json
@@ -307,11 +307,11 @@ class TeamworkTaskUpdate(BaseModel):
     def format_comment(self) -> str:
         """Format update as Teamwork comment markdown."""
         emoji_map = {
-            "In Progress": "=€",
+            "In Progress": "=ï¿½",
             "Complete": "",
             "Failed": "L",
             "Review": "=d",
-            "Blocked": "=«"
+            "Blocked": "=ï¿½"
         }
 
         emoji = emoji_map.get(self.status, "9")
@@ -354,7 +354,7 @@ class TeamworkCronConfig(BaseModel):
     worktree_base_path: str = "trees"
     dry_run: bool = False
 
-    # Status mapping (system ’ Teamwork)
+    # Status mapping (system ï¿½ Teamwork)
     status_mapping: Dict[str, str] = Field(default_factory=lambda: {
         "Not started": "New",
         "In progress": "In Progress",
@@ -363,7 +363,7 @@ class TeamworkCronConfig(BaseModel):
         "Failed": "Blocked"
     })
 
-    # Reverse mapping (Teamwork ’ system)
+    # Reverse mapping (Teamwork ï¿½ system)
     @property
     def reverse_status_mapping(self) -> Dict[str, str]:
         return {v: k for k, v in self.status_mapping.items()}
@@ -381,8 +381,8 @@ class TeamworkCronConfig(BaseModel):
 ```
 
 #### 2.4 Rename Other Models
-- `NotionWorkflowState` ’ `TeamworkWorkflowState`
-- `NotionAgentMetrics` ’ `TeamworkAgentMetrics`
+- `NotionWorkflowState` ï¿½ `TeamworkWorkflowState`
+- `NotionAgentMetrics` ï¿½ `TeamworkAgentMetrics`
 
 ---
 
@@ -425,7 +425,7 @@ def get_eligible_tasks(self, limit: int = 10) -> List[TeamworkTask]:
     response = execute_template(request)
 
     if not response.success:
-        logger.error(f"Failed to fetch Teamwork tasks: {response.error}")
+        logger.error(f"Failed to fetch Teamwork tasks: {response.output}")
         return []
 
     # Parse JSON response
@@ -498,12 +498,12 @@ def update_task_status(
         logger.info(f"Updated task {task_id} to status: {teamwork_status}")
         return True
     else:
-        logger.error(f"Failed to update task {task_id}: {response.error}")
+        logger.error(f"Failed to update task {task_id}: {response.output}")
         return False
 ```
 
 **D. Update `delegate_task()` Method** (Lines 327-423):
-- Change `page_id` ’ `task_id`
+- Change `page_id` ï¿½ `task_id`
 - Pass `project_id` to workflow scripts
 - Update all status references to use mapping
 
@@ -573,7 +573,7 @@ update_response = execute_template(update_request)
 if update_response.success:
     logger.info(f"Successfully updated Teamwork task {task_id} to {update_status}")
 else:
-    logger.error(f"Failed to update Teamwork task: {update_response.error}")
+    logger.error(f"Failed to update Teamwork task: {update_response.output}")
 ```
 
 **C. Update CLI Argument Parsing**:
@@ -698,7 +698,7 @@ for var in required_vars:
 
 #### 5.1 Bidirectional Tag System
 
-**Read Path** (Teamwork ’ System):
+**Read Path** (Teamwork ï¿½ System):
 ```python
 def parse_teamwork_tags(task: Dict) -> Dict[str, str]:
     """
@@ -734,7 +734,7 @@ def extract_inline_tags(text: str) -> Dict[str, str]:
     return {key: value.strip() for key, value in matches}
 ```
 
-**Write Path** (System ’ Teamwork):
+**Write Path** (System ï¿½ Teamwork):
 ```python
 def create_or_get_teamwork_tags(
     project_id: str,
@@ -962,11 +962,11 @@ def format_agent_comment(
     """Format agent update as Teamwork comment."""
 
     emoji_map = {
-        "In Progress": "=€",
+        "In Progress": "=ï¿½",
         "Complete": "",
         "Failed": "L",
         "Review": "=d",
-        "Blocked": "=«"
+        "Blocked": "=ï¿½"
     }
 
     emoji = emoji_map.get(status, "9")
@@ -1007,7 +1007,7 @@ def format_agent_comment(
 
 **1. Start Comment** (when claiming task):
 ```markdown
-=€ **Status Update: In Progress**
+=ï¿½ **Status Update: In Progress**
 - **ADW ID**: `abc12345`
 - **Timestamp**: 2025-01-15 14:30:00 UTC
 - **Model**: sonnet
@@ -1106,8 +1106,8 @@ The sentiment analyzer has been implemented with all requested features. Please 
 -  Basic sentiment analysis working
 -  CLI interface functional
 -  Output formatting (JSON/CSV/text)
--   No language detection yet
--   No batch processing
+- ï¿½ No language detection yet
+- ï¿½ No batch processing
 ```
 
 #### 7.3 Posting Comments via MCP
@@ -1186,11 +1186,11 @@ def test_status_mapping():
         }
     )
 
-    # System ’ Teamwork
+    # System ï¿½ Teamwork
     assert config.map_status_to_teamwork("Not started") == "New"
     assert config.map_status_to_teamwork("In progress") == "In Progress"
 
-    # Teamwork ’ System
+    # Teamwork ï¿½ System
     assert config.map_status_from_teamwork("New") == "Not started"
     assert config.map_status_from_teamwork("In Progress") == "In progress"
 
@@ -1718,7 +1718,7 @@ Ensure these statuses exist in your project:
 | Failed | Blocked |  |
 
 **To create custom status**:
-1. Go to Project Settings ’ Task Statuses
+1. Go to Project Settings ï¿½ Task Statuses
 2. Click "Add Status"
 3. Name: "Review" (for HIL)
 4. Color: Yellow/Orange
@@ -1727,7 +1727,7 @@ Ensure these statuses exist in your project:
 ### 2.3 Set Up Tags
 
 Create tag template for prototypes:
-1. Go to Project Settings ’ Tags
+1. Go to Project Settings ï¿½ Tags
 2. Create tags:
    - `prototype:uv_script`
    - `prototype:vite_vue`
@@ -1750,12 +1750,12 @@ For each Notion task:
    - Keep inline tags if present (backward compatible)
    - Add execution trigger at end: `execute`
 4. **Add tags**: Convert inline tags to native Teamwork tags
-   - `{{prototype: vite_vue}}` ’ Add tag `prototype:vite_vue`
+   - `{{prototype: vite_vue}}` ï¿½ Add tag `prototype:vite_vue`
 5. **Set status**: Map from Notion status
-   - "Not started" ’ "New"
-   - "In progress" ’ Skip (will be reclaimed)
-   - "Done" ’ "Complete"
-   - "HIL Review" ’ "Review"
+   - "Not started" ï¿½ "New"
+   - "In progress" ï¿½ Skip (will be reclaimed)
+   - "Done" ï¿½ "Complete"
+   - "HIL Review" ï¿½ "Review"
 
 ### Automated Import (if available)
 
@@ -1817,7 +1817,7 @@ Verify `.mcp.json` has Teamwork configured:
 
 **Get your bearer token**:
 1. Log into Teamwork
-2. Go to Settings ’ API & Mobile ’ API Token
+2. Go to Settings ï¿½ API & Mobile ï¿½ API Token
 3. Copy token (format: `tkn.v1_...`)
 
 ## Step 5: Test the Migration
@@ -1871,7 +1871,7 @@ claude /update_teamwork_task YOUR_TASK_ID "In Progress" '{"adw_id": "test123"}'
 # Wait for completion (check Teamwork for updates)
 
 # Verify:
-# - Task claimed (status ’ "In Progress")
+# - Task claimed (status ï¿½ "In Progress")
 # - Worktree created
 # - App generated in apps/
 # - Final status "Complete"
@@ -2063,7 +2063,7 @@ If you encounter issues:
    - Verify MCP tool calls work correctly
 
 2.  **Phase 2**: Update data models
-   - Rename classes: `Notion*` ’ `Teamwork*`
+   - Rename classes: `Notion*` ï¿½ `Teamwork*`
    - Add new fields (project_id, etc.)
    - Test serialization/deserialization
 
@@ -2172,7 +2172,7 @@ At any point, can revert to Notion:
 - [ ] Comments posted with proper formatting
 
 **Phase 8 Success**:
-- [ ] E2E test completes: task ’ worktree ’ build ’ commit ’ update
+- [ ] E2E test completes: task ï¿½ worktree ï¿½ build ï¿½ commit ï¿½ update
 - [ ] Parallel test: 3 tasks execute simultaneously without conflicts
 - [ ] HIL test: continue flow works correctly
 - [ ] All unit tests pass
@@ -2222,4 +2222,4 @@ Once you approve this plan:
 3. **Iterate**: Adjust based on actual Teamwork API behavior
 4. **Document**: Keep this spec updated with actual implementation notes
 
-**Ready to begin implementation!** =€
+**Ready to begin implementation!** =ï¿½
