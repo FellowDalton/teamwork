@@ -377,28 +377,18 @@ def prompt_claude_code_with_retry(
     return last_response
 
 
-def prompt_claude_code(request: AgentPromptRequest) -> AgentPromptResponse:
-    """Execute Claude Code with the given prompt configuration."""
+def _prompt_claude_code_direct(request: AgentPromptRequest) -> AgentPromptResponse:
+    """Direct execution of Claude Code (fallback for non-slash-command prompts).
 
-    # Check if Claude Code CLI is installed
-    error_msg = check_claude_installed()
-    if error_msg:
-        return AgentPromptResponse(
-            output=error_msg,
-            success=False,
-            session_id=None,
-            retry_code=RetryCode.NONE,  # Installation error is not retryable
-        )
-
-    # Save prompt before execution
-    save_prompt(request.prompt, request.adw_id, request.agent_name)
-
+    This is the original implementation using Python subprocess.run() directly.
+    Only used when slash command is not detected in the prompt.
+    """
     # Create output directory if needed
     output_dir = os.path.dirname(request.output_file)
     if output_dir:
         os.makedirs(output_dir, exist_ok=True)
 
-    # Build command - always use stream-json format and verbose
+    # Build command - use full prompt in -p flag
     cmd = [CLAUDE_PATH, "-p", request.prompt]
     cmd.extend(["--model", request.model])
     cmd.extend(["--output-format", "stream-json"])
@@ -422,158 +412,255 @@ def prompt_claude_code(request: AgentPromptRequest) -> AgentPromptResponse:
         with open(request.output_file, "w") as output_f:
             # Build subprocess kwargs
             subprocess_kwargs = {
-                "stdin": subprocess.DEVNULL,  # Don't wait for stdin
-                "stdout": output_f,  # Stream directly to file
+                "stdout": output_f,
                 "stderr": subprocess.PIPE,
                 "text": True,
                 "env": env,
+                "stdin": subprocess.DEVNULL,
             }
 
             # Only set cwd if working_dir is not None and not empty
             if request.working_dir:
                 subprocess_kwargs["cwd"] = request.working_dir
 
-            # Execute Claude Code and stream output to file
+            # Execute Claude Code
             result = subprocess.run(cmd, **subprocess_kwargs)
 
-        if result.returncode == 0:
+        return _parse_claude_result(request, result)
 
-            # Parse the JSONL file
-            messages, result_message = parse_jsonl_output(request.output_file)
+    except subprocess.TimeoutExpired:
+        error_msg = "Error: Claude Code command timed out after 5 minutes"
+        return AgentPromptResponse(
+            output=error_msg,
+            success=False,
+            session_id=None,
+            retry_code=RetryCode.TIMEOUT_ERROR,
+        )
+    except Exception as e:
+        error_msg = f"Error executing Claude Code: {e} (output_file={request.output_file!r}, working_dir={request.working_dir!r})"
+        return AgentPromptResponse(
+            output=error_msg,
+            success=False,
+            session_id=None,
+            retry_code=RetryCode.EXECUTION_ERROR,
+        )
 
-            # Convert JSONL to JSON array file
-            json_file = convert_jsonl_to_json(request.output_file)
-            
-            # Save the last entry as raw_result.json
-            save_last_entry_as_raw_result(json_file)
 
-            if result_message:
-                # Extract session_id from result message
-                session_id = result_message.get("session_id")
+def _parse_claude_result(request: AgentPromptRequest, result: subprocess.CompletedProcess) -> AgentPromptResponse:
+    """Parse the result from Claude Code execution.
 
-                # Check if there was an error in the result
-                is_error = result_message.get("is_error", False)
-                subtype = result_message.get("subtype", "")
+    This handles both successful and failed executions, extracting meaningful
+    output from the JSONL response.
+    """
+    if result.returncode == 0:
+        # Parse the JSONL file
+        messages, result_message = parse_jsonl_output(request.output_file)
 
-                # Handle error_during_execution case where there's no result field
-                if subtype == "error_during_execution":
-                    error_msg = "Error during execution: Agent encountered an error and did not return a result"
-                    return AgentPromptResponse(
-                        output=error_msg,
-                        success=False,
-                        session_id=session_id,
-                        retry_code=RetryCode.ERROR_DURING_EXECUTION,
-                    )
+        # Convert JSONL to JSON array file
+        json_file = convert_jsonl_to_json(request.output_file)
 
-                result_text = result_message.get("result", "")
+        # Save the last entry as raw_result.json
+        save_last_entry_as_raw_result(json_file)
 
-                # For error cases, truncate the output to prevent JSONL blobs
-                if is_error and len(result_text) > 1000:
-                    result_text = truncate_output(result_text, max_length=800)
+        if result_message:
+            # Extract session_id from result message
+            session_id = result_message.get("session_id")
 
+            # Check if there was an error in the result
+            is_error = result_message.get("is_error", False)
+            subtype = result_message.get("subtype", "")
+
+            # Handle error_during_execution case where there's no result field
+            if subtype == "error_during_execution":
+                error_msg = "Error during execution: Agent encountered an error and did not return a result"
                 return AgentPromptResponse(
-                    output=result_text,
-                    success=not is_error,
-                    session_id=session_id,
-                    retry_code=RetryCode.NONE,  # No retry needed for successful or non-retryable errors
-                )
-            else:
-                # No result message found, try to extract meaningful error
-                error_msg = "No result message found in Claude Code output"
-
-                # Try to get the last few lines of output for context
-                try:
-                    with open(request.output_file, "r") as f:
-                        lines = f.readlines()
-                        if lines:
-                            # Get last 5 lines or less
-                            last_lines = lines[-5:] if len(lines) > 5 else lines
-                            # Try to parse each as JSON to find any error messages
-                            for line in reversed(last_lines):
-                                try:
-                                    data = json.loads(line.strip())
-                                    if data.get("type") == "assistant" and data.get(
-                                        "message"
-                                    ):
-                                        # Extract text from assistant message
-                                        content = data["message"].get("content", [])
-                                        if isinstance(content, list) and content:
-                                            text = content[0].get("text", "")
-                                            if text:
-                                                error_msg = f"Claude Code output: {text[:500]}"  # Truncate
-                                                break
-                                except:
-                                    pass
-                except:
-                    pass
-
-                return AgentPromptResponse(
-                    output=truncate_output(error_msg, max_length=800),
+                    output=error_msg,
                     success=False,
-                    session_id=None,
-                    retry_code=RetryCode.NONE,
+                    session_id=session_id,
+                    retry_code=RetryCode.ERROR_DURING_EXECUTION,
                 )
+
+            result_text = result_message.get("result", "")
+
+            # For error cases, truncate the output to prevent JSONL blobs
+            if is_error and len(result_text) > 1000:
+                result_text = truncate_output(result_text, max_length=800)
+
+            return AgentPromptResponse(
+                output=result_text,
+                success=not is_error,
+                session_id=session_id,
+                retry_code=RetryCode.NONE,
+            )
         else:
-            # Error occurred - stderr is captured, stdout went to file
-            stderr_msg = result.stderr.strip() if result.stderr else ""
+            # No result message found, try to extract meaningful error
+            error_msg = "No result message found in Claude Code output"
 
-            # Try to read the output file to check for errors in stdout
-            stdout_msg = ""
-            error_from_jsonl = None
+            # Try to get the last few lines of output for context
             try:
-                if os.path.exists(request.output_file):
-                    # Parse JSONL to find error message
-                    messages, result_message = parse_jsonl_output(request.output_file)
-
-                    if result_message and result_message.get("is_error"):
-                        # Found error in result message
-                        error_from_jsonl = result_message.get("result", "Unknown error")
-                    elif messages:
-                        # Look for error in last few messages
-                        for msg in reversed(messages[-5:]):
-                            if msg.get("type") == "assistant" and msg.get(
-                                "message", {}
-                            ).get("content"):
-                                content = msg["message"]["content"]
-                                if isinstance(content, list) and content:
-                                    text = content[0].get("text", "")
-                                    if text and (
-                                        "error" in text.lower()
-                                        or "failed" in text.lower()
-                                    ):
-                                        error_from_jsonl = text[:500]  # Truncate
-                                        break
-
-                    # If no structured error found, get last line only
-                    if not error_from_jsonl:
-                        with open(request.output_file, "r") as f:
-                            lines = f.readlines()
-                            if lines:
-                                # Just get the last line instead of entire file
-                                stdout_msg = lines[-1].strip()[
-                                    :200
-                                ]  # Truncate to 200 chars
+                with open(request.output_file, "r") as f:
+                    lines = f.readlines()
+                    if lines:
+                        # Get last 5 lines or less
+                        last_lines = lines[-5:] if len(lines) > 5 else lines
+                        # Try to parse each as JSON to find any error messages
+                        for line in reversed(last_lines):
+                            try:
+                                data = json.loads(line.strip())
+                                if data.get("type") == "assistant" and data.get("message"):
+                                    # Extract text from assistant message
+                                    content = data["message"].get("content", [])
+                                    if isinstance(content, list) and content:
+                                        text = content[0].get("text", "")
+                                        if text:
+                                            error_msg = f"Claude Code output: {text[:500]}"
+                                            break
+                            except:
+                                pass
             except:
                 pass
 
-            if error_from_jsonl:
-                error_msg = f"Claude Code error: {error_from_jsonl}"
-            elif stdout_msg and not stderr_msg:
-                error_msg = f"Claude Code error: {stdout_msg}"
-            elif stderr_msg and not stdout_msg:
-                error_msg = f"Claude Code error: {stderr_msg}"
-            elif stdout_msg and stderr_msg:
-                error_msg = f"Claude Code error: {stderr_msg}\nStdout: {stdout_msg}"
-            else:
-                error_msg = f"Claude Code error: Command failed with exit code {result.returncode}"
-
-            # Always truncate error messages to prevent huge outputs
             return AgentPromptResponse(
                 output=truncate_output(error_msg, max_length=800),
                 success=False,
                 session_id=None,
-                retry_code=RetryCode.CLAUDE_CODE_ERROR,
+                retry_code=RetryCode.NONE,
             )
+    else:
+        # Error occurred - stderr is captured, stdout went to file
+        stderr_msg = result.stderr.strip() if result.stderr else ""
+
+        # Try to read the output file to check for errors in stdout
+        stdout_msg = ""
+        error_from_jsonl = None
+        try:
+            if os.path.exists(request.output_file):
+                # Parse JSONL to find error message
+                messages, result_message = parse_jsonl_output(request.output_file)
+
+                if result_message and result_message.get("is_error"):
+                    # Found error in result message
+                    error_from_jsonl = result_message.get("result", "Unknown error")
+                elif messages:
+                    # Look for error in last few messages
+                    for msg in reversed(messages[-5:]):
+                        if msg.get("type") == "assistant" and msg.get("message", {}).get("content"):
+                            content = msg["message"]["content"]
+                            if isinstance(content, list) and content:
+                                text = content[0].get("text", "")
+                                if text and ("error" in text.lower() or "failed" in text.lower()):
+                                    error_from_jsonl = text[:500]
+                                    break
+
+                # If no structured error found, get last line only
+                if not error_from_jsonl:
+                    with open(request.output_file, "r") as f:
+                        lines = f.readlines()
+                        if lines:
+                            stdout_msg = lines[-1].strip()[:200]
+        except:
+            pass
+
+        if error_from_jsonl:
+            error_msg = f"Claude Code error: {error_from_jsonl}"
+        elif stdout_msg and not stderr_msg:
+            error_msg = f"Claude Code error: {stdout_msg}"
+        elif stderr_msg and not stdout_msg:
+            error_msg = f"Claude Code error: {stderr_msg}"
+        elif stdout_msg and stderr_msg:
+            error_msg = f"Claude Code error: {stderr_msg}\nStdout: {stdout_msg}"
+        else:
+            error_msg = f"Claude Code error: Command failed with exit code {result.returncode}"
+
+        # Always truncate error messages to prevent huge outputs
+        return AgentPromptResponse(
+            output=truncate_output(error_msg, max_length=800),
+            success=False,
+            session_id=None,
+            retry_code=RetryCode.CLAUDE_CODE_ERROR,
+        )
+
+
+def prompt_claude_code(request: AgentPromptRequest) -> AgentPromptResponse:
+    """Execute Claude Code with the given prompt configuration.
+
+    Uses bash wrapper script to avoid Python subprocess rate limiting.
+    """
+
+    # Check if Claude Code CLI is installed
+    error_msg = check_claude_installed()
+    if error_msg:
+        return AgentPromptResponse(
+            output=error_msg,
+            success=False,
+            session_id=None,
+            retry_code=RetryCode.NONE,  # Installation error is not retryable
+        )
+
+    # Save prompt before execution
+    save_prompt(request.prompt, request.adw_id, request.agent_name)
+
+    # Create output directory if needed
+    output_dir = os.path.dirname(request.output_file)
+    if output_dir:
+        os.makedirs(output_dir, exist_ok=True)
+
+    # Extract slash command from prompt
+    prompt_lines = request.prompt.strip().split('\n')
+    first_line = prompt_lines[0].strip()
+
+    # Check if first line is a slash command
+    if first_line.startswith('/'):
+        slash_command = first_line
+        prompt_content = '\n'.join(prompt_lines[1:]).strip() if len(prompt_lines) > 1 else ""
+    else:
+        # No slash command, use full prompt as content
+        slash_command = None
+        prompt_content = request.prompt
+
+    if not slash_command:
+        # Fallback: old behavior for prompts without slash commands
+        return _prompt_claude_code_direct(request)
+
+    # Use bash wrapper script to avoid Python subprocess rate limiting
+    # Find the script in the project root
+    project_root = os.path.dirname(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    )
+    bash_wrapper = os.path.join(project_root, "scripts", "execute-claude-workflow.sh")
+
+    if not os.path.exists(bash_wrapper):
+        # Fallback to direct execution if wrapper doesn't exist
+        logging.warning(f"Bash wrapper not found at {bash_wrapper}, falling back to direct execution")
+        return _prompt_claude_code_direct(request)
+
+    # Build command using bash wrapper
+    working_dir = request.working_dir or "."
+    cmd = [bash_wrapper, slash_command, prompt_content, working_dir, request.model]
+
+    # Add MCP config path if it exists
+    if request.working_dir:
+        mcp_config_path = os.path.join(request.working_dir, ".mcp.json")
+        if os.path.exists(mcp_config_path):
+            cmd.append(".mcp.json")  # Relative path since we cd to working_dir
+
+    # Set up environment with only required variables
+    env = get_claude_env()
+
+    try:
+        # Open output file for streaming
+        with open(request.output_file, "w") as output_f:
+            # Execute via bash wrapper
+            result = subprocess.run(
+                cmd,
+                stdout=output_f,
+                stderr=subprocess.PIPE,
+                text=True,
+                env=env,
+            )
+
+        # Use shared result parsing logic
+        return _parse_claude_result(request, result)
 
     except subprocess.TimeoutExpired:
         error_msg = "Error: Claude Code command timed out after 5 minutes"

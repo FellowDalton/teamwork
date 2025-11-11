@@ -12,9 +12,72 @@ from typing import Any, TypeVar, Type, Union, Dict, Optional
 T = TypeVar("T")
 
 
+def hello() -> str:
+    """Return a simple greeting.
+
+    Returns:
+        A greeting string 'Hello!'
+    """
+    return "Hello!"
+
+
 def make_adw_id() -> str:
     """Generate a short 8-character UUID for ADW tracking."""
     return str(uuid.uuid4())[:8]
+
+
+def slugify(text: str, max_length: Optional[int] = None, separator: str = "-") -> str:
+    """Convert text to URL-safe slug.
+
+    Converts text to lowercase, removes special characters, and replaces
+    spaces with the specified separator. Useful for creating filenames,
+    URLs, and directory names from arbitrary text.
+
+    Args:
+        text: The text to convert to a slug
+        max_length: Optional maximum length for the slug (will truncate and avoid breaking words)
+        separator: Character to use as separator (default: "-")
+
+    Returns:
+        URL-safe slug string
+
+    Examples:
+        >>> slugify("Hello World!")
+        'hello-world'
+        >>> slugify("User Auth Feature", max_length=10)
+        'user-auth'
+        >>> slugify("Special @#$ Characters!!!")
+        'special-characters'
+        >>> slugify("Multiple   Spaces")
+        'multiple-spaces'
+    """
+    # Convert to lowercase
+    text = text.lower()
+
+    # Replace common separators with spaces first
+    text = re.sub(r'[_\-\s]+', ' ', text)
+
+    # Remove special characters (keep only alphanumeric and spaces)
+    text = re.sub(r'[^a-z0-9\s]', '', text)
+
+    # Replace multiple spaces with single space
+    text = re.sub(r'\s+', ' ', text)
+
+    # Trim whitespace
+    text = text.strip()
+
+    # Replace spaces with separator
+    slug = text.replace(' ', separator)
+
+    # Apply max_length if specified
+    if max_length and len(slug) > max_length:
+        # Truncate at the last separator before max_length to avoid breaking words
+        slug = slug[:max_length]
+        last_sep = slug.rfind(separator)
+        if last_sep > 0:
+            slug = slug[:last_sep]
+
+    return slug
 
 
 def setup_logger(adw_id: str, trigger_type: str = "adw_plan_build") -> logging.Logger:
