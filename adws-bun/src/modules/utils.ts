@@ -455,3 +455,12 @@ export function formatDuration(ms: number): string {
 export function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
+
+/**
+ * Return a simple goodbye message.
+ *
+ * @returns The string 'Goodbye!'
+ */
+export function goodbye(): string {
+  return 'Goodbye!';
+}
