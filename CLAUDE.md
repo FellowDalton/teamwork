@@ -4,11 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-TAC8 App4 is a **multi-agent rapid prototyping system** that monitors task management platforms (Notion or Teamwork) for prototype requests and automatically generates complete applications using AI agents. The system uses isolated git worktrees for parallel development and specialized planning agents for different technology stacks (Vue.js, Python UV scripts, Bun TypeScript, MCP servers).
+TAC8 App4 is a **multi-agent rapid prototyping system** that monitors Teamwork for prototype requests and automatically generates complete applications using AI agents. The system uses isolated git worktrees for parallel development and specialized planning agents for different technology stacks (Vue.js, Python UV scripts, Bun TypeScript, MCP servers).
 
 ### Key Concepts
 
-- **Task Management Integration**: Tasks can be defined in either Notion or Teamwork with status tracking, execution triggers, and tags
+- **Task Management Integration**: Tasks are defined in Teamwork with status tracking, execution triggers, and tags
 - **Worktree Isolation**: Each task gets its own git worktree with sparse checkout for parallel development
 - **Multi-Agent Workflows**: Tasks are routed to different workflows (build, plan-implement, prototypes) based on tags
 - **Specialized Planners**: Framework-specific `/plan_[prototype]` commands generate comprehensive implementation plans
@@ -18,7 +18,7 @@ TAC8 App4 is a **multi-agent rapid prototyping system** that monitors task manag
 
 ### Running the System
 
-**Teamwork Monitor** (recommended):
+**Teamwork Monitor**:
 ```bash
 # Start the Teamwork task monitor (polls every 15 seconds)
 ./adws/adw_triggers/adw_trigger_cron_teamwork_tasks.py
@@ -36,17 +36,8 @@ TAC8 App4 is a **multi-agent rapid prototyping system** that monitors task manag
 ./adws/adw_triggers/adw_trigger_cron_teamwork_tasks.py --max-tasks 5
 ```
 
-**Notion Monitor** (legacy):
-```bash
-# Start the Notion task monitor (polls every 15 seconds)
-./adws/adw_triggers/adw_trigger_cron_notion_tasks.py
-
-# Same flags as Teamwork monitor: --once, --dry-run, --interval, --max-tasks
-```
-
 ### Testing Workflows
 
-**Teamwork workflows**:
 ```bash
 # Test individual workflows manually
 ./adws/adw_build_update_teamwork_task.py <adw_id> <task_id> <task_description> <worktree_name>
@@ -55,12 +46,6 @@ TAC8 App4 is a **multi-agent rapid prototyping system** that monitors task manag
 # Test slash commands
 claude /get_teamwork_tasks <project_id> '["New"]' 5
 claude /update_teamwork_task <task_id> "Done" '{"adw_id":"test123"}'
-```
-
-**Notion workflows** (legacy):
-```bash
-./adws/adw_build_update_notion_task.py <adw_id> <page_id> <task_description> <worktree_name>
-./adws/adw_plan_implement_update_notion_task.py <adw_id> <page_id> <task_description> <worktree_name>
 ```
 
 **Test slash commands in a worktree**:
@@ -111,12 +96,12 @@ tac8_app4__agentic_prototyping/
 ├── adws/                           # AI Developer Workflows (ADWs)
 │   ├── adw_modules/               # Shared Python modules
 │   │   ├── agent.py              # Agent execution framework (execute_template, prompt_claude_code)
-│   │   ├── data_models.py        # Pydantic models for Notion tasks, workflows, config
+│   │   ├── data_models.py        # Pydantic models for Teamwork tasks, workflows, config
 │   │   └── utils.py              # Utility functions (parse_json, etc.)
 │   ├── adw_triggers/             # Continuous monitoring triggers
-│   │   └── adw_trigger_cron_notion_tasks.py  # Main Notion monitor (15s polling)
-│   ├── adw_build_update_notion_task.py       # Simple workflow: /build → /update_notion_task
-│   └── adw_plan_implement_update_notion_task.py  # Complex workflow: /plan → /implement → /update
+│   │   └── adw_trigger_cron_teamwork_tasks.py  # Main Teamwork monitor (15s polling)
+│   ├── adw_build_update_teamwork_task.py       # Simple workflow: /build → /update_teamwork_task
+│   └── adw_plan_implement_update_teamwork_task.py  # Complex workflow: /plan → /implement → /update
 ├── .claude/commands/              # Slash command definitions (markdown files)
 ├── apps/                          # Generated prototype applications
 ├── specs/                         # Generated implementation plans
@@ -126,31 +111,31 @@ tac8_app4__agentic_prototyping/
 
 ### Core Data Flow
 
-1. **Trigger**: `adw_trigger_cron_notion_tasks.py` polls Notion every 15 seconds
-2. **Detection**: Identifies tasks with status "Not started" or "HIL Review" + `execute` trigger
-3. **Claiming**: Updates status to "In progress" with ADW ID to prevent duplicate work
-4. **Routing**: Routes to workflow based on `{{prototype: type}}` or `{{workflow: plan}}` tags
+1. **Trigger**: `adw_trigger_cron_teamwork_tasks.py` polls Teamwork every 15 seconds
+2. **Detection**: Identifies tasks with status "New", "To Do", or "Review" + `execute` trigger
+3. **Claiming**: Updates status to "In Progress" with ADW ID to prevent duplicate work
+4. **Routing**: Routes to workflow based on `prototype:type` or `workflow:plan` tags
 5. **Execution**: Spawns detached subprocess running workflow ADW script
 6. **Worktree**: Creates isolated worktree with sparse checkout of `tac8_app4__agentic_prototyping/`
 7. **Planning**: Specialized `/plan_[prototype]` command generates implementation plan
 8. **Implementation**: `/implement` executes the plan and creates the application
-9. **Update**: `/update_notion_task` posts results, commit hash, or errors back to Notion
+9. **Update**: `/update_teamwork_task` posts results, commit hash, or errors back to Teamwork
 
 ### Workflow Types
 
-**Build Workflow** (`adw_build_update_notion_task.py`)
+**Build Workflow** (`adw_build_update_teamwork_task.py`)
 - Triggered by: Simple tasks without special tags
-- Commands: `/build` → `/update_notion_task`
+- Commands: `/build` → `/update_teamwork_task`
 - Use case: Small changes, bug fixes, adding utilities
 
-**Plan-Implement Workflow** (`adw_plan_implement_update_notion_task.py`)
-- Triggered by: `{{workflow: plan}}` tag or complex tasks (>500 chars)
-- Commands: `/plan` → `/implement` → `/update_notion_task`
+**Plan-Implement Workflow** (`adw_plan_implement_update_teamwork_task.py`)
+- Triggered by: `workflow:plan` tag or complex tasks (>500 chars)
+- Commands: `/plan` → `/implement` → `/update_teamwork_task`
 - Use case: Complex features requiring architectural planning
 
-**Prototype Workflow** (`adw_plan_implement_update_notion_task.py`)
-- Triggered by: `{{prototype: type}}` tags (uv_script, vite_vue, bun_scripts, uv_mcp)
-- Commands: `/plan_[prototype]` → `/implement` → `/update_notion_task`
+**Prototype Workflow** (`adw_plan_implement_update_teamwork_task.py`)
+- Triggered by: `prototype:type` tags (uv_script, vite_vue, bun_scripts, uv_mcp)
+- Commands: `/plan_[prototype]` → `/implement` → `/update_teamwork_task`
 - Use case: Generating complete applications from scratch
 
 ### Key Python Modules
@@ -163,9 +148,9 @@ tac8_app4__agentic_prototyping/
 - `get_safe_subprocess_env()`: Filter environment variables for secure subprocess execution
 
 **`adws/adw_modules/data_models.py`**
-- `NotionTask`: Parsed Notion task with tags, status, execution_trigger
-- `NotionTaskUpdate`: Update payload for posting results back to Notion
-- `NotionCronConfig`: Configuration for polling interval, max tasks, etc.
+- `TeamworkTask`: Parsed Teamwork task with tags, status, execution_trigger
+- `TeamworkTaskUpdate`: Update payload for posting results back to Teamwork
+- `TeamworkCronConfig`: Configuration for polling interval, max tasks, etc.
 - `AgentTemplateRequest`: Request for executing a slash command
 - `WorktreeCreationRequest`: Request for automatic worktree creation
 
@@ -202,8 +187,6 @@ app:my-app            # Custom app directory name
 {{prototype: vite_vue}}  # Generate a Vue.js application
 ```
 
-**Notion** tasks use inline tags only (see above format).
-
 ### Execution Triggers
 
 Tasks must have one of these triggers in their description to be processed:
@@ -220,7 +203,7 @@ Tasks must have one of these triggers in their description to be processed:
 ### ADW ID Tracking
 
 Every workflow execution gets a unique 8-character ADW ID used for:
-- Tracking task ownership in Notion (prevents duplicate processing)
+- Tracking task ownership in Teamwork (prevents duplicate processing)
 - Creating output directories: `agents/{adw_id}/{agent_name}/`
 - Logging prompts: `agents/{adw_id}/{agent_name}/prompts/{command}.txt`
 - Storing outputs: `agents/{adw_id}/{agent_name}/cc_raw_output.jsonl`
@@ -238,8 +221,8 @@ Worktrees are created in `../trees/{worktree-name}/` with:
 # 1. Generate ADW ID
 adw_id = generate_short_id()
 
-# 2. Claim task in Notion
-update_task_status(page_id, "In progress", json.dumps({"adw_id": adw_id}))
+# 2. Claim task in Teamwork
+update_task_status(task_id, "In Progress", json.dumps({"adw_id": adw_id}))
 
 # 3. Create worktree
 worktree_name = make_worktree_name(task_description)
@@ -247,7 +230,7 @@ init_worktree(worktree_name, "tac8_app4__agentic_prototyping")
 
 # 4. Spawn detached workflow subprocess
 subprocess.Popen(
-    ["./adws/adw_plan_implement_update_notion_task.py", adw_id, page_id, task_prompt, worktree_name],
+    ["./adws/adw_plan_implement_update_teamwork_task.py", adw_id, task_id, task_prompt, worktree_name],
     start_new_session=True  # Detach from parent
 )
 
@@ -259,10 +242,10 @@ execute_template(AgentTemplateRequest(
     working_dir=worktree_path
 ))
 
-# 6. Update Notion with results
+# 6. Update Teamwork with results
 execute_template(AgentTemplateRequest(
-    slash_command="/update_notion_task",
-    args=[page_id, "Done", json.dumps({"commit": commit_hash})],
+    slash_command="/update_teamwork_task",
+    args=[task_id, "Complete", json.dumps({"commit": commit_hash})],
     adw_id=adw_id
 ))
 ```
@@ -272,9 +255,9 @@ execute_template(AgentTemplateRequest(
 ### Adding a New Prototype Type
 
 1. Create planning command in `.claude/commands/plan_[prototype].md`
-2. Add prototype detection logic in `adw_trigger_cron_notion_tasks.py`
+2. Add prototype detection logic in `adw_trigger_cron_teamwork_tasks.py`
 3. Update `data_models.py` to include new prototype type in validation
-4. Test with a Notion task using `{{prototype: [prototype]}}`
+4. Test with a Teamwork task using `prototype:[prototype]` tag
 
 ### Adding a New Slash Command
 
@@ -285,7 +268,7 @@ execute_template(AgentTemplateRequest(
 ### Debugging Failed Tasks
 
 ```bash
-# 1. Find the ADW ID from Notion task (in "In progress" status details)
+# 1. Find the ADW ID from Teamwork task (in "In Progress" status comments)
 adw_id="abc12345"
 
 # 2. Check agent logs
@@ -308,10 +291,10 @@ cat specs/plan-*.md
 
 ```bash
 # Method 1: Use --once flag to process a single batch
-./adws/adw_triggers/adw_trigger_cron_notion_tasks.py --once
+./adws/adw_triggers/adw_trigger_cron_teamwork_tasks.py --once
 
 # Method 2: Manually invoke workflow
-./adws/adw_build_update_notion_task.py test123 fake-page-id "Test task" test-worktree
+./adws/adw_build_update_teamwork_task.py test123 fake-task-id "Test task" test-worktree
 
 # Method 3: Test slash commands in isolation
 cd trees/test-worktree/tac8_app4__agentic_prototyping
@@ -322,8 +305,8 @@ claude /build "Add a test utility function" .
 
 When a task completes, you can review the output and add feedback:
 1. Check the generated code in `apps/` or the worktree
-2. Set Notion status to "HIL Review"
-3. Add continuation instructions in task content: `continue - Add error handling and tests`
+2. Set Teamwork status to "Review"
+3. Add continuation instructions in task description: `continue - Add error handling and tests`
 4. Monitor will pick it up on next poll and execute with the additional context
 
 ## Environment Setup
@@ -334,18 +317,12 @@ When a task completes, you can review the output and add feedback:
 # Anthropic API key (required)
 ANTHROPIC_API_KEY=sk-ant-...
 
-# Teamwork project ID for task tracking (required for Teamwork)
+# Teamwork project ID for task tracking (required)
 TEAMWORK_PROJECT_ID=12345
 
 # Teamwork polling configuration (optional)
 TEAMWORK_POLLING_INTERVAL=15
 TEAMWORK_MAX_CONCURRENT_TASKS=3
-
-# Notion integration secret (required for Notion, legacy)
-NOTION_INTERNAL_INTEGRATION_SECRET=secret_...
-
-# Notion database ID for task tracking (required for Notion, legacy)
-NOTION_AGENTIC_TASK_TABLE_ID=your-database-id
 
 # Claude Code CLI path (optional, defaults to "claude")
 CLAUDE_CODE_PATH=/path/to/claude
@@ -368,8 +345,8 @@ curl -fsSL https://bun.sh/install | bash
 
 ### MCP Configuration
 
-The system uses MCP (Model Context Protocol) servers for Notion access. Configuration is in `.mcp.json`:
-- Notion MCP server for reading/writing tasks
+The system uses MCP (Model Context Protocol) servers for Teamwork access. Configuration is in `.mcp.json`:
+- Teamwork MCP server for reading/writing tasks
 - Other MCP servers as needed for specific prototypes
 
 ## Security Considerations
@@ -383,7 +360,7 @@ The `get_safe_subprocess_env()` function in `agent.py` filters environment varia
 - Python vars: `PYTHONPATH`, `PYTHONUNBUFFERED`
 - Working directory: `PWD`
 
-**DO NOT** pass sensitive variables like `NOTION_INTERNAL_INTEGRATION_SECRET` to subprocesses unless explicitly required by MCP configuration.
+**DO NOT** pass sensitive variables to subprocesses unless explicitly required by MCP configuration.
 
 ### Subprocess Execution
 
@@ -408,10 +385,10 @@ Worktrees use sparse checkout to include only `tac8_app4__agentic_prototyping/`:
 
 ### Task Not Being Picked Up
 
-1. Check status is "Not started" or "HIL Review"
+1. Check status is "New", "To Do", or "Review"
 2. Verify execution trigger is present: `execute` or `continue - ...`
-3. Confirm `NOTION_AGENTIC_TASK_TABLE_ID` is correct
-4. Check monitor is running: `ps aux | grep adw_trigger_cron_notion_tasks`
+3. Confirm `TEAMWORK_PROJECT_ID` is correct
+4. Check monitor is running: `ps aux | grep adw_trigger_cron_teamwork_tasks`
 5. Review monitor output for errors
 
 ### Worktree Creation Fails
@@ -428,9 +405,9 @@ Worktrees use sparse checkout to include only `tac8_app4__agentic_prototyping/`:
 3. Check API key is valid: `echo $ANTHROPIC_API_KEY`
 4. Review agent output logs: `cat agents/{adw_id}/*/cc_raw_output.json`
 
-### Notion Updates Not Working
+### Teamwork Updates Not Working
 
-1. Verify MCP Notion server is running
+1. Verify MCP Teamwork server is running
 2. Check `.mcp.json` configuration exists
-3. Test manually: `claude /get_notion_tasks <db_id> '["Not started"]' 5`
+3. Test manually: `claude /get_teamwork_tasks <project_id> '["New"]' 5`
 4. Review MCP server logs for connection errors
