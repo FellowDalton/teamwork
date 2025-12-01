@@ -1,3 +1,9 @@
+---
+description: Update Teamwork task status and post agent updates as comments
+argument-hint: <task_id> <status> [update_content]
+allowed-tools: Skill(manage-teamwork)
+---
+
 # Update Teamwork Task
 
 Update Teamwork task status and post agent updates as comments.

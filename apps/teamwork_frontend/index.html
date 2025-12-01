@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Teamwork AI Synth</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+      body {
+        font-family: 'Inter', sans-serif;
+        background-color: #18181b;
+        margin: 0;
+        overflow: hidden; /* App handles scrolling */
+      }
+      /* Hide scrollbar for Chrome, Safari and Opera */
+      .no-scrollbar::-webkit-scrollbar {
+          display: none;
+      }
+      /* Hide scrollbar for IE, Edge and Firefox */
+      .no-scrollbar {
+          -ms-overflow-style: none;  /* IE and Edge */
+          scrollbar-width: none;  /* Firefox */
+      }
+      
+      /* Subtle Noise Texture */
+      .bg-noise {
+        background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.02'/%3E%3C/svg%3E");
+      }
+
+      /* Technical Dot Grid - Dark Mode (Indented Charcoal Holes) */
+      .bg-grid-dark {
+        background-image: url("data:image/svg+xml,%3Csvg width='24' height='24' viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='12' cy='12' r='3' fill='%23050505' style='filter: drop-shadow(0px 1px 0px rgba(255,255,255,0.06));' /%3E%3C/svg%3E");
+        background-size: 24px 24px;
+      }
+
+      /* Technical Dot Grid - Light Mode (Indented Charcoal Holes on Light) */
+      .bg-grid-light {
+        background-image: url("data:image/svg+xml,%3Csvg width='24' height='24' viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='12' cy='12' r='3' fill='%23000000' opacity='0.06' style='filter: drop-shadow(0px 1px 0px %23ffffff);' /%3E%3C/svg%3E");
+        background-size: 24px 24px;
+      }
+
+      /* --- CARD TEXTURES (Fine/Dense) --- */
+      
+      /* Dark Card: Fine white dust */
+      .bg-texture-card-dark {
+        background-image: url("data:image/svg+xml,%3Csvg width='4' height='4' viewBox='0 0 4 4' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='2' cy='2' r='1' fill='white' fill-opacity='0.05' /%3E%3C/svg%3E");
+      }
+
+      /* Light Card: Fine dark dust */
+      .bg-texture-card-light {
+        background-image: url("data:image/svg+xml,%3Csvg width='4' height='4' viewBox='0 0 4 4' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='2' cy='2' r='1' fill='black' fill-opacity='0.05' /%3E%3C/svg%3E");
+      }
+
+      /* --- BUTTON TEXTURES (Large/Raised 3D Bumps) --- */
+
+      /* Dark Button: Shifted down 0.5px (cy=7.5 and cy=5.5) */
+      .bg-texture-btn-dark {
+        background-image: url("data:image/svg+xml,%3Csvg width='12' height='12' viewBox='0 0 12 12' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='6' cy='7.5' r='3.5' fill='black' fill-opacity='0.8' /%3E%3Ccircle cx='6' cy='5.5' r='3.5' fill='white' fill-opacity='0.1' /%3E%3C/svg%3E");
+      }
+
+      /* Light Button: Shifted down 0.5px (cy=8 and cy=5) */
+      .bg-texture-btn-light {
+        background-image: url("data:image/svg+xml,%3Csvg width='12' height='12' viewBox='0 0 12 12' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='6' cy='8' r='3.5' fill='black' fill-opacity='0.4' /%3E%3Ccircle cx='6' cy='5' r='3.5' fill='white' fill-opacity='0.8' /%3E%3C/svg%3E");
+      }
+
+    </style>
+</head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>

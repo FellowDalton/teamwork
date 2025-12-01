@@ -1,3 +1,9 @@
+---
+description: Query tasks from a Teamwork project and prepare them for agent processing
+argument-hint: <project_id> [status_filter] [limit]
+allowed-tools: Skill(manage-teamwork)
+---
+
 # Get Teamwork Tasks
 
 Query tasks from a Teamwork project and prepare them for agent processing.

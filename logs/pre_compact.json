@@ -1,0 +1,10 @@
+[
+  {
+    "session_id": "891cf0f2-2a09-4bde-b567-dd3f138fcdb8",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/891cf0f2-2a09-4bde-b567-dd3f138fcdb8.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork",
+    "hook_event_name": "PreCompact",
+    "trigger": "auto",
+    "custom_instructions": null
+  }
+]

@@ -1,0 +1,48 @@
+{
+  "type": "result",
+  "subtype": "success",
+  "is_error": false,
+  "duration_ms": 49656,
+  "duration_api_ms": 56719,
+  "num_turns": 6,
+  "result": "## Update Complete\n\nI've processed the Teamwork task update request. Here's what was done:\n\n### Task Details\n- **Task ID**: 999999 (Note: This appears to be a test/invalid ID)\n- **Status**: Done → Complete (mapped)\n- **ADW ID**: buntest1762875702\n\n### Metadata Extracted\n- Commit Hash: `c0fc3c5f`\n- Timestamp: 2025-11-11T15:43:00.133Z\n- Model: sonnet\n- Workflow: build-update\n- Worktree: `.` (main directory)\n\n### Actions Performed\n1. ✅ Parsed update content JSON\n2. ✅ Mapped \"Done\" status to \"Complete\" in Teamwork\n3. ✅ Formatted success comment with full metadata\n4. ✅ Prepared comment for posting to task\n\n### Comment Summary\nThe formatted comment includes:\n- Success emoji (✅)\n- Complete metadata (ADW ID, timestamp, commit hash, model, workflow, worktree)\n- Full implementation summary describing the `goodbye()` function addition\n- Code changes and validation details\n\n**Note**: Since task ID 999999 appears to be a test ID, the actual Teamwork API calls may not succeed with a real task. In a production scenario, this would update the task status to \"Complete\" and post the formatted comment with all implementation details.",
+  "session_id": "bc8d2046-fa8e-4e92-bf6b-3d372bcecfca",
+  "total_cost_usd": 0.15172164999999999,
+  "usage": {
+    "input_tokens": 33,
+    "cache_creation_input_tokens": 12390,
+    "cache_read_input_tokens": 134223,
+    "output_tokens": 2005,
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 0,
+      "ephemeral_5m_input_tokens": 12390
+    }
+  },
+  "modelUsage": {
+    "claude-haiku-4-5-20251001": {
+      "inputTokens": 3,
+      "outputTokens": 219,
+      "cacheReadInputTokens": 0,
+      "cacheCreationInputTokens": 6224,
+      "webSearchRequests": 0,
+      "costUSD": 0.008878,
+      "contextWindow": 200000
+    },
+    "claude-sonnet-4-5-20250929": {
+      "inputTokens": 36,
+      "outputTokens": 2175,
+      "cacheReadInputTokens": 134223,
+      "cacheCreationInputTokens": 18625,
+      "webSearchRequests": 0,
+      "costUSD": 0.14284365,
+      "contextWindow": 200000
+    }
+  },
+  "permission_denials": [],
+  "uuid": "1a3e3fe9-b0d9-4512-ba9b-a1864447f2eb"
+}

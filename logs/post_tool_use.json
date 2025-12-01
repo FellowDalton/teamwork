@@ -1,0 +1,1071 @@
+[
+  {
+    "session_id": "493cb71e-2a7b-4173-9836-030471146dc9",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/493cb71e-2a7b-4173-9836-030471146dc9.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PostToolUse",
+    "tool_name": "Read",
+    "tool_input": {
+      "file_path": "/Users/dalton/projects/teamwork/apps/teamwork_api_client/src/resources/tasks.ts"
+    },
+    "tool_response": {
+      "type": "text",
+      "file": {
+        "filePath": "/Users/dalton/projects/teamwork/apps/teamwork_api_client/src/resources/tasks.ts",
+        "content": "/**\n * Tasks resource module for Teamwork API.\n * Provides CRUD operations and filtering for tasks.\n */\n\nimport type { TeamworkHttpClient } from '../client.ts';\nimport {\n  type ApiTask,\n  type TaskListResponse,\n  type TaskResponse,\n  type CreateTaskRequest,\n  type UpdateTaskRequest,\n  TaskListResponseSchema,\n  TaskResponseSchema,\n} from '../types.ts';\n\nexport interface ListTasksOptions {\n  /** Filter by status (e.g., 'new', 'in progress', 'completed') */\n  statuses?: string[];\n  /** Filter by tag IDs */\n  tagIds?: number[];\n  /** Filter by assignee user IDs */\n  assigneeUserIds?: number[];\n  /** Filter by assignee team IDs */\n  assigneeTeamIds?: number[];\n  /** Include related data */\n  include?: ('tags' | 'assignees' | 'users' | 'teams')[];\n  /** Page number */\n  page?: number;\n  /** Items per page */\n  pageSize?: number;\n  /** Order by field */\n  orderBy?: string;\n  /** Order direction */\n  orderMode?: 'asc' | 'desc';\n  /** Filter by updated after date */\n  updatedAfter?: string;\n  /** Include completed tasks */\n  includeCompletedTasks?: boolean;\n  /** Search term */\n  searchTerm?: string;\n}\n\nexport interface CreateTaskOptions {\n  name: string;\n  description?: string;\n  priority?: 'none' | 'low' | 'medium' | 'high';\n  startDate?: string;\n  dueDate?: string;\n  estimatedMinutes?: number;\n  assigneeUserIds?: number[];\n  assigneeTeamIds?: number[];\n  tagIds?: number[];\n}\n\nexport interface UpdateTaskOptions {\n  name?: string;\n  description?: string;\n  status?: string;\n  priority?: 'none' | 'low' | 'medium' | 'high';\n  progress?: number;\n  startDate?: string | null;\n  dueDate?: string | null;\n  estimatedMinutes?: number;\n  assigneeUserIds?: number[];\n  assigneeTeamIds?: number[];\n  tagIds?: number[];\n}\n\n/**\n * Tasks resource for Teamwork API.\n */\nexport class TasksResource {\n  constructor(private readonly client: TeamworkHttpClient) {}\n\n  /**\n   * List all tasks across all projects.\n   */\n  async list(options?: ListTasksOptions): Promise<TaskListResponse> {\n    const params: Record<string, string | number | boolean | string[] | undefined> = {};\n\n    if (options?.statuses?.length) {\n      params['taskStatuses'] = options.statuses.join(',');\n    }\n    if (options?.tagIds?.length) {\n      params['tagIds'] = options.tagIds.join(',');\n    }\n    if (options?.assigneeUserIds?.length) {\n      params['assignedToUserIds'] = options.assigneeUserIds.join(',');\n    }\n    if (options?.assigneeTeamIds?.length) {\n      params['assignedToTeamIds'] = options.assigneeTeamIds.join(',');\n    }\n    if (options?.include?.length) {\n      params['include'] = options.include;\n    }\n    if (options?.page !== undefined) {\n      params['page'] = options.page;\n    }\n    if (options?.pageSize !== undefined) {\n      params['pageSize'] = options.pageSize;\n    }\n    if (options?.orderBy) {\n      params['orderBy'] = options.orderBy;\n    }\n    if (options?.orderMode) {\n      params['orderMode'] = options.orderMode;\n    }\n    if (options?.updatedAfter) {\n      params['updatedAfter'] = options.updatedAfter;\n    }\n    if (options?.includeCompletedTasks !== undefined) {\n      params['includeCompletedTasks'] = options.includeCompletedTasks;\n    }\n    if (options?.searchTerm) {\n      params['searchTerm'] = options.searchTerm;\n    }\n\n    const response = await this.client.get<TaskListResponse>('/projects/api/v3/tasks.json', params);\n    return TaskListResponseSchema.parse(response);\n  }\n\n  /**\n   * List tasks for a specific project.\n   */\n  async listByProject(projectId: number, options?: ListTasksOptions): Promise<TaskListResponse> {\n    const params: Record<string, string | number | boolean | string[] | undefined> = {};\n\n    if (options?.statuses?.length) {\n      params['taskStatuses'] = options.statuses.join(',');\n    }\n    if (options?.tagIds?.length) {\n      params['tagIds'] = options.tagIds.join(',');\n    }\n    if (options?.assigneeUserIds?.length) {\n      params['assignedToUserIds'] = options.assigneeUserIds.join(',');\n    }\n    if (options?.assigneeTeamIds?.length) {\n      params['assignedToTeamIds'] = options.assigneeTeamIds.join(',');\n    }\n    if (options?.include?.length) {\n      params['include'] = options.include;\n    }\n    if (options?.page !== undefined) {\n      params['page'] = options.page;\n    }\n    if (options?.pageSize !== undefined) {\n      params['pageSize'] = options.pageSize;\n    }\n    if (options?.orderBy) {\n      params['orderBy'] = options.orderBy;\n    }\n    if (options?.orderMode) {\n      params['orderMode'] = options.orderMode;\n    }\n    if (options?.updatedAfter) {\n      params['updatedAfter'] = options.updatedAfter;\n    }\n    if (options?.includeCompletedTasks !== undefined) {\n      params['includeCompletedTasks'] = options.includeCompletedTasks;\n    }\n    if (options?.searchTerm) {\n      params['searchTerm'] = options.searchTerm;\n    }\n\n    const response = await this.client.get<TaskListResponse>(\n      `/projects/api/v3/projects/${projectId}/tasks.json`,\n      params\n    );\n    return TaskListResponseSchema.parse(response);\n  }\n\n  /**\n   * List tasks for a specific tasklist.\n   */\n  async listByTasklist(tasklistId: number, options?: ListTasksOptions): Promise<TaskListResponse> {\n    const params: Record<string, string | number | boolean | string[] | undefined> = {};\n\n    if (options?.statuses?.length) {\n      params['taskStatuses'] = options.statuses.join(',');\n    }\n    if (options?.include?.length) {\n      params['include'] = options.include;\n    }\n    if (options?.page !== undefined) {\n      params['page'] = options.page;\n    }\n    if (options?.pageSize !== undefined) {\n      params['pageSize'] = options.pageSize;\n    }\n\n    const response = await this.client.get<TaskListResponse>(\n      `/projects/api/v3/tasklists/${tasklistId}/tasks.json`,\n      params\n    );\n    return TaskListResponseSchema.parse(response);\n  }\n\n  /**\n   * Get a single task by ID.\n   */\n  async get(taskId: number, include?: ('tags' | 'assignees' | 'users' | 'teams')[]): Promise<ApiTask> {\n    const params: Record<string, string | string[] | undefined> = {};\n\n    if (include?.length) {\n      params['include'] = include;\n    }\n\n    const response = await this.client.get<TaskResponse>(`/projects/api/v3/tasks/${taskId}.json`, params);\n    const parsed = TaskResponseSchema.parse(response);\n    return parsed.task;\n  }\n\n  /**\n   * Create a new task in a tasklist.\n   */\n  async create(tasklistId: number, options: CreateTaskOptions): Promise<ApiTask> {\n    const body: CreateTaskRequest = {\n      task: {\n        name: options.name,\n        description: options.description,\n        priority: options.priority,\n        startDate: options.startDate,\n        dueDate: options.dueDate,\n        estimatedMinutes: options.estimatedMinutes,\n        tagIds: options.tagIds,\n      },\n    };\n\n    if (options.assigneeUserIds?.length || options.assigneeTeamIds?.length) {\n      body.task.assignees = {\n        userIds: options.assigneeUserIds,\n        teamIds: options.assigneeTeamIds,\n      };\n    }\n\n    const response = await this.client.post<TaskResponse>(\n      `/projects/api/v3/tasklists/${tasklistId}/tasks.json`,\n      body\n    );\n    const parsed = TaskResponseSchema.parse(response);\n    return parsed.task;\n  }\n\n  /**\n   * Update an existing task.\n   */\n  async update(taskId: number, options: UpdateTaskOptions): Promise<ApiTask> {\n    const body: UpdateTaskRequest = {\n      task: {},\n    };\n\n    if (options.name !== undefined) body.task.name = options.name;\n    if (options.description !== undefined) body.task.description = options.description;\n    if (options.status !== undefined) body.task.status = options.status;\n    if (options.priority !== undefined) body.task.priority = options.priority;\n    if (options.progress !== undefined) body.task.progress = options.progress;\n    if (options.startDate !== undefined) body.task.startDate = options.startDate;\n    if (options.dueDate !== undefined) body.task.dueDate = options.dueDate;\n    if (options.estimatedMinutes !== undefined) body.task.estimatedMinutes = options.estimatedMinutes;\n    if (options.tagIds !== undefined) body.task.tagIds = options.tagIds;\n\n    if (options.assigneeUserIds !== undefined || options.assigneeTeamIds !== undefined) {\n      body.task.assignees = {\n        userIds: options.assigneeUserIds,\n        teamIds: options.assigneeTeamIds,\n      };\n    }\n\n    const response = await this.client.patch<TaskResponse>(`/projects/api/v3/tasks/${taskId}.json`, body);\n    const parsed = TaskResponseSchema.parse(response);\n    return parsed.task;\n  }\n\n  /**\n   * Delete a task.\n   */\n  async delete(taskId: number): Promise<void> {\n    await this.client.delete(`/projects/api/v3/tasks/${taskId}.json`);\n  }\n\n  /**\n   * Complete a task.\n   */\n  async complete(taskId: number): Promise<ApiTask> {\n    return this.update(taskId, { status: 'completed' });\n  }\n\n  /**\n   * Reopen a completed task.\n   */\n  async reopen(taskId: number): Promise<ApiTask> {\n    return this.update(taskId, { status: 'reopened' });\n  }\n}\n",
+        "numLines": 296,
+        "startLine": 1,
+        "totalLines": 296
+      }
+    },
+    "tool_use_id": "toolu_01WV9aEzjTXPX3dZhx9bVfEr"
+  },
+  {
+    "session_id": "493cb71e-2a7b-4173-9836-030471146dc9",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/493cb71e-2a7b-4173-9836-030471146dc9.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PostToolUse",
+    "tool_name": "Read",
+    "tool_input": {
+      "file_path": "/Users/dalton/projects/teamwork/apps/teamwork_api_client/src/resources/workflows.ts"
+    },
+    "tool_response": {
+      "type": "text",
+      "file": {
+        "filePath": "/Users/dalton/projects/teamwork/apps/teamwork_api_client/src/resources/workflows.ts",
+        "content": "/**\n * Workflows resource module for Teamwork API.\n * Provides workflow and stage management operations.\n */\n\nimport type { TeamworkHttpClient } from '../client.ts';\nimport {\n  type Workflow,\n  type Stage,\n  type WorkflowListResponse,\n  type WorkflowResponse,\n  type StageListResponse,\n  type StageResponse,\n  type TaskListResponse,\n  type UpdateTaskPositionRequest,\n  type AddTaskToStageRequest,\n  WorkflowListResponseSchema,\n  WorkflowResponseSchema,\n  StageListResponseSchema,\n  StageResponseSchema,\n  TaskListResponseSchema,\n} from '../types.ts';\n\nexport interface ListWorkflowsOptions {\n  /** Filter by project IDs */\n  projectIds?: number[];\n  /** Filter by workflow IDs */\n  workflowIds?: number[];\n  /** Filter by stage names */\n  stageNames?: string[];\n  /** Search term */\n  searchTerm?: string;\n  /** Include related data */\n  include?: ('stages' | 'projects' | 'users' | 'teams' | 'companies')[];\n  /** Only return default workflow */\n  onlyDefaultWorkflow?: boolean;\n  /** Include archived workflows */\n  includeArchived?: boolean;\n  /** Include total count in response */\n  includeTotalCount?: boolean;\n  /** Page number */\n  page?: number;\n  /** Items per page */\n  pageSize?: number;\n}\n\nexport interface ListStageTasksOptions {\n  /** Include related data */\n  include?: ('tags' | 'assignees' | 'users' | 'teams')[];\n  /** Page number */\n  page?: number;\n  /** Items per page */\n  pageSize?: number;\n}\n\n/**\n * Workflows resource for Teamwork API.\n */\nexport class WorkflowsResource {\n  constructor(private readonly client: TeamworkHttpClient) {}\n\n  /**\n   * List all workflows.\n   */\n  async list(options?: ListWorkflowsOptions): Promise<WorkflowListResponse> {\n    const params: Record<string, string | number | boolean | string[] | undefined> = {};\n\n    if (options?.projectIds?.length) {\n      params['projectIds'] = options.projectIds.join(',');\n    }\n    if (options?.workflowIds?.length) {\n      params['workflowIds'] = options.workflowIds.join(',');\n    }\n    if (options?.stageNames?.length) {\n      params['stageNames'] = options.stageNames.join(',');\n    }\n    if (options?.searchTerm) {\n      params['searchTerm'] = options.searchTerm;\n    }\n    if (options?.include?.length) {\n      params['include'] = options.include;\n    }\n    if (options?.onlyDefaultWorkflow !== undefined) {\n      params['onlyDefaultWorkflow'] = options.onlyDefaultWorkflow;\n    }\n    if (options?.includeArchived !== undefined) {\n      params['includeArchived'] = options.includeArchived;\n    }\n    if (options?.includeTotalCount !== undefined) {\n      params['includeTotalCount'] = options.includeTotalCount;\n    }\n    if (options?.page !== undefined) {\n      params['page'] = options.page;\n    }\n    if (options?.pageSize !== undefined) {\n      params['pageSize'] = options.pageSize;\n    }\n\n    const response = await this.client.get<WorkflowListResponse>('/projects/api/v3/workflows.json', params);\n    return WorkflowListResponseSchema.parse(response);\n  }\n\n  /**\n   * Get a single workflow by ID.\n   */\n  async get(workflowId: number, include?: ('stages' | 'projects')[]): Promise<Workflow> {\n    const params: Record<string, string | string[] | undefined> = {};\n\n    if (include?.length) {\n      params['include'] = include;\n    }\n\n    const response = await this.client.get<WorkflowResponse>(\n      `/projects/api/v3/workflows/${workflowId}.json`,\n      params\n    );\n    const parsed = WorkflowResponseSchema.parse(response);\n    return parsed.workflow;\n  }\n\n  /**\n   * Get all stages for a workflow.\n   */\n  async getStages(workflowId: number): Promise<Stage[]> {\n    const response = await this.client.get<StageListResponse>(\n      `/projects/api/v3/workflows/${workflowId}/stages.json`\n    );\n    const parsed = StageListResponseSchema.parse(response);\n    return parsed.stages;\n  }\n\n  /**\n   * Get a specific stage.\n   */\n  async getStage(workflowId: number, stageId: number): Promise<Stage> {\n    const response = await this.client.get<StageResponse>(\n      `/projects/api/v3/workflows/${workflowId}/stages/${stageId}.json`\n    );\n    const parsed = StageResponseSchema.parse(response);\n    return parsed.stage;\n  }\n\n  /**\n   * Get tasks in a specific stage.\n   */\n  async getStageTasks(\n    workflowId: number,\n    stageId: number,\n    options?: ListStageTasksOptions\n  ): Promise<TaskListResponse> {\n    const params: Record<string, string | number | string[] | undefined> = {};\n\n    if (options?.include?.length) {\n      params['include'] = options.include;\n    }\n    if (options?.page !== undefined) {\n      params['page'] = options.page;\n    }\n    if (options?.pageSize !== undefined) {\n      params['pageSize'] = options.pageSize;\n    }\n\n    const response = await this.client.get<TaskListResponse>(\n      `/projects/api/v3/workflows/${workflowId}/stages/${stageId}/tasks.json`,\n      params\n    );\n    return TaskListResponseSchema.parse(response);\n  }\n\n  /**\n   * Get tasks in workflow backlog (not assigned to any stage).\n   */\n  async getBacklogTasks(workflowId: number, options?: ListStageTasksOptions): Promise<TaskListResponse> {\n    const params: Record<string, string | number | string[] | undefined> = {};\n\n    if (options?.include?.length) {\n      params['include'] = options.include;\n    }\n    if (options?.page !== undefined) {\n      params['page'] = options.page;\n    }\n    if (options?.pageSize !== undefined) {\n      params['pageSize'] = options.pageSize;\n    }\n\n    const response = await this.client.get<TaskListResponse>(\n      `/projects/api/v3/workflows/${workflowId}/backlog.json`,\n      params\n    );\n    return TaskListResponseSchema.parse(response);\n  }\n\n  /**\n   * Add tasks to a stage.\n   */\n  async addTasksToStage(\n    workflowId: number,\n    stageId: number,\n    taskIds: number[],\n    positionAfterCard?: number | null\n  ): Promise<void> {\n    const body: AddTaskToStageRequest = {\n      cards: taskIds.map((taskId) => ({\n        taskId,\n        positionAfterCard: positionAfterCard ?? null,\n      })),\n    };\n\n    await this.client.post(\n      `/projects/api/v3/workflows/${workflowId}/stages/${stageId}/tasks.json`,\n      body\n    );\n  }\n\n  /**\n   * Add a single task to a stage.\n   */\n  async addTaskToStage(\n    workflowId: number,\n    stageId: number,\n    taskId: number,\n    positionAfterCard?: number | null\n  ): Promise<void> {\n    await this.addTasksToStage(workflowId, stageId, [taskId], positionAfterCard);\n  }\n\n  /**\n   * Move a task to a different stage (update position in workflow).\n   */\n  async moveTaskToStage(\n    taskId: number,\n    workflowId: number,\n    stageId: number,\n    positionAfterCard?: number | null\n  ): Promise<void> {\n    const body: UpdateTaskPositionRequest = {\n      card: {\n        columnId: stageId,\n        positionAfterCard: positionAfterCard ?? null,\n      },\n    };\n\n    await this.client.patch(`/projects/api/v3/tasks/${taskId}/workflows/${workflowId}.json`, body);\n  }\n\n  /**\n   * Get workflows for a specific project.\n   */\n  async listByProject(projectId: number, include?: ('stages' | 'projects')[]): Promise<WorkflowListResponse> {\n    return this.list({\n      projectIds: [projectId],\n      include,\n    });\n  }\n\n  /**\n   * Find a stage by name within a workflow.\n   */\n  async findStageByName(workflowId: number, stageName: string): Promise<Stage | null> {\n    const stages = await this.getStages(workflowId);\n    const lowerName = stageName.toLowerCase();\n    return stages.find((stage) => stage.name.toLowerCase() === lowerName) ?? null;\n  }\n\n  /**\n   * Get all tasks across all stages for a workflow.\n   */\n  async getAllWorkflowTasks(\n    workflowId: number,\n    options?: ListStageTasksOptions\n  ): Promise<Map<number, TaskListResponse>> {\n    const stages = await this.getStages(workflowId);\n    const result = new Map<number, TaskListResponse>();\n\n    for (const stage of stages) {\n      const tasks = await this.getStageTasks(workflowId, stage.id, options);\n      result.set(stage.id, tasks);\n    }\n\n    return result;\n  }\n}\n",
+        "numLines": 283,
+        "startLine": 1,
+        "totalLines": 283
+      }
+    },
+    "tool_use_id": "toolu_014QSBwiUyhjkEuWRRwkpMVx"
+  },
+  {
+    "session_id": "493cb71e-2a7b-4173-9836-030471146dc9",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/493cb71e-2a7b-4173-9836-030471146dc9.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PostToolUse",
+    "tool_name": "Read",
+    "tool_input": {
+      "file_path": "/Users/dalton/projects/teamwork/apps/teamwork_api_client/src/resources/comments.ts"
+    },
+    "tool_response": {
+      "type": "text",
+      "file": {
+        "filePath": "/Users/dalton/projects/teamwork/apps/teamwork_api_client/src/resources/comments.ts",
+        "content": "/**\n * Comments resource module for Teamwork API.\n * Provides comment operations for tasks and other objects.\n */\n\nimport type { TeamworkHttpClient } from '../client.ts';\nimport {\n  type Comment,\n  type CommentListResponse,\n  type CommentResponse,\n  type CreateCommentRequest,\n  CommentListResponseSchema,\n  CommentResponseSchema,\n} from '../types.ts';\n\nexport interface ListCommentsOptions {\n  /** Include related data */\n  include?: ('users')[];\n  /** Page number */\n  page?: number;\n  /** Items per page */\n  pageSize?: number;\n}\n\nexport interface CreateCommentOptions {\n  /** Comment body text */\n  body: string;\n  /** Content type (TEXT, HTML, or MARKDOWN) */\n  contentType?: 'TEXT' | 'HTML' | 'MARKDOWN';\n  /** Whether comment is private */\n  isPrivate?: boolean;\n}\n\n/**\n * Format an ADW status update as a comment.\n */\nexport interface AdwStatusUpdate {\n  /** ADW tracking ID */\n  adwId: string;\n  /** Status being updated to */\n  status: string;\n  /** Optional commit hash */\n  commitHash?: string;\n  /** Optional agent name */\n  agentName?: string;\n  /** Optional error message */\n  errorMessage?: string;\n  /** Optional additional message */\n  message?: string;\n}\n\n/**\n * Comments resource for Teamwork API.\n */\nexport class CommentsResource {\n  constructor(private readonly client: TeamworkHttpClient) {}\n\n  /**\n   * List comments for a task.\n   */\n  async listForTask(taskId: number, options?: ListCommentsOptions): Promise<CommentListResponse> {\n    const params: Record<string, string | number | string[] | undefined> = {};\n\n    if (options?.include?.length) {\n      params['include'] = options.include;\n    }\n    if (options?.page !== undefined) {\n      params['page'] = options.page;\n    }\n    if (options?.pageSize !== undefined) {\n      params['pageSize'] = options.pageSize;\n    }\n\n    const response = await this.client.get<CommentListResponse>(\n      `/projects/api/v3/tasks/${taskId}/comments.json`,\n      params\n    );\n    return CommentListResponseSchema.parse(response);\n  }\n\n  /**\n   * Create a comment on a task.\n   */\n  async createForTask(taskId: number, options: CreateCommentOptions): Promise<Comment> {\n    const body: CreateCommentRequest = {\n      comment: {\n        body: options.body,\n        contentType: options.contentType ?? 'MARKDOWN',\n        isPrivate: options.isPrivate ?? false,\n      },\n    };\n\n    const response = await this.client.post<CommentResponse>(\n      `/projects/api/v3/tasks/${taskId}/comments.json`,\n      body\n    );\n    const parsed = CommentResponseSchema.parse(response);\n    return parsed.comment;\n  }\n\n  /**\n   * Get a single comment by ID.\n   */\n  async get(commentId: number): Promise<Comment> {\n    const response = await this.client.get<CommentResponse>(`/projects/api/v3/comments/${commentId}.json`);\n    const parsed = CommentResponseSchema.parse(response);\n    return parsed.comment;\n  }\n\n  /**\n   * Update a comment.\n   */\n  async update(commentId: number, body: string, contentType?: 'TEXT' | 'HTML' | 'MARKDOWN'): Promise<Comment> {\n    const response = await this.client.patch<CommentResponse>(`/projects/api/v3/comments/${commentId}.json`, {\n      comment: {\n        body,\n        contentType: contentType ?? 'MARKDOWN',\n      },\n    });\n    const parsed = CommentResponseSchema.parse(response);\n    return parsed.comment;\n  }\n\n  /**\n   * Delete a comment.\n   */\n  async delete(commentId: number): Promise<void> {\n    await this.client.delete(`/projects/api/v3/comments/${commentId}.json`);\n  }\n\n  /**\n   * Format an ADW status update as a markdown comment.\n   */\n  formatAdwStatusComment(update: AdwStatusUpdate): string {\n    const emojiMap: Record<string, string> = {\n      'In Progress': '\ud83d\udd04',\n      'In progress': '\ud83d\udd04',\n      'in progress': '\ud83d\udd04',\n      Complete: '\u2705',\n      complete: '\u2705',\n      Completed: '\u2705',\n      completed: '\u2705',\n      Done: '\u2705',\n      done: '\u2705',\n      Failed: '\u274c',\n      failed: '\u274c',\n      Review: '\ud83d\udc41\ufe0f',\n      review: '\ud83d\udc41\ufe0f',\n      Blocked: '\ud83d\udeab',\n      blocked: '\ud83d\udeab',\n    };\n\n    const emoji = emojiMap[update.status] ?? '\u2139\ufe0f';\n\n    const lines: string[] = [\n      `${emoji} **Status Update: ${update.status}**`,\n      '',\n      `- **ADW ID**: \\`${update.adwId}\\``,\n      `- **Timestamp**: ${new Date().toISOString()}`,\n    ];\n\n    if (update.commitHash) {\n      lines.push(`- **Commit**: \\`${update.commitHash}\\``);\n    }\n\n    if (update.agentName) {\n      lines.push(`- **Agent**: ${update.agentName}`);\n    }\n\n    lines.push('');\n    lines.push('---');\n\n    if (update.errorMessage) {\n      lines.push('');\n      lines.push('**Error:**');\n      lines.push('```');\n      lines.push(update.errorMessage);\n      lines.push('```');\n    } else if (update.message) {\n      lines.push('');\n      lines.push(update.message);\n    }\n\n    return lines.join('\\n');\n  }\n\n  /**\n   * Post an ADW status update comment on a task.\n   */\n  async postAdwStatusUpdate(taskId: number, update: AdwStatusUpdate): Promise<Comment> {\n    const body = this.formatAdwStatusComment(update);\n    return this.createForTask(taskId, {\n      body,\n      contentType: 'MARKDOWN',\n    });\n  }\n\n  /**\n   * Post a simple text comment on a task.\n   */\n  async postText(taskId: number, text: string): Promise<Comment> {\n    return this.createForTask(taskId, {\n      body: text,\n      contentType: 'TEXT',\n    });\n  }\n\n  /**\n   * Post a markdown comment on a task.\n   */\n  async postMarkdown(taskId: number, markdown: string): Promise<Comment> {\n    return this.createForTask(taskId, {\n      body: markdown,\n      contentType: 'MARKDOWN',\n    });\n  }\n}\n",
+        "numLines": 218,
+        "startLine": 1,
+        "totalLines": 218
+      }
+    },
+    "tool_use_id": "toolu_01H4MgbNYkS1X4VYeu39Fruj"
+  },
+  {
+    "session_id": "493cb71e-2a7b-4173-9836-030471146dc9",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/493cb71e-2a7b-4173-9836-030471146dc9.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PostToolUse",
+    "tool_name": "TodoWrite",
+    "tool_input": {
+      "todos": [
+        {
+          "content": "Gather requirements and understand API client",
+          "status": "completed",
+          "activeForm": "Gathering requirements"
+        },
+        {
+          "content": "Decide skill structure (router vs simple)",
+          "status": "in_progress",
+          "activeForm": "Deciding skill structure"
+        },
+        {
+          "content": "Create skill directory structure",
+          "status": "pending",
+          "activeForm": "Creating skill directories"
+        },
+        {
+          "content": "Write SKILL.md (router + essential principles)",
+          "status": "pending",
+          "activeForm": "Writing SKILL.md"
+        },
+        {
+          "content": "Write workflow files for each operation",
+          "status": "pending",
+          "activeForm": "Writing workflow files"
+        },
+        {
+          "content": "Write reference files with API patterns",
+          "status": "pending",
+          "activeForm": "Writing reference files"
+        },
+        {
+          "content": "Validate structure and test skill",
+          "status": "pending",
+          "activeForm": "Validating and testing skill"
+        }
+      ]
+    },
+    "tool_response": {
+      "oldTodos": [],
+      "newTodos": [
+        {
+          "content": "Gather requirements and understand API client",
+          "status": "completed",
+          "activeForm": "Gathering requirements"
+        },
+        {
+          "content": "Decide skill structure (router vs simple)",
+          "status": "in_progress",
+          "activeForm": "Deciding skill structure"
+        },
+        {
+          "content": "Create skill directory structure",
+          "status": "pending",
+          "activeForm": "Creating skill directories"
+        },
+        {
+          "content": "Write SKILL.md (router + essential principles)",
+          "status": "pending",
+          "activeForm": "Writing SKILL.md"
+        },
+        {
+          "content": "Write workflow files for each operation",
+          "status": "pending",
+          "activeForm": "Writing workflow files"
+        },
+        {
+          "content": "Write reference files with API patterns",
+          "status": "pending",
+          "activeForm": "Writing reference files"
+        },
+        {
+          "content": "Validate structure and test skill",
+          "status": "pending",
+          "activeForm": "Validating and testing skill"
+        }
+      ]
+    },
+    "tool_use_id": "toolu_01ATACHQUQTMoqZgAs7XDU5D"
+  },
+  {
+    "session_id": "493cb71e-2a7b-4173-9836-030471146dc9",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/493cb71e-2a7b-4173-9836-030471146dc9.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PostToolUse",
+    "tool_name": "Bash",
+    "tool_input": {
+      "command": "mkdir -p /Users/dalton/projects/teamwork/.claude/skills/manage-teamwork/workflows /Users/dalton/projects/teamwork/.claude/skills/manage-teamwork/references",
+      "description": "Create skill directory structure"
+    },
+    "tool_response": {
+      "stdout": "",
+      "stderr": "",
+      "interrupted": false,
+      "isImage": false
+    },
+    "tool_use_id": "toolu_018R5DAfMLbZMxqkvp6ewfSe"
+  },
+  {
+    "session_id": "493cb71e-2a7b-4173-9836-030471146dc9",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/493cb71e-2a7b-4173-9836-030471146dc9.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PostToolUse",
+    "tool_name": "TodoWrite",
+    "tool_input": {
+      "todos": [
+        {
+          "content": "Gather requirements and understand API client",
+          "status": "completed",
+          "activeForm": "Gathering requirements"
+        },
+        {
+          "content": "Decide skill structure (router vs simple)",
+          "status": "completed",
+          "activeForm": "Deciding skill structure"
+        },
+        {
+          "content": "Create skill directory structure",
+          "status": "completed",
+          "activeForm": "Creating skill directories"
+        },
+        {
+          "content": "Write SKILL.md (router + essential principles)",
+          "status": "in_progress",
+          "activeForm": "Writing SKILL.md"
+        },
+        {
+          "content": "Write workflow files for each operation",
+          "status": "pending",
+          "activeForm": "Writing workflow files"
+        },
+        {
+          "content": "Write reference files with API patterns",
+          "status": "pending",
+          "activeForm": "Writing reference files"
+        },
+        {
+          "content": "Validate structure and test skill",
+          "status": "pending",
+          "activeForm": "Validating and testing skill"
+        }
+      ]
+    },
+    "tool_response": {
+      "oldTodos": [
+        {
+          "content": "Gather requirements and understand API client",
+          "status": "completed",
+          "activeForm": "Gathering requirements"
+        },
+        {
+          "content": "Decide skill structure (router vs simple)",
+          "status": "in_progress",
+          "activeForm": "Deciding skill structure"
+        },
+        {
+          "content": "Create skill directory structure",
+          "status": "pending",
+          "activeForm": "Creating skill directories"
+        },
+        {
+          "content": "Write SKILL.md (router + essential principles)",
+          "status": "pending",
+          "activeForm": "Writing SKILL.md"
+        },
+        {
+          "content": "Write workflow files for each operation",
+          "status": "pending",
+          "activeForm": "Writing workflow files"
+        },
+        {
+          "content": "Write reference files with API patterns",
+          "status": "pending",
+          "activeForm": "Writing reference files"
+        },
+        {
+          "content": "Validate structure and test skill",
+          "status": "pending",
+          "activeForm": "Validating and testing skill"
+        }
+      ],
+      "newTodos": [
+        {
+          "content": "Gather requirements and understand API client",
+          "status": "completed",
+          "activeForm": "Gathering requirements"
+        },
+        {
+          "content": "Decide skill structure (router vs simple)",
+          "status": "completed",
+          "activeForm": "Deciding skill structure"
+        },
+        {
+          "content": "Create skill directory structure",
+          "status": "completed",
+          "activeForm": "Creating skill directories"
+        },
+        {
+          "content": "Write SKILL.md (router + essential principles)",
+          "status": "in_progress",
+          "activeForm": "Writing SKILL.md"
+        },
+        {
+          "content": "Write workflow files for each operation",
+          "status": "pending",
+          "activeForm": "Writing workflow files"
+        },
+        {
+          "content": "Write reference files with API patterns",
+          "status": "pending",
+          "activeForm": "Writing reference files"
+        },
+        {
+          "content": "Validate structure and test skill",
+          "status": "pending",
+          "activeForm": "Validating and testing skill"
+        }
+      ]
+    },
+    "tool_use_id": "toolu_01VUinDsNjKByBqb7vUyhfc4"
+  },
+  {
+    "session_id": "493cb71e-2a7b-4173-9836-030471146dc9",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/493cb71e-2a7b-4173-9836-030471146dc9.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PostToolUse",
+    "tool_name": "Write",
+    "tool_input": {
+      "file_path": "/Users/dalton/projects/teamwork/.claude/skills/manage-teamwork/SKILL.md",
+      "content": "---\nname: manage-teamwork\ndescription: Manage Teamwork.com projects, tasks, and workflows using the TypeScript API client. Use when creating projects, tasks, subtasks, comments, logging time, moving tasks between board stages, or querying tasks.\n---\n\n<essential_principles>\n## How This Skill Works\n\nThis skill uses the Teamwork API client at `apps/teamwork_api_client/` to interact with Teamwork.com. All operations use TypeScript with Bun runtime.\n\n### 1. Client Initialization\n\nAlways import from the client index and create a client instance:\n\n```typescript\nimport { createTeamworkClient, createTaskMonitor } from './apps/teamwork_api_client/src/index.ts';\n\n// Low-level client for direct API access\nconst client = createTeamworkClient({\n  apiUrl: process.env.TEAMWORK_API_URL!,\n  bearerToken: process.env.TEAMWORK_BEARER_TOKEN!,\n});\n\n// High-level facade for task operations\nconst monitor = createTaskMonitor();\n```\n\n### 2. Environment Variables Required\n\n```bash\nTEAMWORK_API_URL=https://yoursite.teamwork.com\nTEAMWORK_BEARER_TOKEN=your-api-token\nTEAMWORK_PROJECT_ID=123456  # optional default\n```\n\n### 3. Error Handling Pattern\n\nAll API calls should be wrapped in try-catch:\n\n```typescript\ntry {\n  const result = await client.tasks.create(tasklistId, { name: 'Task' });\n  console.log('Created:', result.id);\n} catch (error) {\n  if (error instanceof Error) {\n    console.error('Failed:', error.message);\n  }\n  throw error;\n}\n```\n\n### 4. Resource Hierarchy\n\n```\nProject\n  \u2514\u2500\u2500 Tasklist (container for tasks)\n        \u2514\u2500\u2500 Task\n              \u251c\u2500\u2500 Subtask (task with parentTaskId)\n              \u2514\u2500\u2500 Comment\n```\n\nTasks belong to tasklists, not directly to projects. To create a task, you need a tasklist ID.\n</essential_principles>\n\n<intake>\nWhat would you like to do with Teamwork?\n\n1. **Get tasks** - Query tasks for a project or tasklist\n2. **Create task** - Create a new task or subtask\n3. **Create tasklist** - Create a new tasklist in a project\n4. **Move task** - Move a task between board stages\n5. **Comment on task** - Add a comment to a task\n6. **Log time** - Log time on a task\n7. **Manage projects** - List, create, or get project details\n\n**Wait for response before proceeding.**\n</intake>\n\n<routing>\n| Response | Next Action |\n|----------|-------------|\n| 1, \"get\", \"query\", \"list\", \"fetch\" | `workflows/get-tasks.md` |\n| 2, \"create task\", \"new task\", \"subtask\" | `workflows/create-task.md` |\n| 3, \"tasklist\", \"task list\" | `workflows/create-tasklist.md` |\n| 4, \"move\", \"stage\", \"board\", \"kanban\" | `workflows/move-task.md` |\n| 5, \"comment\" | `workflows/comment-on-task.md` |\n| 6, \"time\", \"log\", \"track\" | `workflows/log-time.md` |\n| 7, \"project\" | `workflows/manage-projects.md` |\n\n**After reading the workflow, follow it exactly.**\n</routing>\n\n<reference_index>\nAll domain knowledge in `references/`:\n\n**API Client:** api-client.md (client setup, resources, response types)\n**Task Operations:** task-operations.md (CRUD, filtering, status updates)\n**Workflow/Board:** workflow-operations.md (stages, moving tasks)\n</reference_index>\n\n<workflows_index>\n| Workflow | Purpose |\n|----------|---------|\n| get-tasks.md | Query and filter tasks by project, status, or tasklist |\n| create-task.md | Create tasks and subtasks with assignments |\n| create-tasklist.md | Create tasklists within projects |\n| move-task.md | Move tasks between workflow/board stages |\n| comment-on-task.md | Add comments to tasks |\n| log-time.md | Log time entries on tasks |\n| manage-projects.md | List, get, or create projects |\n</workflows_index>\n\n<quick_reference>\n## Common Operations\n\n**Get tasks for a project:**\n```typescript\nconst tasks = await client.tasks.listByProject(projectId, {\n  statuses: ['new', 'active'],\n  include: ['tags', 'assignees']\n});\n```\n\n**Create a task:**\n```typescript\nconst task = await client.tasks.create(tasklistId, {\n  name: 'Task name',\n  description: 'Details here',\n  priority: 'high',\n  dueDate: '2024-12-31',\n});\n```\n\n**Move task to board stage:**\n```typescript\nawait client.workflows.moveTaskToStage(taskId, workflowId, stageId);\n```\n\n**Add comment:**\n```typescript\nawait client.comments.postMarkdown(taskId, '**Update:** Work completed.');\n```\n</quick_reference>\n\n<success_criteria>\nSkill workflow is complete when:\n- [ ] Correct API method identified for the operation\n- [ ] Required IDs gathered (project, tasklist, task, workflow, stage)\n- [ ] TypeScript code executed successfully\n- [ ] Result confirmed in Teamwork or via API response\n</success_criteria>\n"
+    },
+    "tool_response": {
+      "type": "create",
+      "filePath": "/Users/dalton/projects/teamwork/.claude/skills/manage-teamwork/SKILL.md",
+      "content": "---\nname: manage-teamwork\ndescription: Manage Teamwork.com projects, tasks, and workflows using the TypeScript API client. Use when creating projects, tasks, subtasks, comments, logging time, moving tasks between board stages, or querying tasks.\n---\n\n<essential_principles>\n## How This Skill Works\n\nThis skill uses the Teamwork API client at `apps/teamwork_api_client/` to interact with Teamwork.com. All operations use TypeScript with Bun runtime.\n\n### 1. Client Initialization\n\nAlways import from the client index and create a client instance:\n\n```typescript\nimport { createTeamworkClient, createTaskMonitor } from './apps/teamwork_api_client/src/index.ts';\n\n// Low-level client for direct API access\nconst client = createTeamworkClient({\n  apiUrl: process.env.TEAMWORK_API_URL!,\n  bearerToken: process.env.TEAMWORK_BEARER_TOKEN!,\n});\n\n// High-level facade for task operations\nconst monitor = createTaskMonitor();\n```\n\n### 2. Environment Variables Required\n\n```bash\nTEAMWORK_API_URL=https://yoursite.teamwork.com\nTEAMWORK_BEARER_TOKEN=your-api-token\nTEAMWORK_PROJECT_ID=123456  # optional default\n```\n\n### 3. Error Handling Pattern\n\nAll API calls should be wrapped in try-catch:\n\n```typescript\ntry {\n  const result = await client.tasks.create(tasklistId, { name: 'Task' });\n  console.log('Created:', result.id);\n} catch (error) {\n  if (error instanceof Error) {\n    console.error('Failed:', error.message);\n  }\n  throw error;\n}\n```\n\n### 4. Resource Hierarchy\n\n```\nProject\n  \u2514\u2500\u2500 Tasklist (container for tasks)\n        \u2514\u2500\u2500 Task\n              \u251c\u2500\u2500 Subtask (task with parentTaskId)\n              \u2514\u2500\u2500 Comment\n```\n\nTasks belong to tasklists, not directly to projects. To create a task, you need a tasklist ID.\n</essential_principles>\n\n<intake>\nWhat would you like to do with Teamwork?\n\n1. **Get tasks** - Query tasks for a project or tasklist\n2. **Create task** - Create a new task or subtask\n3. **Create tasklist** - Create a new tasklist in a project\n4. **Move task** - Move a task between board stages\n5. **Comment on task** - Add a comment to a task\n6. **Log time** - Log time on a task\n7. **Manage projects** - List, create, or get project details\n\n**Wait for response before proceeding.**\n</intake>\n\n<routing>\n| Response | Next Action |\n|----------|-------------|\n| 1, \"get\", \"query\", \"list\", \"fetch\" | `workflows/get-tasks.md` |\n| 2, \"create task\", \"new task\", \"subtask\" | `workflows/create-task.md` |\n| 3, \"tasklist\", \"task list\" | `workflows/create-tasklist.md` |\n| 4, \"move\", \"stage\", \"board\", \"kanban\" | `workflows/move-task.md` |\n| 5, \"comment\" | `workflows/comment-on-task.md` |\n| 6, \"time\", \"log\", \"track\" | `workflows/log-time.md` |\n| 7, \"project\" | `workflows/manage-projects.md` |\n\n**After reading the workflow, follow it exactly.**\n</routing>\n\n<reference_index>\nAll domain knowledge in `references/`:\n\n**API Client:** api-client.md (client setup, resources, response types)\n**Task Operations:** task-operations.md (CRUD, filtering, status updates)\n**Workflow/Board:** workflow-operations.md (stages, moving tasks)\n</reference_index>\n\n<workflows_index>\n| Workflow | Purpose |\n|----------|---------|\n| get-tasks.md | Query and filter tasks by project, status, or tasklist |\n| create-task.md | Create tasks and subtasks with assignments |\n| create-tasklist.md | Create tasklists within projects |\n| move-task.md | Move tasks between workflow/board stages |\n| comment-on-task.md | Add comments to tasks |\n| log-time.md | Log time entries on tasks |\n| manage-projects.md | List, get, or create projects |\n</workflows_index>\n\n<quick_reference>\n## Common Operations\n\n**Get tasks for a project:**\n```typescript\nconst tasks = await client.tasks.listByProject(projectId, {\n  statuses: ['new', 'active'],\n  include: ['tags', 'assignees']\n});\n```\n\n**Create a task:**\n```typescript\nconst task = await client.tasks.create(tasklistId, {\n  name: 'Task name',\n  description: 'Details here',\n  priority: 'high',\n  dueDate: '2024-12-31',\n});\n```\n\n**Move task to board stage:**\n```typescript\nawait client.workflows.moveTaskToStage(taskId, workflowId, stageId);\n```\n\n**Add comment:**\n```typescript\nawait client.comments.postMarkdown(taskId, '**Update:** Work completed.');\n```\n</quick_reference>\n\n<success_criteria>\nSkill workflow is complete when:\n- [ ] Correct API method identified for the operation\n- [ ] Required IDs gathered (project, tasklist, task, workflow, stage)\n- [ ] TypeScript code executed successfully\n- [ ] Result confirmed in Teamwork or via API response\n</success_criteria>\n",
+      "structuredPatch": [],
+      "originalFile": null
+    },
+    "tool_use_id": "toolu_01MJPjmNaq8Rn3QX8t3RWa13"
+  },
+  {
+    "session_id": "493cb71e-2a7b-4173-9836-030471146dc9",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/493cb71e-2a7b-4173-9836-030471146dc9.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PostToolUse",
+    "tool_name": "Write",
+    "tool_input": {
+      "file_path": "/Users/dalton/projects/teamwork/.claude/skills/manage-teamwork/workflows/get-tasks.md",
+      "content": "# Workflow: Get Tasks\n\n<required_reading>\n**Read these reference files if needed:**\n1. references/api-client.md (for client setup)\n2. references/task-operations.md (for filtering options)\n</required_reading>\n\n<process>\n## Step 1: Determine Query Scope\n\nAsk the user (if not already specified):\n- **By project?** Need project ID\n- **By tasklist?** Need tasklist ID\n- **By status?** Options: `new`, `active`, `completed`, `pending`\n- **Include completed?** Default is false\n\n## Step 2: Write Query Code\n\n```typescript\nimport { createTeamworkClient } from './apps/teamwork_api_client/src/index.ts';\n\nconst client = createTeamworkClient({\n  apiUrl: process.env.TEAMWORK_API_URL!,\n  bearerToken: process.env.TEAMWORK_BEARER_TOKEN!,\n});\n\n// By project\nconst response = await client.tasks.listByProject(PROJECT_ID, {\n  statuses: ['new', 'active'],  // adjust as needed\n  include: ['tags', 'assignees'],\n  pageSize: 50,\n});\n\nconsole.log(`Found ${response.tasks.length} tasks`);\nfor (const task of response.tasks) {\n  console.log(`- [${task.id}] ${task.name} (${task.status})`);\n}\n```\n\n## Step 3: Filter Variations\n\n**By tasklist:**\n```typescript\nconst response = await client.tasks.listByTasklist(TASKLIST_ID, {\n  statuses: ['new', 'active'],\n});\n```\n\n**By assignee:**\n```typescript\nconst response = await client.tasks.listByProject(PROJECT_ID, {\n  assigneeUserIds: [USER_ID],\n});\n```\n\n**Include completed tasks:**\n```typescript\nconst response = await client.tasks.listByProject(PROJECT_ID, {\n  includeCompletedTasks: true,\n});\n```\n\n**Search by name:**\n```typescript\nconst response = await client.tasks.listByProject(PROJECT_ID, {\n  searchTerm: 'search query',\n});\n```\n\n## Step 4: Get Single Task Details\n\n```typescript\nconst task = await client.tasks.get(TASK_ID, ['tags', 'assignees']);\nconsole.log(task);\n```\n\n## Step 5: Using High-Level Monitor\n\nFor ADW-style eligible task queries:\n\n```typescript\nimport { createTaskMonitor } from './apps/teamwork_api_client/src/index.ts';\n\nconst monitor = createTaskMonitor();\n\n// Get tasks with 'execute' or 'continue' triggers\nconst eligibleTasks = await monitor.getEligibleTasks(\n  PROJECT_ID,\n  ['new', 'pending'],\n  10  // limit\n);\n```\n</process>\n\n<success_criteria>\nThis workflow is complete when:\n- [ ] Query scope determined (project, tasklist, or all)\n- [ ] Filters applied (status, assignee, search)\n- [ ] Code executed and tasks returned\n- [ ] Results displayed to user\n</success_criteria>\n"
+    },
+    "tool_response": {
+      "type": "create",
+      "filePath": "/Users/dalton/projects/teamwork/.claude/skills/manage-teamwork/workflows/get-tasks.md",
+      "content": "# Workflow: Get Tasks\n\n<required_reading>\n**Read these reference files if needed:**\n1. references/api-client.md (for client setup)\n2. references/task-operations.md (for filtering options)\n</required_reading>\n\n<process>\n## Step 1: Determine Query Scope\n\nAsk the user (if not already specified):\n- **By project?** Need project ID\n- **By tasklist?** Need tasklist ID\n- **By status?** Options: `new`, `active`, `completed`, `pending`\n- **Include completed?** Default is false\n\n## Step 2: Write Query Code\n\n```typescript\nimport { createTeamworkClient } from './apps/teamwork_api_client/src/index.ts';\n\nconst client = createTeamworkClient({\n  apiUrl: process.env.TEAMWORK_API_URL!,\n  bearerToken: process.env.TEAMWORK_BEARER_TOKEN!,\n});\n\n// By project\nconst response = await client.tasks.listByProject(PROJECT_ID, {\n  statuses: ['new', 'active'],  // adjust as needed\n  include: ['tags', 'assignees'],\n  pageSize: 50,\n});\n\nconsole.log(`Found ${response.tasks.length} tasks`);\nfor (const task of response.tasks) {\n  console.log(`- [${task.id}] ${task.name} (${task.status})`);\n}\n```\n\n## Step 3: Filter Variations\n\n**By tasklist:**\n```typescript\nconst response = await client.tasks.listByTasklist(TASKLIST_ID, {\n  statuses: ['new', 'active'],\n});\n```\n\n**By assignee:**\n```typescript\nconst response = await client.tasks.listByProject(PROJECT_ID, {\n  assigneeUserIds: [USER_ID],\n});\n```\n\n**Include completed tasks:**\n```typescript\nconst response = await client.tasks.listByProject(PROJECT_ID, {\n  includeCompletedTasks: true,\n});\n```\n\n**Search by name:**\n```typescript\nconst response = await client.tasks.listByProject(PROJECT_ID, {\n  searchTerm: 'search query',\n});\n```\n\n## Step 4: Get Single Task Details\n\n```typescript\nconst task = await client.tasks.get(TASK_ID, ['tags', 'assignees']);\nconsole.log(task);\n```\n\n## Step 5: Using High-Level Monitor\n\nFor ADW-style eligible task queries:\n\n```typescript\nimport { createTaskMonitor } from './apps/teamwork_api_client/src/index.ts';\n\nconst monitor = createTaskMonitor();\n\n// Get tasks with 'execute' or 'continue' triggers\nconst eligibleTasks = await monitor.getEligibleTasks(\n  PROJECT_ID,\n  ['new', 'pending'],\n  10  // limit\n);\n```\n</process>\n\n<success_criteria>\nThis workflow is complete when:\n- [ ] Query scope determined (project, tasklist, or all)\n- [ ] Filters applied (status, assignee, search)\n- [ ] Code executed and tasks returned\n- [ ] Results displayed to user\n</success_criteria>\n",
+      "structuredPatch": [],
+      "originalFile": null
+    },
+    "tool_use_id": "toolu_01CL4e4wBMTA4JPhgKNQdKL3"
+  },
+  {
+    "session_id": "493cb71e-2a7b-4173-9836-030471146dc9",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/493cb71e-2a7b-4173-9836-030471146dc9.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PostToolUse",
+    "tool_name": "Write",
+    "tool_input": {
+      "file_path": "/Users/dalton/projects/teamwork/.claude/skills/manage-teamwork/workflows/create-task.md",
+      "content": "# Workflow: Create Task\n\n<required_reading>\n**Read these reference files if needed:**\n1. references/api-client.md (for client setup)\n2. references/task-operations.md (for task options)\n</required_reading>\n\n<process>\n## Step 1: Gather Required Information\n\n**Required:**\n- Tasklist ID (tasks belong to tasklists, not projects directly)\n- Task name\n\n**Optional:**\n- Description\n- Priority: `none`, `low`, `medium`, `high`\n- Due date (YYYY-MM-DD format)\n- Start date\n- Estimated minutes\n- Assignee user IDs\n- Tag IDs\n- Parent task ID (for subtasks)\n\nIf tasklist ID is unknown, first get tasklists for the project:\n\n```typescript\nconst tasklists = await client.projects.getTasklists(PROJECT_ID);\nconsole.log('Tasklists:');\nfor (const tl of tasklists.tasklists) {\n  console.log(`- [${tl.id}] ${tl.name}`);\n}\n```\n\n## Step 2: Create Task\n\n```typescript\nimport { createTeamworkClient } from './apps/teamwork_api_client/src/index.ts';\n\nconst client = createTeamworkClient({\n  apiUrl: process.env.TEAMWORK_API_URL!,\n  bearerToken: process.env.TEAMWORK_BEARER_TOKEN!,\n});\n\nconst task = await client.tasks.create(TASKLIST_ID, {\n  name: 'Task name here',\n  description: 'Task description',\n  priority: 'medium',\n  dueDate: '2024-12-31',\n  estimatedMinutes: 120,\n  assigneeUserIds: [USER_ID],  // optional\n  tagIds: [TAG_ID],  // optional\n});\n\nconsole.log(`Created task: ${task.id} - ${task.name}`);\n```\n\n## Step 3: Create Subtask\n\nSubtasks are tasks with a `parentTaskId`. Use the task's update method after creation:\n\n```typescript\n// First create the main task\nconst parentTask = await client.tasks.create(TASKLIST_ID, {\n  name: 'Parent task',\n});\n\n// Then create subtask under it\nconst subtask = await client.tasks.create(TASKLIST_ID, {\n  name: 'Subtask name',\n  description: 'Subtask details',\n});\n\n// Update to set parent (API limitation - can't set on create)\nawait client.tasks.update(subtask.id, {\n  // Note: parentTaskId may need to be set via direct API call\n});\n```\n\n**Alternative: Use direct API for subtask:**\n```typescript\n// The tasks resource creates in tasklist, for subtasks you may need\n// to use the parent task endpoint directly\nconst response = await client.http.post(\n  `/projects/api/v3/tasks/${PARENT_TASK_ID}/subtasks.json`,\n  {\n    task: {\n      name: 'Subtask name',\n      description: 'Details',\n    }\n  }\n);\n```\n\n## Step 4: Verify Creation\n\n```typescript\nconst createdTask = await client.tasks.get(task.id, ['tags', 'assignees']);\nconsole.log('Task details:', createdTask);\n```\n</process>\n\n<success_criteria>\nThis workflow is complete when:\n- [ ] Tasklist ID identified\n- [ ] Task created with required fields\n- [ ] Task ID returned and logged\n- [ ] Subtask linked to parent (if applicable)\n</success_criteria>\n"
+    },
+    "tool_response": {
+      "type": "create",
+      "filePath": "/Users/dalton/projects/teamwork/.claude/skills/manage-teamwork/workflows/create-task.md",
+      "content": "# Workflow: Create Task\n\n<required_reading>\n**Read these reference files if needed:**\n1. references/api-client.md (for client setup)\n2. references/task-operations.md (for task options)\n</required_reading>\n\n<process>\n## Step 1: Gather Required Information\n\n**Required:**\n- Tasklist ID (tasks belong to tasklists, not projects directly)\n- Task name\n\n**Optional:**\n- Description\n- Priority: `none`, `low`, `medium`, `high`\n- Due date (YYYY-MM-DD format)\n- Start date\n- Estimated minutes\n- Assignee user IDs\n- Tag IDs\n- Parent task ID (for subtasks)\n\nIf tasklist ID is unknown, first get tasklists for the project:\n\n```typescript\nconst tasklists = await client.projects.getTasklists(PROJECT_ID);\nconsole.log('Tasklists:');\nfor (const tl of tasklists.tasklists) {\n  console.log(`- [${tl.id}] ${tl.name}`);\n}\n```\n\n## Step 2: Create Task\n\n```typescript\nimport { createTeamworkClient } from './apps/teamwork_api_client/src/index.ts';\n\nconst client = createTeamworkClient({\n  apiUrl: process.env.TEAMWORK_API_URL!,\n  bearerToken: process.env.TEAMWORK_BEARER_TOKEN!,\n});\n\nconst task = await client.tasks.create(TASKLIST_ID, {\n  name: 'Task name here',\n  description: 'Task description',\n  priority: 'medium',\n  dueDate: '2024-12-31',\n  estimatedMinutes: 120,\n  assigneeUserIds: [USER_ID],  // optional\n  tagIds: [TAG_ID],  // optional\n});\n\nconsole.log(`Created task: ${task.id} - ${task.name}`);\n```\n\n## Step 3: Create Subtask\n\nSubtasks are tasks with a `parentTaskId`. Use the task's update method after creation:\n\n```typescript\n// First create the main task\nconst parentTask = await client.tasks.create(TASKLIST_ID, {\n  name: 'Parent task',\n});\n\n// Then create subtask under it\nconst subtask = await client.tasks.create(TASKLIST_ID, {\n  name: 'Subtask name',\n  description: 'Subtask details',\n});\n\n// Update to set parent (API limitation - can't set on create)\nawait client.tasks.update(subtask.id, {\n  // Note: parentTaskId may need to be set via direct API call\n});\n```\n\n**Alternative: Use direct API for subtask:**\n```typescript\n// The tasks resource creates in tasklist, for subtasks you may need\n// to use the parent task endpoint directly\nconst response = await client.http.post(\n  `/projects/api/v3/tasks/${PARENT_TASK_ID}/subtasks.json`,\n  {\n    task: {\n      name: 'Subtask name',\n      description: 'Details',\n    }\n  }\n);\n```\n\n## Step 4: Verify Creation\n\n```typescript\nconst createdTask = await client.tasks.get(task.id, ['tags', 'assignees']);\nconsole.log('Task details:', createdTask);\n```\n</process>\n\n<success_criteria>\nThis workflow is complete when:\n- [ ] Tasklist ID identified\n- [ ] Task created with required fields\n- [ ] Task ID returned and logged\n- [ ] Subtask linked to parent (if applicable)\n</success_criteria>\n",
+      "structuredPatch": [],
+      "originalFile": null
+    },
+    "tool_use_id": "toolu_01RXbgpK59DvJFNFcA7z9Xu4"
+  },
+  {
+    "session_id": "493cb71e-2a7b-4173-9836-030471146dc9",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/493cb71e-2a7b-4173-9836-030471146dc9.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PostToolUse",
+    "tool_name": "Write",
+    "tool_input": {
+      "file_path": "/Users/dalton/projects/teamwork/.claude/skills/manage-teamwork/workflows/create-tasklist.md",
+      "content": "# Workflow: Create Tasklist\n\n<required_reading>\n**Read these reference files if needed:**\n1. references/api-client.md (for client setup)\n</required_reading>\n\n<process>\n## Step 1: Gather Required Information\n\n**Required:**\n- Project ID\n- Tasklist name\n\n**Optional:**\n- Description\n- Milestone ID (to associate with)\n\n## Step 2: Get Project ID (if needed)\n\n```typescript\nimport { createTeamworkClient } from './apps/teamwork_api_client/src/index.ts';\n\nconst client = createTeamworkClient({\n  apiUrl: process.env.TEAMWORK_API_URL!,\n  bearerToken: process.env.TEAMWORK_BEARER_TOKEN!,\n});\n\n// List projects to find the right one\nconst projects = await client.projects.list({ status: 'active' });\nfor (const project of projects.projects) {\n  console.log(`- [${project.id}] ${project.name}`);\n}\n```\n\n## Step 3: Create Tasklist\n\nThe Teamwork API client doesn't have a dedicated tasklist creation method, so use the HTTP client directly:\n\n```typescript\nconst response = await client.http.post(\n  `/projects/api/v3/projects/${PROJECT_ID}/tasklists.json`,\n  {\n    tasklist: {\n      name: 'Tasklist name',\n      description: 'Optional description',\n    }\n  }\n);\n\nconsole.log('Created tasklist:', response);\n```\n\n## Step 4: List Existing Tasklists\n\nTo verify or see existing tasklists:\n\n```typescript\nconst tasklists = await client.projects.getTasklists(PROJECT_ID);\nconsole.log('Tasklists in project:');\nfor (const tl of tasklists.tasklists) {\n  console.log(`- [${tl.id}] ${tl.name}`);\n}\n```\n</process>\n\n<success_criteria>\nThis workflow is complete when:\n- [ ] Project ID identified\n- [ ] Tasklist created with name\n- [ ] Tasklist ID returned\n- [ ] Visible in project tasklists\n</success_criteria>\n"
+    },
+    "tool_response": {
+      "type": "create",
+      "filePath": "/Users/dalton/projects/teamwork/.claude/skills/manage-teamwork/workflows/create-tasklist.md",
+      "content": "# Workflow: Create Tasklist\n\n<required_reading>\n**Read these reference files if needed:**\n1. references/api-client.md (for client setup)\n</required_reading>\n\n<process>\n## Step 1: Gather Required Information\n\n**Required:**\n- Project ID\n- Tasklist name\n\n**Optional:**\n- Description\n- Milestone ID (to associate with)\n\n## Step 2: Get Project ID (if needed)\n\n```typescript\nimport { createTeamworkClient } from './apps/teamwork_api_client/src/index.ts';\n\nconst client = createTeamworkClient({\n  apiUrl: process.env.TEAMWORK_API_URL!,\n  bearerToken: process.env.TEAMWORK_BEARER_TOKEN!,\n});\n\n// List projects to find the right one\nconst projects = await client.projects.list({ status: 'active' });\nfor (const project of projects.projects) {\n  console.log(`- [${project.id}] ${project.name}`);\n}\n```\n\n## Step 3: Create Tasklist\n\nThe Teamwork API client doesn't have a dedicated tasklist creation method, so use the HTTP client directly:\n\n```typescript\nconst response = await client.http.post(\n  `/projects/api/v3/projects/${PROJECT_ID}/tasklists.json`,\n  {\n    tasklist: {\n      name: 'Tasklist name',\n      description: 'Optional description',\n    }\n  }\n);\n\nconsole.log('Created tasklist:', response);\n```\n\n## Step 4: List Existing Tasklists\n\nTo verify or see existing tasklists:\n\n```typescript\nconst tasklists = await client.projects.getTasklists(PROJECT_ID);\nconsole.log('Tasklists in project:');\nfor (const tl of tasklists.tasklists) {\n  console.log(`- [${tl.id}] ${tl.name}`);\n}\n```\n</process>\n\n<success_criteria>\nThis workflow is complete when:\n- [ ] Project ID identified\n- [ ] Tasklist created with name\n- [ ] Tasklist ID returned\n- [ ] Visible in project tasklists\n</success_criteria>\n",
+      "structuredPatch": [],
+      "originalFile": null
+    },
+    "tool_use_id": "toolu_016bdTtqUC4f1Zhfyuvwxptq"
+  },
+  {
+    "session_id": "493cb71e-2a7b-4173-9836-030471146dc9",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/493cb71e-2a7b-4173-9836-030471146dc9.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PostToolUse",
+    "tool_name": "Write",
+    "tool_input": {
+      "file_path": "/Users/dalton/projects/teamwork/.claude/skills/manage-teamwork/workflows/move-task.md",
+      "content": "# Workflow: Move Task Between Board Stages\n\n<required_reading>\n**Read these reference files if needed:**\n1. references/api-client.md (for client setup)\n2. references/workflow-operations.md (for board/stage operations)\n</required_reading>\n\n<process>\n## Step 1: Understand the Hierarchy\n\n```\nProject \u2192 Workflow \u2192 Stages (columns on the board)\n                \u2514\u2500\u2500 Stage 1 (e.g., \"To Do\")\n                \u2514\u2500\u2500 Stage 2 (e.g., \"In Progress\")\n                \u2514\u2500\u2500 Stage 3 (e.g., \"Done\")\n```\n\nYou need: Task ID, Workflow ID, and Target Stage ID (or name).\n\n## Step 2: Get Project's Active Workflow\n\n```typescript\nimport { createTeamworkClient } from './apps/teamwork_api_client/src/index.ts';\n\nconst client = createTeamworkClient({\n  apiUrl: process.env.TEAMWORK_API_URL!,\n  bearerToken: process.env.TEAMWORK_BEARER_TOKEN!,\n});\n\n// Get the active workflow for a project\nconst workflow = await client.projects.getActiveWorkflow(PROJECT_ID);\nif (!workflow) {\n  throw new Error('No active workflow for this project');\n}\nconsole.log(`Workflow: ${workflow.id} - ${workflow.name}`);\n```\n\n## Step 3: List Available Stages\n\n```typescript\nconst stages = await client.workflows.getStages(WORKFLOW_ID);\nconsole.log('Available stages:');\nfor (const stage of stages) {\n  console.log(`- [${stage.id}] ${stage.name}`);\n}\n```\n\n## Step 4: Move Task by Stage ID\n\n```typescript\nawait client.workflows.moveTaskToStage(\n  TASK_ID,\n  WORKFLOW_ID,\n  STAGE_ID\n);\nconsole.log('Task moved successfully');\n```\n\n## Step 5: Move Task by Stage Name (High-Level)\n\nUsing the task monitor facade:\n\n```typescript\nimport { createTaskMonitor } from './apps/teamwork_api_client/src/index.ts';\n\nconst monitor = createTaskMonitor();\n\n// Find stage by name and move\nawait monitor.moveTaskToStage(TASK_ID, WORKFLOW_ID, 'In Progress');\n```\n\n## Step 6: View Tasks in a Stage\n\n```typescript\nconst response = await client.workflows.getStageTasks(\n  WORKFLOW_ID,\n  STAGE_ID,\n  { include: ['tags', 'assignees'] }\n);\n\nconsole.log(`Tasks in stage:`);\nfor (const task of response.tasks) {\n  console.log(`- [${task.id}] ${task.name}`);\n}\n```\n\n## Step 7: Get Backlog (Unassigned to Any Stage)\n\n```typescript\nconst backlog = await client.workflows.getBacklogTasks(WORKFLOW_ID);\nconsole.log(`Backlog tasks: ${backlog.tasks.length}`);\n```\n</process>\n\n<success_criteria>\nThis workflow is complete when:\n- [ ] Workflow ID identified for the project\n- [ ] Target stage ID or name identified\n- [ ] Task moved via `moveTaskToStage()`\n- [ ] Task appears in correct stage (verify if needed)\n</success_criteria>\n"
+    },
+    "tool_response": {
+      "type": "create",
+      "filePath": "/Users/dalton/projects/teamwork/.claude/skills/manage-teamwork/workflows/move-task.md",
+      "content": "# Workflow: Move Task Between Board Stages\n\n<required_reading>\n**Read these reference files if needed:**\n1. references/api-client.md (for client setup)\n2. references/workflow-operations.md (for board/stage operations)\n</required_reading>\n\n<process>\n## Step 1: Understand the Hierarchy\n\n```\nProject \u2192 Workflow \u2192 Stages (columns on the board)\n                \u2514\u2500\u2500 Stage 1 (e.g., \"To Do\")\n                \u2514\u2500\u2500 Stage 2 (e.g., \"In Progress\")\n                \u2514\u2500\u2500 Stage 3 (e.g., \"Done\")\n```\n\nYou need: Task ID, Workflow ID, and Target Stage ID (or name).\n\n## Step 2: Get Project's Active Workflow\n\n```typescript\nimport { createTeamworkClient } from './apps/teamwork_api_client/src/index.ts';\n\nconst client = createTeamworkClient({\n  apiUrl: process.env.TEAMWORK_API_URL!,\n  bearerToken: process.env.TEAMWORK_BEARER_TOKEN!,\n});\n\n// Get the active workflow for a project\nconst workflow = await client.projects.getActiveWorkflow(PROJECT_ID);\nif (!workflow) {\n  throw new Error('No active workflow for this project');\n}\nconsole.log(`Workflow: ${workflow.id} - ${workflow.name}`);\n```\n\n## Step 3: List Available Stages\n\n```typescript\nconst stages = await client.workflows.getStages(WORKFLOW_ID);\nconsole.log('Available stages:');\nfor (const stage of stages) {\n  console.log(`- [${stage.id}] ${stage.name}`);\n}\n```\n\n## Step 4: Move Task by Stage ID\n\n```typescript\nawait client.workflows.moveTaskToStage(\n  TASK_ID,\n  WORKFLOW_ID,\n  STAGE_ID\n);\nconsole.log('Task moved successfully');\n```\n\n## Step 5: Move Task by Stage Name (High-Level)\n\nUsing the task monitor facade:\n\n```typescript\nimport { createTaskMonitor } from './apps/teamwork_api_client/src/index.ts';\n\nconst monitor = createTaskMonitor();\n\n// Find stage by name and move\nawait monitor.moveTaskToStage(TASK_ID, WORKFLOW_ID, 'In Progress');\n```\n\n## Step 6: View Tasks in a Stage\n\n```typescript\nconst response = await client.workflows.getStageTasks(\n  WORKFLOW_ID,\n  STAGE_ID,\n  { include: ['tags', 'assignees'] }\n);\n\nconsole.log(`Tasks in stage:`);\nfor (const task of response.tasks) {\n  console.log(`- [${task.id}] ${task.name}`);\n}\n```\n\n## Step 7: Get Backlog (Unassigned to Any Stage)\n\n```typescript\nconst backlog = await client.workflows.getBacklogTasks(WORKFLOW_ID);\nconsole.log(`Backlog tasks: ${backlog.tasks.length}`);\n```\n</process>\n\n<success_criteria>\nThis workflow is complete when:\n- [ ] Workflow ID identified for the project\n- [ ] Target stage ID or name identified\n- [ ] Task moved via `moveTaskToStage()`\n- [ ] Task appears in correct stage (verify if needed)\n</success_criteria>\n",
+      "structuredPatch": [],
+      "originalFile": null
+    },
+    "tool_use_id": "toolu_01CzWGaPpg7z3NDhJnuDoNtu"
+  },
+  {
+    "session_id": "493cb71e-2a7b-4173-9836-030471146dc9",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/493cb71e-2a7b-4173-9836-030471146dc9.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PostToolUse",
+    "tool_name": "Write",
+    "tool_input": {
+      "file_path": "/Users/dalton/projects/teamwork/.claude/skills/manage-teamwork/workflows/comment-on-task.md",
+      "content": "# Workflow: Comment on Task\n\n<required_reading>\n**Read these reference files if needed:**\n1. references/api-client.md (for client setup)\n</required_reading>\n\n<process>\n## Step 1: Gather Information\n\n**Required:**\n- Task ID\n- Comment content\n\n**Optional:**\n- Content type: `TEXT`, `HTML`, `MARKDOWN` (default: MARKDOWN)\n- Private: boolean (default: false)\n\n## Step 2: Post Simple Comment\n\n```typescript\nimport { createTeamworkClient } from './apps/teamwork_api_client/src/index.ts';\n\nconst client = createTeamworkClient({\n  apiUrl: process.env.TEAMWORK_API_URL!,\n  bearerToken: process.env.TEAMWORK_BEARER_TOKEN!,\n});\n\n// Simple text comment\nconst comment = await client.comments.postText(\n  TASK_ID,\n  'This is a plain text comment'\n);\nconsole.log(`Comment posted: ${comment.id}`);\n```\n\n## Step 3: Post Markdown Comment\n\n```typescript\nconst comment = await client.comments.postMarkdown(TASK_ID, `\n**Status Update**\n\n- Completed the initial implementation\n- Ready for review\n- Next steps: Testing\n\n\\`\\`\\`\nCode snippet here\n\\`\\`\\`\n`);\n```\n\n## Step 4: Post Custom Comment\n\n```typescript\nconst comment = await client.comments.createForTask(TASK_ID, {\n  body: 'Comment content here',\n  contentType: 'MARKDOWN',  // TEXT, HTML, or MARKDOWN\n  isPrivate: false,\n});\n```\n\n## Step 5: Post ADW Status Update (Formatted)\n\nFor automated workflow status updates:\n\n```typescript\nconst comment = await client.comments.postAdwStatusUpdate(TASK_ID, {\n  adwId: 'abc12345',\n  status: 'In Progress',\n  message: 'Starting automated processing...',\n  // Optional:\n  commitHash: 'abc123def',\n  agentName: 'build-agent',\n  errorMessage: undefined,  // for failures\n});\n```\n\nThis creates a formatted comment like:\n```\n\ud83d\udd04 **Status Update: In Progress**\n\n- **ADW ID**: `abc12345`\n- **Timestamp**: 2024-12-01T10:00:00.000Z\n\n---\n\nStarting automated processing...\n```\n\n## Step 6: List Existing Comments\n\n```typescript\nconst response = await client.comments.listForTask(TASK_ID, {\n  include: ['users'],\n  pageSize: 20,\n});\n\nfor (const comment of response.comments) {\n  console.log(`[${comment.id}] ${comment.body.slice(0, 50)}...`);\n}\n```\n\n## Step 7: Update or Delete Comment\n\n```typescript\n// Update\nawait client.comments.update(COMMENT_ID, 'Updated content', 'MARKDOWN');\n\n// Delete\nawait client.comments.delete(COMMENT_ID);\n```\n</process>\n\n<success_criteria>\nThis workflow is complete when:\n- [ ] Task ID identified\n- [ ] Comment content prepared\n- [ ] Comment posted successfully\n- [ ] Comment ID returned\n</success_criteria>\n"
+    },
+    "tool_response": {
+      "type": "create",
+      "filePath": "/Users/dalton/projects/teamwork/.claude/skills/manage-teamwork/workflows/comment-on-task.md",
+      "content": "# Workflow: Comment on Task\n\n<required_reading>\n**Read these reference files if needed:**\n1. references/api-client.md (for client setup)\n</required_reading>\n\n<process>\n## Step 1: Gather Information\n\n**Required:**\n- Task ID\n- Comment content\n\n**Optional:**\n- Content type: `TEXT`, `HTML`, `MARKDOWN` (default: MARKDOWN)\n- Private: boolean (default: false)\n\n## Step 2: Post Simple Comment\n\n```typescript\nimport { createTeamworkClient } from './apps/teamwork_api_client/src/index.ts';\n\nconst client = createTeamworkClient({\n  apiUrl: process.env.TEAMWORK_API_URL!,\n  bearerToken: process.env.TEAMWORK_BEARER_TOKEN!,\n});\n\n// Simple text comment\nconst comment = await client.comments.postText(\n  TASK_ID,\n  'This is a plain text comment'\n);\nconsole.log(`Comment posted: ${comment.id}`);\n```\n\n## Step 3: Post Markdown Comment\n\n```typescript\nconst comment = await client.comments.postMarkdown(TASK_ID, `\n**Status Update**\n\n- Completed the initial implementation\n- Ready for review\n- Next steps: Testing\n\n\\`\\`\\`\nCode snippet here\n\\`\\`\\`\n`);\n```\n\n## Step 4: Post Custom Comment\n\n```typescript\nconst comment = await client.comments.createForTask(TASK_ID, {\n  body: 'Comment content here',\n  contentType: 'MARKDOWN',  // TEXT, HTML, or MARKDOWN\n  isPrivate: false,\n});\n```\n\n## Step 5: Post ADW Status Update (Formatted)\n\nFor automated workflow status updates:\n\n```typescript\nconst comment = await client.comments.postAdwStatusUpdate(TASK_ID, {\n  adwId: 'abc12345',\n  status: 'In Progress',\n  message: 'Starting automated processing...',\n  // Optional:\n  commitHash: 'abc123def',\n  agentName: 'build-agent',\n  errorMessage: undefined,  // for failures\n});\n```\n\nThis creates a formatted comment like:\n```\n\ud83d\udd04 **Status Update: In Progress**\n\n- **ADW ID**: `abc12345`\n- **Timestamp**: 2024-12-01T10:00:00.000Z\n\n---\n\nStarting automated processing...\n```\n\n## Step 6: List Existing Comments\n\n```typescript\nconst response = await client.comments.listForTask(TASK_ID, {\n  include: ['users'],\n  pageSize: 20,\n});\n\nfor (const comment of response.comments) {\n  console.log(`[${comment.id}] ${comment.body.slice(0, 50)}...`);\n}\n```\n\n## Step 7: Update or Delete Comment\n\n```typescript\n// Update\nawait client.comments.update(COMMENT_ID, 'Updated content', 'MARKDOWN');\n\n// Delete\nawait client.comments.delete(COMMENT_ID);\n```\n</process>\n\n<success_criteria>\nThis workflow is complete when:\n- [ ] Task ID identified\n- [ ] Comment content prepared\n- [ ] Comment posted successfully\n- [ ] Comment ID returned\n</success_criteria>\n",
+      "structuredPatch": [],
+      "originalFile": null
+    },
+    "tool_use_id": "toolu_013qgnHEuErwDt3DgUN1FTRb"
+  },
+  {
+    "session_id": "493cb71e-2a7b-4173-9836-030471146dc9",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/493cb71e-2a7b-4173-9836-030471146dc9.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PostToolUse",
+    "tool_name": "Write",
+    "tool_input": {
+      "file_path": "/Users/dalton/projects/teamwork/.claude/skills/manage-teamwork/workflows/log-time.md",
+      "content": "# Workflow: Log Time on Task\n\n<required_reading>\n**Read these reference files if needed:**\n1. references/api-client.md (for client setup)\n</required_reading>\n\n<process>\n## Step 1: Gather Information\n\n**Required:**\n- Task ID (or Project ID for project-level time)\n- Hours and/or minutes\n- Date (YYYY-MM-DD format)\n\n**Optional:**\n- Description of work done\n- Billable flag\n- User ID (defaults to authenticated user)\n\n## Step 2: Log Time via Direct API\n\nThe Teamwork API client doesn't have a dedicated timelog resource, so use the HTTP client:\n\n```typescript\nimport { createTeamworkClient } from './apps/teamwork_api_client/src/index.ts';\n\nconst client = createTeamworkClient({\n  apiUrl: process.env.TEAMWORK_API_URL!,\n  bearerToken: process.env.TEAMWORK_BEARER_TOKEN!,\n});\n\nconst response = await client.http.post(\n  `/projects/api/v3/tasks/${TASK_ID}/time.json`,\n  {\n    timelog: {\n      description: 'Work description here',\n      date: '2024-12-01',  // YYYY-MM-DD\n      hours: 2,\n      minutes: 30,\n      isBillable: true,\n      // userId: USER_ID,  // optional, defaults to authenticated user\n    }\n  }\n);\n\nconsole.log('Time logged:', response);\n```\n\n## Step 3: Log Time at Project Level\n\nIf logging time without a specific task:\n\n```typescript\nconst response = await client.http.post(\n  `/projects/api/v3/projects/${PROJECT_ID}/time.json`,\n  {\n    timelog: {\n      description: 'General project work',\n      date: '2024-12-01',\n      hours: 1,\n      minutes: 0,\n      isBillable: false,\n    }\n  }\n);\n```\n\n## Step 4: View Time Entries\n\n```typescript\n// Get time entries for a task\nconst response = await client.http.get(\n  `/projects/api/v3/tasks/${TASK_ID}/time.json`\n);\nconsole.log('Time entries:', response);\n\n// Get time entries for a project\nconst projectTime = await client.http.get(\n  `/projects/api/v3/projects/${PROJECT_ID}/time.json`\n);\n```\n\n## Step 5: Using the Teamwork MCP Server\n\nIf the Teamwork MCP server is available, you can also use:\n\n```typescript\n// Via MCP tool (if available)\nmcp__teamwork__twprojects-create_timelog({\n  task_id: TASK_ID,\n  date: '2024-12-01',\n  time: '09:00:00',\n  hours: 2,\n  minutes: 30,\n  description: 'Work description',\n  billable: true,\n});\n```\n</process>\n\n<success_criteria>\nThis workflow is complete when:\n- [ ] Task or project ID identified\n- [ ] Time entry details gathered (hours, minutes, date)\n- [ ] Time logged via API\n- [ ] Confirmation received\n</success_criteria>\n"
+    },
+    "tool_response": {
+      "type": "create",
+      "filePath": "/Users/dalton/projects/teamwork/.claude/skills/manage-teamwork/workflows/log-time.md",
+      "content": "# Workflow: Log Time on Task\n\n<required_reading>\n**Read these reference files if needed:**\n1. references/api-client.md (for client setup)\n</required_reading>\n\n<process>\n## Step 1: Gather Information\n\n**Required:**\n- Task ID (or Project ID for project-level time)\n- Hours and/or minutes\n- Date (YYYY-MM-DD format)\n\n**Optional:**\n- Description of work done\n- Billable flag\n- User ID (defaults to authenticated user)\n\n## Step 2: Log Time via Direct API\n\nThe Teamwork API client doesn't have a dedicated timelog resource, so use the HTTP client:\n\n```typescript\nimport { createTeamworkClient } from './apps/teamwork_api_client/src/index.ts';\n\nconst client = createTeamworkClient({\n  apiUrl: process.env.TEAMWORK_API_URL!,\n  bearerToken: process.env.TEAMWORK_BEARER_TOKEN!,\n});\n\nconst response = await client.http.post(\n  `/projects/api/v3/tasks/${TASK_ID}/time.json`,\n  {\n    timelog: {\n      description: 'Work description here',\n      date: '2024-12-01',  // YYYY-MM-DD\n      hours: 2,\n      minutes: 30,\n      isBillable: true,\n      // userId: USER_ID,  // optional, defaults to authenticated user\n    }\n  }\n);\n\nconsole.log('Time logged:', response);\n```\n\n## Step 3: Log Time at Project Level\n\nIf logging time without a specific task:\n\n```typescript\nconst response = await client.http.post(\n  `/projects/api/v3/projects/${PROJECT_ID}/time.json`,\n  {\n    timelog: {\n      description: 'General project work',\n      date: '2024-12-01',\n      hours: 1,\n      minutes: 0,\n      isBillable: false,\n    }\n  }\n);\n```\n\n## Step 4: View Time Entries\n\n```typescript\n// Get time entries for a task\nconst response = await client.http.get(\n  `/projects/api/v3/tasks/${TASK_ID}/time.json`\n);\nconsole.log('Time entries:', response);\n\n// Get time entries for a project\nconst projectTime = await client.http.get(\n  `/projects/api/v3/projects/${PROJECT_ID}/time.json`\n);\n```\n\n## Step 5: Using the Teamwork MCP Server\n\nIf the Teamwork MCP server is available, you can also use:\n\n```typescript\n// Via MCP tool (if available)\nmcp__teamwork__twprojects-create_timelog({\n  task_id: TASK_ID,\n  date: '2024-12-01',\n  time: '09:00:00',\n  hours: 2,\n  minutes: 30,\n  description: 'Work description',\n  billable: true,\n});\n```\n</process>\n\n<success_criteria>\nThis workflow is complete when:\n- [ ] Task or project ID identified\n- [ ] Time entry details gathered (hours, minutes, date)\n- [ ] Time logged via API\n- [ ] Confirmation received\n</success_criteria>\n",
+      "structuredPatch": [],
+      "originalFile": null
+    },
+    "tool_use_id": "toolu_01AYZUieNSMSPdtghy4TwUDo"
+  },
+  {
+    "session_id": "493cb71e-2a7b-4173-9836-030471146dc9",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/493cb71e-2a7b-4173-9836-030471146dc9.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PostToolUse",
+    "tool_name": "Write",
+    "tool_input": {
+      "file_path": "/Users/dalton/projects/teamwork/.claude/skills/manage-teamwork/workflows/manage-projects.md",
+      "content": "# Workflow: Manage Projects\n\n<required_reading>\n**Read these reference files if needed:**\n1. references/api-client.md (for client setup)\n</required_reading>\n\n<process>\n## Step 1: List Projects\n\n```typescript\nimport { createTeamworkClient } from './apps/teamwork_api_client/src/index.ts';\n\nconst client = createTeamworkClient({\n  apiUrl: process.env.TEAMWORK_API_URL!,\n  bearerToken: process.env.TEAMWORK_BEARER_TOKEN!,\n});\n\n// List all active projects\nconst response = await client.projects.list({ status: 'active' });\nconsole.log('Active projects:');\nfor (const project of response.projects) {\n  console.log(`- [${project.id}] ${project.name}`);\n}\n\n// List with filters\nconst filtered = await client.projects.list({\n  status: 'active',\n  companyId: COMPANY_ID,  // filter by company\n  searchTerm: 'search query',\n  include: ['companies', 'users'],\n  pageSize: 50,\n});\n```\n\n## Step 2: Get Project Details\n\n```typescript\nconst project = await client.projects.get(PROJECT_ID, ['companies', 'users']);\nconsole.log('Project:', project.name);\nconsole.log('Active workflow:', project.activeWorkflow);\n```\n\n## Step 3: Find Project by Name\n\n```typescript\nconst project = await client.projects.findByName('Exact Project Name');\nif (project) {\n  console.log(`Found: ${project.id}`);\n}\n```\n\n## Step 4: Get Project Tasklists\n\n```typescript\nconst tasklists = await client.projects.getTasklists(PROJECT_ID);\nconsole.log('Tasklists:');\nfor (const tl of tasklists.tasklists) {\n  console.log(`- [${tl.id}] ${tl.name}`);\n}\n```\n\n## Step 5: Get Project Workflow\n\n```typescript\nconst workflow = await client.projects.getActiveWorkflow(PROJECT_ID);\nif (workflow) {\n  console.log(`Workflow: ${workflow.id} - ${workflow.name}`);\n\n  // Get stages\n  const stages = await client.workflows.getStages(workflow.id);\n  for (const stage of stages) {\n    console.log(`  Stage: ${stage.id} - ${stage.name}`);\n  }\n}\n```\n\n## Step 6: Create Project (via MCP or Direct API)\n\nThe TypeScript client focuses on task management. For project creation, use the Teamwork MCP server:\n\n```typescript\n// Via MCP tool (if available)\nmcp__teamwork__twprojects-create_project({\n  name: 'New Project Name',\n  description: 'Project description',\n  start_at: '20241201',  // YYYYMMDD\n  end_at: '20241231',\n  company_id: COMPANY_ID,\n});\n```\n\nOr via direct API:\n\n```typescript\nconst response = await client.http.post('/projects/api/v3/projects.json', {\n  project: {\n    name: 'New Project Name',\n    description: 'Project description',\n    companyId: COMPANY_ID,\n    // startDate, endDate, etc.\n  }\n});\nconsole.log('Created project:', response);\n```\n\n## Step 7: Apply Workflow to Project\n\n```typescript\n// Apply a workflow (board) to a project\nawait client.projects.applyWorkflow(PROJECT_ID, WORKFLOW_ID);\n\n// Remove workflow\nawait client.projects.removeWorkflow(PROJECT_ID, WORKFLOW_ID);\n```\n</process>\n\n<success_criteria>\nThis workflow is complete when:\n- [ ] Project operation type identified (list, get, create)\n- [ ] Operation executed successfully\n- [ ] Results displayed or confirmed\n</success_criteria>\n"
+    },
+    "tool_response": {
+      "type": "create",
+      "filePath": "/Users/dalton/projects/teamwork/.claude/skills/manage-teamwork/workflows/manage-projects.md",
+      "content": "# Workflow: Manage Projects\n\n<required_reading>\n**Read these reference files if needed:**\n1. references/api-client.md (for client setup)\n</required_reading>\n\n<process>\n## Step 1: List Projects\n\n```typescript\nimport { createTeamworkClient } from './apps/teamwork_api_client/src/index.ts';\n\nconst client = createTeamworkClient({\n  apiUrl: process.env.TEAMWORK_API_URL!,\n  bearerToken: process.env.TEAMWORK_BEARER_TOKEN!,\n});\n\n// List all active projects\nconst response = await client.projects.list({ status: 'active' });\nconsole.log('Active projects:');\nfor (const project of response.projects) {\n  console.log(`- [${project.id}] ${project.name}`);\n}\n\n// List with filters\nconst filtered = await client.projects.list({\n  status: 'active',\n  companyId: COMPANY_ID,  // filter by company\n  searchTerm: 'search query',\n  include: ['companies', 'users'],\n  pageSize: 50,\n});\n```\n\n## Step 2: Get Project Details\n\n```typescript\nconst project = await client.projects.get(PROJECT_ID, ['companies', 'users']);\nconsole.log('Project:', project.name);\nconsole.log('Active workflow:', project.activeWorkflow);\n```\n\n## Step 3: Find Project by Name\n\n```typescript\nconst project = await client.projects.findByName('Exact Project Name');\nif (project) {\n  console.log(`Found: ${project.id}`);\n}\n```\n\n## Step 4: Get Project Tasklists\n\n```typescript\nconst tasklists = await client.projects.getTasklists(PROJECT_ID);\nconsole.log('Tasklists:');\nfor (const tl of tasklists.tasklists) {\n  console.log(`- [${tl.id}] ${tl.name}`);\n}\n```\n\n## Step 5: Get Project Workflow\n\n```typescript\nconst workflow = await client.projects.getActiveWorkflow(PROJECT_ID);\nif (workflow) {\n  console.log(`Workflow: ${workflow.id} - ${workflow.name}`);\n\n  // Get stages\n  const stages = await client.workflows.getStages(workflow.id);\n  for (const stage of stages) {\n    console.log(`  Stage: ${stage.id} - ${stage.name}`);\n  }\n}\n```\n\n## Step 6: Create Project (via MCP or Direct API)\n\nThe TypeScript client focuses on task management. For project creation, use the Teamwork MCP server:\n\n```typescript\n// Via MCP tool (if available)\nmcp__teamwork__twprojects-create_project({\n  name: 'New Project Name',\n  description: 'Project description',\n  start_at: '20241201',  // YYYYMMDD\n  end_at: '20241231',\n  company_id: COMPANY_ID,\n});\n```\n\nOr via direct API:\n\n```typescript\nconst response = await client.http.post('/projects/api/v3/projects.json', {\n  project: {\n    name: 'New Project Name',\n    description: 'Project description',\n    companyId: COMPANY_ID,\n    // startDate, endDate, etc.\n  }\n});\nconsole.log('Created project:', response);\n```\n\n## Step 7: Apply Workflow to Project\n\n```typescript\n// Apply a workflow (board) to a project\nawait client.projects.applyWorkflow(PROJECT_ID, WORKFLOW_ID);\n\n// Remove workflow\nawait client.projects.removeWorkflow(PROJECT_ID, WORKFLOW_ID);\n```\n</process>\n\n<success_criteria>\nThis workflow is complete when:\n- [ ] Project operation type identified (list, get, create)\n- [ ] Operation executed successfully\n- [ ] Results displayed or confirmed\n</success_criteria>\n",
+      "structuredPatch": [],
+      "originalFile": null
+    },
+    "tool_use_id": "toolu_01U9pMtgkjSY6UtBJPTBZ9QP"
+  },
+  {
+    "session_id": "493cb71e-2a7b-4173-9836-030471146dc9",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/493cb71e-2a7b-4173-9836-030471146dc9.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PostToolUse",
+    "tool_name": "TodoWrite",
+    "tool_input": {
+      "todos": [
+        {
+          "content": "Gather requirements and understand API client",
+          "status": "completed",
+          "activeForm": "Gathering requirements"
+        },
+        {
+          "content": "Decide skill structure (router vs simple)",
+          "status": "completed",
+          "activeForm": "Deciding skill structure"
+        },
+        {
+          "content": "Create skill directory structure",
+          "status": "completed",
+          "activeForm": "Creating skill directories"
+        },
+        {
+          "content": "Write SKILL.md (router + essential principles)",
+          "status": "completed",
+          "activeForm": "Writing SKILL.md"
+        },
+        {
+          "content": "Write workflow files for each operation",
+          "status": "completed",
+          "activeForm": "Writing workflow files"
+        },
+        {
+          "content": "Write reference files with API patterns",
+          "status": "in_progress",
+          "activeForm": "Writing reference files"
+        },
+        {
+          "content": "Validate structure and test skill",
+          "status": "pending",
+          "activeForm": "Validating and testing skill"
+        }
+      ]
+    },
+    "tool_response": {
+      "oldTodos": [
+        {
+          "content": "Gather requirements and understand API client",
+          "status": "completed",
+          "activeForm": "Gathering requirements"
+        },
+        {
+          "content": "Decide skill structure (router vs simple)",
+          "status": "completed",
+          "activeForm": "Deciding skill structure"
+        },
+        {
+          "content": "Create skill directory structure",
+          "status": "completed",
+          "activeForm": "Creating skill directories"
+        },
+        {
+          "content": "Write SKILL.md (router + essential principles)",
+          "status": "in_progress",
+          "activeForm": "Writing SKILL.md"
+        },
+        {
+          "content": "Write workflow files for each operation",
+          "status": "pending",
+          "activeForm": "Writing workflow files"
+        },
+        {
+          "content": "Write reference files with API patterns",
+          "status": "pending",
+          "activeForm": "Writing reference files"
+        },
+        {
+          "content": "Validate structure and test skill",
+          "status": "pending",
+          "activeForm": "Validating and testing skill"
+        }
+      ],
+      "newTodos": [
+        {
+          "content": "Gather requirements and understand API client",
+          "status": "completed",
+          "activeForm": "Gathering requirements"
+        },
+        {
+          "content": "Decide skill structure (router vs simple)",
+          "status": "completed",
+          "activeForm": "Deciding skill structure"
+        },
+        {
+          "content": "Create skill directory structure",
+          "status": "completed",
+          "activeForm": "Creating skill directories"
+        },
+        {
+          "content": "Write SKILL.md (router + essential principles)",
+          "status": "completed",
+          "activeForm": "Writing SKILL.md"
+        },
+        {
+          "content": "Write workflow files for each operation",
+          "status": "completed",
+          "activeForm": "Writing workflow files"
+        },
+        {
+          "content": "Write reference files with API patterns",
+          "status": "in_progress",
+          "activeForm": "Writing reference files"
+        },
+        {
+          "content": "Validate structure and test skill",
+          "status": "pending",
+          "activeForm": "Validating and testing skill"
+        }
+      ]
+    },
+    "tool_use_id": "toolu_01T7bpqR17ydrqwPMEaYWoXx"
+  },
+  {
+    "session_id": "493cb71e-2a7b-4173-9836-030471146dc9",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/493cb71e-2a7b-4173-9836-030471146dc9.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PostToolUse",
+    "tool_name": "Write",
+    "tool_input": {
+      "file_path": "/Users/dalton/projects/teamwork/.claude/skills/manage-teamwork/references/api-client.md",
+      "content": "<client_setup>\n## Teamwork API Client Setup\n\nThe client is located at `apps/teamwork_api_client/`.\n\n**Installation:**\n```bash\ncd apps/teamwork_api_client\nbun install\n```\n\n**Environment Variables:**\n```bash\nTEAMWORK_API_URL=https://yoursite.teamwork.com\nTEAMWORK_BEARER_TOKEN=your-api-token\nTEAMWORK_PROJECT_ID=123456  # optional default project\n```\n</client_setup>\n\n<client_initialization>\n## Creating a Client\n\n**Low-level client (direct API access):**\n```typescript\nimport { createTeamworkClient } from './apps/teamwork_api_client/src/index.ts';\n\nconst client = createTeamworkClient({\n  apiUrl: process.env.TEAMWORK_API_URL!,\n  bearerToken: process.env.TEAMWORK_BEARER_TOKEN!,\n  debug: true,  // optional, enables request logging\n});\n\n// Access resources\nclient.tasks      // TasksResource\nclient.workflows  // WorkflowsResource\nclient.projects   // ProjectsResource\nclient.comments   // CommentsResource\nclient.http       // Direct HTTP access\n```\n\n**High-level task monitor:**\n```typescript\nimport { createTaskMonitor } from './apps/teamwork_api_client/src/index.ts';\n\nconst monitor = createTaskMonitor({\n  defaultProjectId: 123456,  // optional\n});\n\n// Simplified operations\nawait monitor.getEligibleTasks(projectId, ['new'], 10);\nawait monitor.claimTask(taskId, adwId);\nawait monitor.completeTask(taskId, adwId, { commitHash: 'abc' });\nawait monitor.failTask(taskId, adwId, 'Error message');\nawait monitor.moveTaskToStage(taskId, workflowId, 'In Progress');\n```\n</client_initialization>\n\n<available_resources>\n## Available Resources\n\n| Resource | Purpose | Key Methods |\n|----------|---------|-------------|\n| `client.tasks` | Task CRUD | `list()`, `listByProject()`, `get()`, `create()`, `update()`, `complete()` |\n| `client.workflows` | Board/stage management | `list()`, `getStages()`, `moveTaskToStage()`, `getStageTasks()` |\n| `client.projects` | Project management | `list()`, `get()`, `getTasklists()`, `getActiveWorkflow()` |\n| `client.comments` | Task comments | `listForTask()`, `createForTask()`, `postMarkdown()`, `postAdwStatusUpdate()` |\n| `client.http` | Direct API calls | `get()`, `post()`, `patch()`, `delete()` |\n</available_resources>\n\n<direct_api_access>\n## Direct API Calls\n\nFor endpoints not covered by resources:\n\n```typescript\n// GET request\nconst response = await client.http.get('/projects/api/v3/endpoint.json', {\n  param1: 'value',\n  param2: 123,\n});\n\n// POST request\nconst response = await client.http.post('/projects/api/v3/endpoint.json', {\n  data: {\n    field: 'value',\n  }\n});\n\n// PATCH request\nawait client.http.patch('/projects/api/v3/endpoint.json', { data: {} });\n\n// DELETE request\nawait client.http.delete('/projects/api/v3/endpoint.json');\n```\n</direct_api_access>\n\n<error_handling>\n## Error Handling\n\n```typescript\ntry {\n  const result = await client.tasks.get(taskId);\n} catch (error) {\n  if (error instanceof Error) {\n    // Check for API-specific errors\n    console.error('API Error:', error.message);\n\n    // Rate limiting returns 429\n    if (error.message.includes('429')) {\n      console.log('Rate limited, waiting...');\n    }\n\n    // Not found returns 404\n    if (error.message.includes('404')) {\n      console.log('Resource not found');\n    }\n  }\n}\n```\n\nThe HTTP client includes automatic retry with exponential backoff for rate limits.\n</error_handling>\n\n<cli_testing>\n## CLI Tool\n\nTest operations from command line:\n\n```bash\ncd apps/teamwork_api_client\n\n# List projects\nbun run cli list-projects\n\n# List tasks\nbun run cli list-tasks <project_id>\nbun run cli list-tasks <project_id> new  # filter by status\n\n# List workflows and stages\nbun run cli list-workflows\nbun run cli list-stages <workflow_id>\n\n# View tasks in stage\nbun run cli stage-tasks <workflow_id> <stage_id>\n\n# Move task\nbun run cli move-task <task_id> <workflow_id> <stage_id>\n\n# Update status\nbun run cli update-status <task_id> completed\n```\n</cli_testing>\n"
+    },
+    "tool_response": {
+      "type": "create",
+      "filePath": "/Users/dalton/projects/teamwork/.claude/skills/manage-teamwork/references/api-client.md",
+      "content": "<client_setup>\n## Teamwork API Client Setup\n\nThe client is located at `apps/teamwork_api_client/`.\n\n**Installation:**\n```bash\ncd apps/teamwork_api_client\nbun install\n```\n\n**Environment Variables:**\n```bash\nTEAMWORK_API_URL=https://yoursite.teamwork.com\nTEAMWORK_BEARER_TOKEN=your-api-token\nTEAMWORK_PROJECT_ID=123456  # optional default project\n```\n</client_setup>\n\n<client_initialization>\n## Creating a Client\n\n**Low-level client (direct API access):**\n```typescript\nimport { createTeamworkClient } from './apps/teamwork_api_client/src/index.ts';\n\nconst client = createTeamworkClient({\n  apiUrl: process.env.TEAMWORK_API_URL!,\n  bearerToken: process.env.TEAMWORK_BEARER_TOKEN!,\n  debug: true,  // optional, enables request logging\n});\n\n// Access resources\nclient.tasks      // TasksResource\nclient.workflows  // WorkflowsResource\nclient.projects   // ProjectsResource\nclient.comments   // CommentsResource\nclient.http       // Direct HTTP access\n```\n\n**High-level task monitor:**\n```typescript\nimport { createTaskMonitor } from './apps/teamwork_api_client/src/index.ts';\n\nconst monitor = createTaskMonitor({\n  defaultProjectId: 123456,  // optional\n});\n\n// Simplified operations\nawait monitor.getEligibleTasks(projectId, ['new'], 10);\nawait monitor.claimTask(taskId, adwId);\nawait monitor.completeTask(taskId, adwId, { commitHash: 'abc' });\nawait monitor.failTask(taskId, adwId, 'Error message');\nawait monitor.moveTaskToStage(taskId, workflowId, 'In Progress');\n```\n</client_initialization>\n\n<available_resources>\n## Available Resources\n\n| Resource | Purpose | Key Methods |\n|----------|---------|-------------|\n| `client.tasks` | Task CRUD | `list()`, `listByProject()`, `get()`, `create()`, `update()`, `complete()` |\n| `client.workflows` | Board/stage management | `list()`, `getStages()`, `moveTaskToStage()`, `getStageTasks()` |\n| `client.projects` | Project management | `list()`, `get()`, `getTasklists()`, `getActiveWorkflow()` |\n| `client.comments` | Task comments | `listForTask()`, `createForTask()`, `postMarkdown()`, `postAdwStatusUpdate()` |\n| `client.http` | Direct API calls | `get()`, `post()`, `patch()`, `delete()` |\n</available_resources>\n\n<direct_api_access>\n## Direct API Calls\n\nFor endpoints not covered by resources:\n\n```typescript\n// GET request\nconst response = await client.http.get('/projects/api/v3/endpoint.json', {\n  param1: 'value',\n  param2: 123,\n});\n\n// POST request\nconst response = await client.http.post('/projects/api/v3/endpoint.json', {\n  data: {\n    field: 'value',\n  }\n});\n\n// PATCH request\nawait client.http.patch('/projects/api/v3/endpoint.json', { data: {} });\n\n// DELETE request\nawait client.http.delete('/projects/api/v3/endpoint.json');\n```\n</direct_api_access>\n\n<error_handling>\n## Error Handling\n\n```typescript\ntry {\n  const result = await client.tasks.get(taskId);\n} catch (error) {\n  if (error instanceof Error) {\n    // Check for API-specific errors\n    console.error('API Error:', error.message);\n\n    // Rate limiting returns 429\n    if (error.message.includes('429')) {\n      console.log('Rate limited, waiting...');\n    }\n\n    // Not found returns 404\n    if (error.message.includes('404')) {\n      console.log('Resource not found');\n    }\n  }\n}\n```\n\nThe HTTP client includes automatic retry with exponential backoff for rate limits.\n</error_handling>\n\n<cli_testing>\n## CLI Tool\n\nTest operations from command line:\n\n```bash\ncd apps/teamwork_api_client\n\n# List projects\nbun run cli list-projects\n\n# List tasks\nbun run cli list-tasks <project_id>\nbun run cli list-tasks <project_id> new  # filter by status\n\n# List workflows and stages\nbun run cli list-workflows\nbun run cli list-stages <workflow_id>\n\n# View tasks in stage\nbun run cli stage-tasks <workflow_id> <stage_id>\n\n# Move task\nbun run cli move-task <task_id> <workflow_id> <stage_id>\n\n# Update status\nbun run cli update-status <task_id> completed\n```\n</cli_testing>\n",
+      "structuredPatch": [],
+      "originalFile": null
+    },
+    "tool_use_id": "toolu_019kz8aUHu7UtQP9zvjLhxu5"
+  },
+  {
+    "session_id": "493cb71e-2a7b-4173-9836-030471146dc9",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/493cb71e-2a7b-4173-9836-030471146dc9.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PostToolUse",
+    "tool_name": "Write",
+    "tool_input": {
+      "file_path": "/Users/dalton/projects/teamwork/.claude/skills/manage-teamwork/references/task-operations.md",
+      "content": "<task_listing>\n## Listing Tasks\n\n**By project:**\n```typescript\nconst response = await client.tasks.listByProject(projectId, {\n  statuses: ['new', 'active', 'pending'],\n  include: ['tags', 'assignees'],\n  pageSize: 50,\n  page: 1,\n});\n```\n\n**By tasklist:**\n```typescript\nconst response = await client.tasks.listByTasklist(tasklistId, {\n  statuses: ['new'],\n});\n```\n\n**All tasks (across projects):**\n```typescript\nconst response = await client.tasks.list({\n  statuses: ['new'],\n  assigneeUserIds: [userId],\n});\n```\n</task_listing>\n\n<list_options>\n## List Options\n\n| Option | Type | Description |\n|--------|------|-------------|\n| `statuses` | `string[]` | Filter by: `new`, `active`, `completed`, `pending` |\n| `tagIds` | `number[]` | Filter by tag IDs |\n| `assigneeUserIds` | `number[]` | Filter by assigned user IDs |\n| `assigneeTeamIds` | `number[]` | Filter by assigned team IDs |\n| `include` | `string[]` | Include: `tags`, `assignees`, `users`, `teams` |\n| `page` | `number` | Page number (1-based) |\n| `pageSize` | `number` | Items per page (default: 50) |\n| `orderBy` | `string` | Sort field |\n| `orderMode` | `'asc' \\| 'desc'` | Sort direction |\n| `updatedAfter` | `string` | ISO date string |\n| `includeCompletedTasks` | `boolean` | Include completed (default: false) |\n| `searchTerm` | `string` | Search in task name |\n</list_options>\n\n<task_status>\n## Task Statuses\n\n| Status | Description |\n|--------|-------------|\n| `new` | Not started |\n| `active` | In progress |\n| `completed` | Done |\n| `pending` | Blocked/waiting |\n| `reopened` | Reopened after completion |\n</task_status>\n\n<task_creation>\n## Creating Tasks\n\nTasks belong to tasklists, not projects directly.\n\n```typescript\nconst task = await client.tasks.create(tasklistId, {\n  name: 'Task name',           // required\n  description: 'Details',      // optional, supports markdown\n  priority: 'high',            // none, low, medium, high\n  dueDate: '2024-12-31',       // YYYY-MM-DD\n  startDate: '2024-12-01',     // YYYY-MM-DD\n  estimatedMinutes: 120,       // time estimate\n  assigneeUserIds: [1, 2],     // user IDs\n  assigneeTeamIds: [3],        // team IDs\n  tagIds: [10, 20],            // tag IDs\n});\n```\n</task_creation>\n\n<task_updates>\n## Updating Tasks\n\n```typescript\nawait client.tasks.update(taskId, {\n  name: 'New name',\n  description: 'Updated description',\n  status: 'active',\n  priority: 'high',\n  progress: 50,                 // 0-100\n  dueDate: '2024-12-31',\n  startDate: '2024-12-01',\n  estimatedMinutes: 180,\n  assigneeUserIds: [1],\n  tagIds: [10],\n});\n```\n\n**Quick status changes:**\n```typescript\n// Complete a task\nawait client.tasks.complete(taskId);\n\n// Reopen a completed task\nawait client.tasks.reopen(taskId);\n\n// Delete a task\nawait client.tasks.delete(taskId);\n```\n</task_updates>\n\n<task_processing>\n## Processing Tasks (ADW Integration)\n\nThe task monitor provides high-level operations:\n\n```typescript\nimport { createTaskMonitor } from './apps/teamwork_api_client/src/index.ts';\n\nconst monitor = createTaskMonitor();\n\n// Get tasks eligible for processing (have 'execute' or 'continue' trigger)\nconst tasks = await monitor.getEligibleTasks(projectId, ['new'], 10);\n\n// Claim a task (sets \"In Progress\" + posts comment)\nawait monitor.claimTask(taskId, adwId, {\n  model: 'sonnet',\n  worktreeName: 'feat-auth',\n});\n\n// Complete a task (sets \"Completed\" + posts comment)\nawait monitor.completeTask(taskId, adwId, {\n  commitHash: 'abc123',\n  message: 'Completed successfully',\n});\n\n// Mark task as failed (sets \"Pending\" + posts error comment)\nawait monitor.failTask(taskId, adwId, 'Error: Something went wrong');\n```\n</task_processing>\n\n<tag_parsing>\n## Tag Parsing Utilities\n\n```typescript\nimport {\n  extractInlineTags,\n  parseNativeTags,\n  detectExecutionTrigger,\n  cleanTaskDescription,\n} from './apps/teamwork_api_client/src/index.ts';\n\n// Extract {{key: value}} tags from description\nconst inlineTags = extractInlineTags('Build {{model: opus}} {{prototype: vue}}');\n// \u2192 { model: 'opus', prototype: 'vue' }\n\n// Parse native Teamwork tags (key:value format)\nconst nativeTags = parseNativeTags([{ id: 1, name: 'prototype:vite_vue' }]);\n// \u2192 { prototype: 'vite_vue' }\n\n// Detect execution trigger\nconst trigger = detectExecutionTrigger('Task description execute');\n// \u2192 { trigger: 'execute' }\n\nconst continueT = detectExecutionTrigger('Task\\ncontinue - Add tests');\n// \u2192 { trigger: 'continue', continuePrompt: 'Add tests' }\n\n// Clean description (remove tags and triggers)\nconst clean = cleanTaskDescription('Build {{model: opus}} execute');\n// \u2192 'Build'\n```\n</tag_parsing>\n"
+    },
+    "tool_response": {
+      "type": "create",
+      "filePath": "/Users/dalton/projects/teamwork/.claude/skills/manage-teamwork/references/task-operations.md",
+      "content": "<task_listing>\n## Listing Tasks\n\n**By project:**\n```typescript\nconst response = await client.tasks.listByProject(projectId, {\n  statuses: ['new', 'active', 'pending'],\n  include: ['tags', 'assignees'],\n  pageSize: 50,\n  page: 1,\n});\n```\n\n**By tasklist:**\n```typescript\nconst response = await client.tasks.listByTasklist(tasklistId, {\n  statuses: ['new'],\n});\n```\n\n**All tasks (across projects):**\n```typescript\nconst response = await client.tasks.list({\n  statuses: ['new'],\n  assigneeUserIds: [userId],\n});\n```\n</task_listing>\n\n<list_options>\n## List Options\n\n| Option | Type | Description |\n|--------|------|-------------|\n| `statuses` | `string[]` | Filter by: `new`, `active`, `completed`, `pending` |\n| `tagIds` | `number[]` | Filter by tag IDs |\n| `assigneeUserIds` | `number[]` | Filter by assigned user IDs |\n| `assigneeTeamIds` | `number[]` | Filter by assigned team IDs |\n| `include` | `string[]` | Include: `tags`, `assignees`, `users`, `teams` |\n| `page` | `number` | Page number (1-based) |\n| `pageSize` | `number` | Items per page (default: 50) |\n| `orderBy` | `string` | Sort field |\n| `orderMode` | `'asc' \\| 'desc'` | Sort direction |\n| `updatedAfter` | `string` | ISO date string |\n| `includeCompletedTasks` | `boolean` | Include completed (default: false) |\n| `searchTerm` | `string` | Search in task name |\n</list_options>\n\n<task_status>\n## Task Statuses\n\n| Status | Description |\n|--------|-------------|\n| `new` | Not started |\n| `active` | In progress |\n| `completed` | Done |\n| `pending` | Blocked/waiting |\n| `reopened` | Reopened after completion |\n</task_status>\n\n<task_creation>\n## Creating Tasks\n\nTasks belong to tasklists, not projects directly.\n\n```typescript\nconst task = await client.tasks.create(tasklistId, {\n  name: 'Task name',           // required\n  description: 'Details',      // optional, supports markdown\n  priority: 'high',            // none, low, medium, high\n  dueDate: '2024-12-31',       // YYYY-MM-DD\n  startDate: '2024-12-01',     // YYYY-MM-DD\n  estimatedMinutes: 120,       // time estimate\n  assigneeUserIds: [1, 2],     // user IDs\n  assigneeTeamIds: [3],        // team IDs\n  tagIds: [10, 20],            // tag IDs\n});\n```\n</task_creation>\n\n<task_updates>\n## Updating Tasks\n\n```typescript\nawait client.tasks.update(taskId, {\n  name: 'New name',\n  description: 'Updated description',\n  status: 'active',\n  priority: 'high',\n  progress: 50,                 // 0-100\n  dueDate: '2024-12-31',\n  startDate: '2024-12-01',\n  estimatedMinutes: 180,\n  assigneeUserIds: [1],\n  tagIds: [10],\n});\n```\n\n**Quick status changes:**\n```typescript\n// Complete a task\nawait client.tasks.complete(taskId);\n\n// Reopen a completed task\nawait client.tasks.reopen(taskId);\n\n// Delete a task\nawait client.tasks.delete(taskId);\n```\n</task_updates>\n\n<task_processing>\n## Processing Tasks (ADW Integration)\n\nThe task monitor provides high-level operations:\n\n```typescript\nimport { createTaskMonitor } from './apps/teamwork_api_client/src/index.ts';\n\nconst monitor = createTaskMonitor();\n\n// Get tasks eligible for processing (have 'execute' or 'continue' trigger)\nconst tasks = await monitor.getEligibleTasks(projectId, ['new'], 10);\n\n// Claim a task (sets \"In Progress\" + posts comment)\nawait monitor.claimTask(taskId, adwId, {\n  model: 'sonnet',\n  worktreeName: 'feat-auth',\n});\n\n// Complete a task (sets \"Completed\" + posts comment)\nawait monitor.completeTask(taskId, adwId, {\n  commitHash: 'abc123',\n  message: 'Completed successfully',\n});\n\n// Mark task as failed (sets \"Pending\" + posts error comment)\nawait monitor.failTask(taskId, adwId, 'Error: Something went wrong');\n```\n</task_processing>\n\n<tag_parsing>\n## Tag Parsing Utilities\n\n```typescript\nimport {\n  extractInlineTags,\n  parseNativeTags,\n  detectExecutionTrigger,\n  cleanTaskDescription,\n} from './apps/teamwork_api_client/src/index.ts';\n\n// Extract {{key: value}} tags from description\nconst inlineTags = extractInlineTags('Build {{model: opus}} {{prototype: vue}}');\n// \u2192 { model: 'opus', prototype: 'vue' }\n\n// Parse native Teamwork tags (key:value format)\nconst nativeTags = parseNativeTags([{ id: 1, name: 'prototype:vite_vue' }]);\n// \u2192 { prototype: 'vite_vue' }\n\n// Detect execution trigger\nconst trigger = detectExecutionTrigger('Task description execute');\n// \u2192 { trigger: 'execute' }\n\nconst continueT = detectExecutionTrigger('Task\\ncontinue - Add tests');\n// \u2192 { trigger: 'continue', continuePrompt: 'Add tests' }\n\n// Clean description (remove tags and triggers)\nconst clean = cleanTaskDescription('Build {{model: opus}} execute');\n// \u2192 'Build'\n```\n</tag_parsing>\n",
+      "structuredPatch": [],
+      "originalFile": null
+    },
+    "tool_use_id": "toolu_017ed2ew2Wc7FTw3oMLF1nRr"
+  },
+  {
+    "session_id": "493cb71e-2a7b-4173-9836-030471146dc9",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/493cb71e-2a7b-4173-9836-030471146dc9.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PostToolUse",
+    "tool_name": "Write",
+    "tool_input": {
+      "file_path": "/Users/dalton/projects/teamwork/.claude/skills/manage-teamwork/references/workflow-operations.md",
+      "content": "<workflow_concepts>\n## Workflows and Stages\n\nWorkflows are Kanban-style boards with stages (columns).\n\n```\nProject\n  \u2514\u2500\u2500 Workflow (e.g., \"Sprint Board\")\n        \u251c\u2500\u2500 Stage 1: \"To Do\"\n        \u251c\u2500\u2500 Stage 2: \"In Progress\"\n        \u251c\u2500\u2500 Stage 3: \"Review\"\n        \u2514\u2500\u2500 Stage 4: \"Done\"\n```\n\nTasks can be placed in stages and moved between them.\n</workflow_concepts>\n\n<listing_workflows>\n## Listing Workflows\n\n```typescript\n// All workflows\nconst response = await client.workflows.list({\n  include: ['stages'],\n  pageSize: 50,\n});\n\n// Workflows for a project\nconst projectWorkflows = await client.workflows.listByProject(projectId, ['stages']);\n\n// Get single workflow\nconst workflow = await client.workflows.get(workflowId, ['stages']);\n```\n</listing_workflows>\n\n<list_options>\n## Workflow List Options\n\n| Option | Type | Description |\n|--------|------|-------------|\n| `projectIds` | `number[]` | Filter by projects |\n| `workflowIds` | `number[]` | Filter by workflow IDs |\n| `stageNames` | `string[]` | Filter by stage names |\n| `searchTerm` | `string` | Search term |\n| `include` | `string[]` | Include: `stages`, `projects`, `users`, `teams`, `companies` |\n| `onlyDefaultWorkflow` | `boolean` | Only return default workflow |\n| `includeArchived` | `boolean` | Include archived workflows |\n| `page` | `number` | Page number |\n| `pageSize` | `number` | Items per page |\n</list_options>\n\n<stage_operations>\n## Stage Operations\n\n**Get stages for a workflow:**\n```typescript\nconst stages = await client.workflows.getStages(workflowId);\nfor (const stage of stages) {\n  console.log(`${stage.id}: ${stage.name}`);\n}\n```\n\n**Get single stage:**\n```typescript\nconst stage = await client.workflows.getStage(workflowId, stageId);\n```\n\n**Find stage by name:**\n```typescript\nconst stage = await client.workflows.findStageByName(workflowId, 'In Progress');\nif (stage) {\n  console.log(`Stage ID: ${stage.id}`);\n}\n```\n</stage_operations>\n\n<stage_tasks>\n## Tasks in Stages\n\n**Get tasks in a stage:**\n```typescript\nconst response = await client.workflows.getStageTasks(workflowId, stageId, {\n  include: ['tags', 'assignees'],\n  pageSize: 50,\n});\n\nfor (const task of response.tasks) {\n  console.log(`- ${task.name}`);\n}\n```\n\n**Get backlog (tasks not in any stage):**\n```typescript\nconst backlog = await client.workflows.getBacklogTasks(workflowId, {\n  include: ['tags'],\n});\n```\n\n**Get all tasks across all stages:**\n```typescript\nconst allTasks = await client.workflows.getAllWorkflowTasks(workflowId, {\n  include: ['tags', 'assignees'],\n});\n// Returns Map<stageId, TaskListResponse>\n```\n</stage_tasks>\n\n<moving_tasks>\n## Moving Tasks Between Stages\n\n**By stage ID:**\n```typescript\nawait client.workflows.moveTaskToStage(\n  taskId,\n  workflowId,\n  stageId,\n  positionAfterCard  // optional: position in column\n);\n```\n\n**By stage name (using monitor):**\n```typescript\nconst monitor = createTaskMonitor();\nawait monitor.moveTaskToStage(taskId, workflowId, 'In Progress');\n```\n\n**Add task to stage:**\n```typescript\nawait client.workflows.addTaskToStage(workflowId, stageId, taskId);\n\n// Add multiple tasks\nawait client.workflows.addTasksToStage(workflowId, stageId, [taskId1, taskId2]);\n```\n</moving_tasks>\n\n<project_workflow>\n## Project Workflow Management\n\n**Get active workflow for project:**\n```typescript\nconst workflow = await client.projects.getActiveWorkflow(projectId);\nif (workflow) {\n  console.log(`Active: ${workflow.id} - ${workflow.name}`);\n}\n```\n\n**Apply workflow to project:**\n```typescript\nawait client.projects.applyWorkflow(projectId, workflowId);\n```\n\n**Remove workflow from project:**\n```typescript\nawait client.projects.removeWorkflow(projectId, workflowId);\n```\n</project_workflow>\n\n<common_patterns>\n## Common Patterns\n\n**Get all stages and their tasks for a project:**\n```typescript\n// 1. Get project's workflow\nconst workflow = await client.projects.getActiveWorkflow(projectId);\nif (!workflow) throw new Error('No workflow');\n\n// 2. Get stages\nconst stages = await client.workflows.getStages(workflow.id);\n\n// 3. Get tasks per stage\nfor (const stage of stages) {\n  const response = await client.workflows.getStageTasks(workflow.id, stage.id);\n  console.log(`\\n${stage.name}: ${response.tasks.length} tasks`);\n  for (const task of response.tasks) {\n    console.log(`  - ${task.name}`);\n  }\n}\n```\n\n**Move task through workflow:**\n```typescript\nconst monitor = createTaskMonitor();\n\n// Start \u2192 In Progress\nawait monitor.moveTaskToStage(taskId, workflowId, 'In Progress');\n\n// ... do work ...\n\n// In Progress \u2192 Review\nawait monitor.moveTaskToStage(taskId, workflowId, 'Review');\n\n// Review \u2192 Done\nawait monitor.moveTaskToStage(taskId, workflowId, 'Done');\n```\n</common_patterns>\n"
+    },
+    "tool_response": {
+      "type": "create",
+      "filePath": "/Users/dalton/projects/teamwork/.claude/skills/manage-teamwork/references/workflow-operations.md",
+      "content": "<workflow_concepts>\n## Workflows and Stages\n\nWorkflows are Kanban-style boards with stages (columns).\n\n```\nProject\n  \u2514\u2500\u2500 Workflow (e.g., \"Sprint Board\")\n        \u251c\u2500\u2500 Stage 1: \"To Do\"\n        \u251c\u2500\u2500 Stage 2: \"In Progress\"\n        \u251c\u2500\u2500 Stage 3: \"Review\"\n        \u2514\u2500\u2500 Stage 4: \"Done\"\n```\n\nTasks can be placed in stages and moved between them.\n</workflow_concepts>\n\n<listing_workflows>\n## Listing Workflows\n\n```typescript\n// All workflows\nconst response = await client.workflows.list({\n  include: ['stages'],\n  pageSize: 50,\n});\n\n// Workflows for a project\nconst projectWorkflows = await client.workflows.listByProject(projectId, ['stages']);\n\n// Get single workflow\nconst workflow = await client.workflows.get(workflowId, ['stages']);\n```\n</listing_workflows>\n\n<list_options>\n## Workflow List Options\n\n| Option | Type | Description |\n|--------|------|-------------|\n| `projectIds` | `number[]` | Filter by projects |\n| `workflowIds` | `number[]` | Filter by workflow IDs |\n| `stageNames` | `string[]` | Filter by stage names |\n| `searchTerm` | `string` | Search term |\n| `include` | `string[]` | Include: `stages`, `projects`, `users`, `teams`, `companies` |\n| `onlyDefaultWorkflow` | `boolean` | Only return default workflow |\n| `includeArchived` | `boolean` | Include archived workflows |\n| `page` | `number` | Page number |\n| `pageSize` | `number` | Items per page |\n</list_options>\n\n<stage_operations>\n## Stage Operations\n\n**Get stages for a workflow:**\n```typescript\nconst stages = await client.workflows.getStages(workflowId);\nfor (const stage of stages) {\n  console.log(`${stage.id}: ${stage.name}`);\n}\n```\n\n**Get single stage:**\n```typescript\nconst stage = await client.workflows.getStage(workflowId, stageId);\n```\n\n**Find stage by name:**\n```typescript\nconst stage = await client.workflows.findStageByName(workflowId, 'In Progress');\nif (stage) {\n  console.log(`Stage ID: ${stage.id}`);\n}\n```\n</stage_operations>\n\n<stage_tasks>\n## Tasks in Stages\n\n**Get tasks in a stage:**\n```typescript\nconst response = await client.workflows.getStageTasks(workflowId, stageId, {\n  include: ['tags', 'assignees'],\n  pageSize: 50,\n});\n\nfor (const task of response.tasks) {\n  console.log(`- ${task.name}`);\n}\n```\n\n**Get backlog (tasks not in any stage):**\n```typescript\nconst backlog = await client.workflows.getBacklogTasks(workflowId, {\n  include: ['tags'],\n});\n```\n\n**Get all tasks across all stages:**\n```typescript\nconst allTasks = await client.workflows.getAllWorkflowTasks(workflowId, {\n  include: ['tags', 'assignees'],\n});\n// Returns Map<stageId, TaskListResponse>\n```\n</stage_tasks>\n\n<moving_tasks>\n## Moving Tasks Between Stages\n\n**By stage ID:**\n```typescript\nawait client.workflows.moveTaskToStage(\n  taskId,\n  workflowId,\n  stageId,\n  positionAfterCard  // optional: position in column\n);\n```\n\n**By stage name (using monitor):**\n```typescript\nconst monitor = createTaskMonitor();\nawait monitor.moveTaskToStage(taskId, workflowId, 'In Progress');\n```\n\n**Add task to stage:**\n```typescript\nawait client.workflows.addTaskToStage(workflowId, stageId, taskId);\n\n// Add multiple tasks\nawait client.workflows.addTasksToStage(workflowId, stageId, [taskId1, taskId2]);\n```\n</moving_tasks>\n\n<project_workflow>\n## Project Workflow Management\n\n**Get active workflow for project:**\n```typescript\nconst workflow = await client.projects.getActiveWorkflow(projectId);\nif (workflow) {\n  console.log(`Active: ${workflow.id} - ${workflow.name}`);\n}\n```\n\n**Apply workflow to project:**\n```typescript\nawait client.projects.applyWorkflow(projectId, workflowId);\n```\n\n**Remove workflow from project:**\n```typescript\nawait client.projects.removeWorkflow(projectId, workflowId);\n```\n</project_workflow>\n\n<common_patterns>\n## Common Patterns\n\n**Get all stages and their tasks for a project:**\n```typescript\n// 1. Get project's workflow\nconst workflow = await client.projects.getActiveWorkflow(projectId);\nif (!workflow) throw new Error('No workflow');\n\n// 2. Get stages\nconst stages = await client.workflows.getStages(workflow.id);\n\n// 3. Get tasks per stage\nfor (const stage of stages) {\n  const response = await client.workflows.getStageTasks(workflow.id, stage.id);\n  console.log(`\\n${stage.name}: ${response.tasks.length} tasks`);\n  for (const task of response.tasks) {\n    console.log(`  - ${task.name}`);\n  }\n}\n```\n\n**Move task through workflow:**\n```typescript\nconst monitor = createTaskMonitor();\n\n// Start \u2192 In Progress\nawait monitor.moveTaskToStage(taskId, workflowId, 'In Progress');\n\n// ... do work ...\n\n// In Progress \u2192 Review\nawait monitor.moveTaskToStage(taskId, workflowId, 'Review');\n\n// Review \u2192 Done\nawait monitor.moveTaskToStage(taskId, workflowId, 'Done');\n```\n</common_patterns>\n",
+      "structuredPatch": [],
+      "originalFile": null
+    },
+    "tool_use_id": "toolu_01L5diuCXdzHCdm3ZUDVA9BC"
+  },
+  {
+    "session_id": "493cb71e-2a7b-4173-9836-030471146dc9",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/493cb71e-2a7b-4173-9836-030471146dc9.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PostToolUse",
+    "tool_name": "TodoWrite",
+    "tool_input": {
+      "todos": [
+        {
+          "content": "Gather requirements and understand API client",
+          "status": "completed",
+          "activeForm": "Gathering requirements"
+        },
+        {
+          "content": "Decide skill structure (router vs simple)",
+          "status": "completed",
+          "activeForm": "Deciding skill structure"
+        },
+        {
+          "content": "Create skill directory structure",
+          "status": "completed",
+          "activeForm": "Creating skill directories"
+        },
+        {
+          "content": "Write SKILL.md (router + essential principles)",
+          "status": "completed",
+          "activeForm": "Writing SKILL.md"
+        },
+        {
+          "content": "Write workflow files for each operation",
+          "status": "completed",
+          "activeForm": "Writing workflow files"
+        },
+        {
+          "content": "Write reference files with API patterns",
+          "status": "completed",
+          "activeForm": "Writing reference files"
+        },
+        {
+          "content": "Validate structure and test skill",
+          "status": "in_progress",
+          "activeForm": "Validating and testing skill"
+        }
+      ]
+    },
+    "tool_response": {
+      "oldTodos": [
+        {
+          "content": "Gather requirements and understand API client",
+          "status": "completed",
+          "activeForm": "Gathering requirements"
+        },
+        {
+          "content": "Decide skill structure (router vs simple)",
+          "status": "completed",
+          "activeForm": "Deciding skill structure"
+        },
+        {
+          "content": "Create skill directory structure",
+          "status": "completed",
+          "activeForm": "Creating skill directories"
+        },
+        {
+          "content": "Write SKILL.md (router + essential principles)",
+          "status": "completed",
+          "activeForm": "Writing SKILL.md"
+        },
+        {
+          "content": "Write workflow files for each operation",
+          "status": "completed",
+          "activeForm": "Writing workflow files"
+        },
+        {
+          "content": "Write reference files with API patterns",
+          "status": "in_progress",
+          "activeForm": "Writing reference files"
+        },
+        {
+          "content": "Validate structure and test skill",
+          "status": "pending",
+          "activeForm": "Validating and testing skill"
+        }
+      ],
+      "newTodos": [
+        {
+          "content": "Gather requirements and understand API client",
+          "status": "completed",
+          "activeForm": "Gathering requirements"
+        },
+        {
+          "content": "Decide skill structure (router vs simple)",
+          "status": "completed",
+          "activeForm": "Deciding skill structure"
+        },
+        {
+          "content": "Create skill directory structure",
+          "status": "completed",
+          "activeForm": "Creating skill directories"
+        },
+        {
+          "content": "Write SKILL.md (router + essential principles)",
+          "status": "completed",
+          "activeForm": "Writing SKILL.md"
+        },
+        {
+          "content": "Write workflow files for each operation",
+          "status": "completed",
+          "activeForm": "Writing workflow files"
+        },
+        {
+          "content": "Write reference files with API patterns",
+          "status": "completed",
+          "activeForm": "Writing reference files"
+        },
+        {
+          "content": "Validate structure and test skill",
+          "status": "in_progress",
+          "activeForm": "Validating and testing skill"
+        }
+      ]
+    },
+    "tool_use_id": "toolu_011ukftB3W4FCbYj2MTRcj48"
+  },
+  {
+    "session_id": "493cb71e-2a7b-4173-9836-030471146dc9",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/493cb71e-2a7b-4173-9836-030471146dc9.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PostToolUse",
+    "tool_name": "Bash",
+    "tool_input": {
+      "command": "wc -l /Users/dalton/projects/teamwork/.claude/skills/manage-teamwork/SKILL.md",
+      "description": "Count lines in SKILL.md"
+    },
+    "tool_response": {
+      "stdout": "     151 /Users/dalton/projects/teamwork/.claude/skills/manage-teamwork/SKILL.md",
+      "stderr": "",
+      "interrupted": false,
+      "isImage": false
+    },
+    "tool_use_id": "toolu_01X9VKkJEcg34adCa5DHyGPc"
+  },
+  {
+    "session_id": "493cb71e-2a7b-4173-9836-030471146dc9",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/493cb71e-2a7b-4173-9836-030471146dc9.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PostToolUse",
+    "tool_name": "Bash",
+    "tool_input": {
+      "command": "ls -la /Users/dalton/projects/teamwork/.claude/skills/manage-teamwork/workflows/",
+      "description": "List workflow files"
+    },
+    "tool_response": {
+      "stdout": "total 56\ndrwxr-xr-x@ 9 dalton  staff   288 Dec  1 11:40 .\ndrwxr-xr-x@ 5 dalton  staff   160 Dec  1 11:38 ..\n-rw-------@ 1 dalton  staff  2500 Dec  1 11:40 comment-on-task.md\n-rw-------@ 1 dalton  staff  2728 Dec  1 11:40 create-task.md\n-rw-------@ 1 dalton  staff  1686 Dec  1 11:40 create-tasklist.md\n-rw-------@ 1 dalton  staff  2433 Dec  1 11:40 get-tasks.md\n-rw-------@ 1 dalton  staff  2426 Dec  1 11:40 log-time.md\n-rw-------@ 1 dalton  staff  3055 Dec  1 11:40 manage-projects.md\n-rw-------@ 1 dalton  staff  2561 Dec  1 11:40 move-task.md",
+      "stderr": "",
+      "interrupted": false,
+      "isImage": false
+    },
+    "tool_use_id": "toolu_01XWagxMGk9YknVrTrmJ9kXL"
+  },
+  {
+    "session_id": "493cb71e-2a7b-4173-9836-030471146dc9",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/493cb71e-2a7b-4173-9836-030471146dc9.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PostToolUse",
+    "tool_name": "Bash",
+    "tool_input": {
+      "command": "ls -la /Users/dalton/projects/teamwork/.claude/skills/manage-teamwork/",
+      "description": "List skill directory structure"
+    },
+    "tool_response": {
+      "stdout": "total 16\ndrwxr-xr-x@ 5 dalton  staff   160 Dec  1 11:38 .\ndrwxr-xr-x@ 3 dalton  staff    96 Dec  1 11:38 ..\ndrwxr-xr-x@ 5 dalton  staff   160 Dec  1 11:41 references\n-rw-------@ 1 dalton  staff  4509 Dec  1 11:38 SKILL.md\ndrwxr-xr-x@ 9 dalton  staff   288 Dec  1 11:40 workflows",
+      "stderr": "",
+      "interrupted": false,
+      "isImage": false
+    },
+    "tool_use_id": "toolu_014dBrGKBwbocpn1gxniY7HX"
+  },
+  {
+    "session_id": "493cb71e-2a7b-4173-9836-030471146dc9",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/493cb71e-2a7b-4173-9836-030471146dc9.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PostToolUse",
+    "tool_name": "Bash",
+    "tool_input": {
+      "command": "ls -la /Users/dalton/projects/teamwork/.claude/skills/manage-teamwork/references/",
+      "description": "List reference files"
+    },
+    "tool_response": {
+      "stdout": "total 40\ndrwxr-xr-x@ 5 dalton  staff   160 Dec  1 11:41 .\ndrwxr-xr-x@ 5 dalton  staff   160 Dec  1 11:38 ..\n-rw-------@ 1 dalton  staff  3882 Dec  1 11:41 api-client.md\n-rw-------@ 1 dalton  staff  4581 Dec  1 11:41 task-operations.md\n-rw-------@ 1 dalton  staff  4708 Dec  1 11:41 workflow-operations.md",
+      "stderr": "",
+      "interrupted": false,
+      "isImage": false
+    },
+    "tool_use_id": "toolu_019y3YYDRfDDvpQroVRoChzT"
+  },
+  {
+    "session_id": "493cb71e-2a7b-4173-9836-030471146dc9",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/493cb71e-2a7b-4173-9836-030471146dc9.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PostToolUse",
+    "tool_name": "Write",
+    "tool_input": {
+      "file_path": "/Users/dalton/projects/teamwork/.claude/commands/manage-teamwork.md",
+      "content": "---\ndescription: Manage Teamwork.com projects, tasks, and workflows\nargument-hint: [operation or query]\nallowed-tools: Skill(manage-teamwork)\n---\n\nInvoke the manage-teamwork skill for: $ARGUMENTS\n"
+    },
+    "tool_response": {
+      "type": "create",
+      "filePath": "/Users/dalton/projects/teamwork/.claude/commands/manage-teamwork.md",
+      "content": "---\ndescription: Manage Teamwork.com projects, tasks, and workflows\nargument-hint: [operation or query]\nallowed-tools: Skill(manage-teamwork)\n---\n\nInvoke the manage-teamwork skill for: $ARGUMENTS\n",
+      "structuredPatch": [],
+      "originalFile": null
+    },
+    "tool_use_id": "toolu_01F35ecCwZQ6HPPUR8Rmm8ak"
+  },
+  {
+    "session_id": "493cb71e-2a7b-4173-9836-030471146dc9",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/493cb71e-2a7b-4173-9836-030471146dc9.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PostToolUse",
+    "tool_name": "TodoWrite",
+    "tool_input": {
+      "todos": [
+        {
+          "content": "Gather requirements and understand API client",
+          "status": "completed",
+          "activeForm": "Gathering requirements"
+        },
+        {
+          "content": "Decide skill structure (router vs simple)",
+          "status": "completed",
+          "activeForm": "Deciding skill structure"
+        },
+        {
+          "content": "Create skill directory structure",
+          "status": "completed",
+          "activeForm": "Creating skill directories"
+        },
+        {
+          "content": "Write SKILL.md (router + essential principles)",
+          "status": "completed",
+          "activeForm": "Writing SKILL.md"
+        },
+        {
+          "content": "Write workflow files for each operation",
+          "status": "completed",
+          "activeForm": "Writing workflow files"
+        },
+        {
+          "content": "Write reference files with API patterns",
+          "status": "completed",
+          "activeForm": "Writing reference files"
+        },
+        {
+          "content": "Validate structure and test skill",
+          "status": "completed",
+          "activeForm": "Validating and testing skill"
+        }
+      ]
+    },
+    "tool_response": {
+      "oldTodos": [
+        {
+          "content": "Gather requirements and understand API client",
+          "status": "completed",
+          "activeForm": "Gathering requirements"
+        },
+        {
+          "content": "Decide skill structure (router vs simple)",
+          "status": "completed",
+          "activeForm": "Deciding skill structure"
+        },
+        {
+          "content": "Create skill directory structure",
+          "status": "completed",
+          "activeForm": "Creating skill directories"
+        },
+        {
+          "content": "Write SKILL.md (router + essential principles)",
+          "status": "completed",
+          "activeForm": "Writing SKILL.md"
+        },
+        {
+          "content": "Write workflow files for each operation",
+          "status": "completed",
+          "activeForm": "Writing workflow files"
+        },
+        {
+          "content": "Write reference files with API patterns",
+          "status": "completed",
+          "activeForm": "Writing reference files"
+        },
+        {
+          "content": "Validate structure and test skill",
+          "status": "in_progress",
+          "activeForm": "Validating and testing skill"
+        }
+      ],
+      "newTodos": [
+        {
+          "content": "Gather requirements and understand API client",
+          "status": "completed",
+          "activeForm": "Gathering requirements"
+        },
+        {
+          "content": "Decide skill structure (router vs simple)",
+          "status": "completed",
+          "activeForm": "Deciding skill structure"
+        },
+        {
+          "content": "Create skill directory structure",
+          "status": "completed",
+          "activeForm": "Creating skill directories"
+        },
+        {
+          "content": "Write SKILL.md (router + essential principles)",
+          "status": "completed",
+          "activeForm": "Writing SKILL.md"
+        },
+        {
+          "content": "Write workflow files for each operation",
+          "status": "completed",
+          "activeForm": "Writing workflow files"
+        },
+        {
+          "content": "Write reference files with API patterns",
+          "status": "completed",
+          "activeForm": "Writing reference files"
+        },
+        {
+          "content": "Validate structure and test skill",
+          "status": "completed",
+          "activeForm": "Validating and testing skill"
+        }
+      ]
+    },
+    "tool_use_id": "toolu_01ArqzyEZ8PgK67EdPf2f2Kx"
+  },
+  {
+    "session_id": "a0d88b67-5b55-438c-92cd-05637fa94ef8",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/a0d88b67-5b55-438c-92cd-05637fa94ef8.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PostToolUse",
+    "tool_name": "Read",
+    "tool_input": {
+      "file_path": "/Users/dalton/projects/teamwork/apps/teamwork_frontend/package.json"
+    },
+    "tool_response": {
+      "type": "text",
+      "file": {
+        "filePath": "/Users/dalton/projects/teamwork/apps/teamwork_frontend/package.json",
+        "content": "{\n  \"name\": \"teamwork-ai-flow\",\n  \"private\": true,\n  \"version\": \"0.0.0\",\n  \"type\": \"module\",\n  \"scripts\": {\n    \"dev\": \"vite\",\n    \"build\": \"vite build\",\n    \"preview\": \"vite preview\"\n  },\n  \"dependencies\": {\n    \"lucide-react\": \"^0.555.0\",\n    \"react\": \"^19.2.0\",\n    \"@google/genai\": \"^1.30.0\",\n    \"react-dom\": \"^19.2.0\"\n  },\n  \"devDependencies\": {\n    \"@types/node\": \"^22.14.0\",\n    \"@vitejs/plugin-react\": \"^5.0.0\",\n    \"typescript\": \"~5.8.2\",\n    \"vite\": \"^6.2.0\"\n  }\n}\n",
+        "numLines": 24,
+        "startLine": 1,
+        "totalLines": 24
+      }
+    },
+    "tool_use_id": "toolu_01664AQP1Dr7svHNCUCzFiyh"
+  },
+  {
+    "session_id": "a0d88b67-5b55-438c-92cd-05637fa94ef8",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/a0d88b67-5b55-438c-92cd-05637fa94ef8.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PostToolUse",
+    "tool_name": "Read",
+    "tool_input": {
+      "file_path": "/Users/dalton/projects/teamwork/apps/teamwork_frontend/vite.config.ts"
+    },
+    "tool_response": {
+      "type": "text",
+      "file": {
+        "filePath": "/Users/dalton/projects/teamwork/apps/teamwork_frontend/vite.config.ts",
+        "content": "import path from 'path';\nimport { defineConfig, loadEnv } from 'vite';\nimport react from '@vitejs/plugin-react';\n\nexport default defineConfig(({ mode }) => {\n    const env = loadEnv(mode, '.', '');\n    return {\n      server: {\n        port: 3000,\n        host: '0.0.0.0',\n      },\n      plugins: [react()],\n      define: {\n        'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),\n        'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)\n      },\n      resolve: {\n        alias: {\n          '@': path.resolve(__dirname, '.'),\n        }\n      }\n    };\n});\n",
+        "numLines": 24,
+        "startLine": 1,
+        "totalLines": 24
+      }
+    },
+    "tool_use_id": "toolu_01RfXvXHCMh5EJ1nbEN5aSps"
+  },
+  {
+    "session_id": "a0d88b67-5b55-438c-92cd-05637fa94ef8",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/a0d88b67-5b55-438c-92cd-05637fa94ef8.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PostToolUse",
+    "tool_name": "Edit",
+    "tool_input": {
+      "file_path": "/Users/dalton/projects/teamwork/apps/teamwork_frontend/vite.config.ts",
+      "old_string": "      server: {\n        port: 3000,",
+      "new_string": "      server: {\n        port: 3021,"
+    },
+    "tool_response": {
+      "filePath": "/Users/dalton/projects/teamwork/apps/teamwork_frontend/vite.config.ts",
+      "oldString": "      server: {\n        port: 3000,",
+      "newString": "      server: {\n        port: 3021,",
+      "originalFile": "import path from 'path';\nimport { defineConfig, loadEnv } from 'vite';\nimport react from '@vitejs/plugin-react';\n\nexport default defineConfig(({ mode }) => {\n    const env = loadEnv(mode, '.', '');\n    return {\n      server: {\n        port: 3000,\n        host: '0.0.0.0',\n      },\n      plugins: [react()],\n      define: {\n        'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),\n        'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)\n      },\n      resolve: {\n        alias: {\n          '@': path.resolve(__dirname, '.'),\n        }\n      }\n    };\n});\n",
+      "structuredPatch": [
+        {
+          "oldStart": 6,
+          "oldLines": 7,
+          "newStart": 6,
+          "newLines": 7,
+          "lines": [
+            "     const env = loadEnv(mode, '.', '');",
+            "     return {",
+            "       server: {",
+            "-        port: 3000,",
+            "+        port: 3021,",
+            "         host: '0.0.0.0',",
+            "       },",
+            "       plugins: [react()],"
+          ]
+        }
+      ],
+      "userModified": false,
+      "replaceAll": false
+    },
+    "tool_use_id": "toolu_01D5ksuagi7nsTgayqmvy9Zz"
+  }
+]

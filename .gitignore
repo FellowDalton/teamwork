@@ -1,3 +1,15 @@
+# Environment Variables
+.env
+.env.local
+.env.*.local
+*.pyc
+*.pyo
+*.pyd
+*.pyw
+*.pyz
+*.pywz
+*.pyzw
+*.pyz
 # Python
 __pycache__/
 *.py[cod]
@@ -16,136 +28,79 @@ parts/
 sdist/
 var/
 wheels/
+pip-wheel-metadata/
 share/python-wheels/
 *.egg-info/
 .installed.cfg
 *.egg
 MANIFEST
-.pytest_cache/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-*.py,cover
-.hypothesis/
-.tox/
-.nox/
-.env
+*.manifest
+*.spec
+pip-log.txt
+pip-delete-this-directory.txt
 .venv
-env/
 venv/
 ENV/
-env.bak/
-venv.bak/
-.mypy_cache/
-.dmypy.json
-dmypy.json
-.pyre/
-.pytype/
-cython_debug/
-.ruff_cache/
-.pdm.toml
-.pdm-python
-.pdm-build/
-__pypackages__/
+env/
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.hypothesis/
+*.cover
+*.log
 
-# TypeScript / JavaScript
+# TypeScript / Node.js
 node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
 *.tsbuildinfo
-.npm
-.eslintcache
-.node_repl_history
-*.tgz
-.yarn-integrity
-.cache/
-.parcel-cache/
+dist/
+build/
 .next/
 out/
 .nuxt/
-dist/
 .cache/
-.vuepress/dist
+.parcel-cache/
+.vercel
+.output
 .temp
-.docusaurus
-.serverless/
-.fusebox/
-.dynamodb/
-.tern-port
-.vscode-test
-.yarn/cache
-.yarn/unplugged
-.yarn/build-state.yml
-.yarn/install-state.gz
-.pnp.*
+.tmp
 
-# Bun
-bun.lockb
-.bun/
-
-# Vue.js
-.DS_Store
-node_modules/
-dist/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
-.idea
+# IDEs and Editors
 .vscode/
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
-*.local
-
-# Environment variables
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-
-# Logs
-logs/
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
-
-# OS files
-.DS_Store
-Thumbs.db
-*.swp
-*~
-
-# IDE
 .idea/
-.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
 *.sublime-project
 *.sublime-workspace
 
-# Testing
-coverage/
-.nyc_output/
+# OS
+Thumbs.db
 
-# Misc
-*.pem
-.vercel
-*.swo
-*.swn
+
+ai_docs/*
+!ai_docs/README.md
 
 .mcp.json
 
-deep_specs/
-deep_docs/
+temp/
+tmp/
 
-agents/
-trees/
+apps/sandbox_agent_working_dir/specs/
 
-live_feed_from_adw_trigger_cron_notion_tasks.txt
+adws/
+
+*.pyc
+*.pyo
+*.pyd
+*.pyw
+*.pyz
+*.pywz
+*.pyzw
+*.pyz

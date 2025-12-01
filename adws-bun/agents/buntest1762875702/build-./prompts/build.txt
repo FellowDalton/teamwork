@@ -1,0 +1,1 @@
+/build Add a simple goodbye() function to src/modules/utils.ts that returns 'Goodbye!' .

@@ -1,0 +1,59 @@
+[
+  {
+    "task_id": "26735888",
+    "title": "Initialize Vue Teamwork Dashboard - API Layer",
+    "status": "new",
+    "description": "Create the foundation for a Vue.js dashboard that integrates with Teamwork.\n\nDeliverables:\n- Initialize Vite + Vue 3 + TypeScript project in apps/teamwork_dashboard\n- Set up Teamwork MCP integration with composables\n- Create API composables for task fetching (useTeamworkTasks, useTeamworkProjects)\n- Implement type definitions for Teamwork entities (Task, Project, Status, Tag, Comment, TimeLog)\n- Add environment configuration for API endpoints\n- Set up Tailwind CSS for styling\n- Configure routing (Vue Router)\n- Basic app shell with navigation\n\nTechnical Requirements:\n- Use TypeScript strict mode\n- Follow Vue 3 Composition API patterns\n- Implement proper error handling\n- Add loading states for all API calls\n\nexecute",
+    "tags": {
+      "prototype": "vite_vue",
+      "model": "sonnet",
+      "app": "teamwork_dashboard"
+    },
+    "execution_trigger": "execute",
+    "task_prompt": "Create the foundation for a Vue.js dashboard that integrates with Teamwork.\n\nDeliverables:\n- Initialize Vite + Vue 3 + TypeScript project in apps/teamwork_dashboard\n- Set up Teamwork MCP integration with composables\n- Create API composables for task fetching (useTeamworkTasks, useTeamworkProjects)\n- Implement type definitions for Teamwork entities (Task, Project, Status, Tag, Comment, TimeLog)\n- Add environment configuration for API endpoints\n- Set up Tailwind CSS for styling\n- Configure routing (Vue Router)\n- Basic app shell with navigation\n\nTechnical Requirements:\n- Use TypeScript strict mode\n- Follow Vue 3 Composition API patterns\n- Implement proper error handling\n- Add loading states for all API calls",
+    "assigned_to": null,
+    "created_time": "2025-11-05T18:38:16Z",
+    "due_date": null,
+    "project_id": "805682",
+    "priority": "high",
+    "progress": 0
+  },
+  {
+    "task_id": "26735889",
+    "title": "Build Task List View Component",
+    "status": "new",
+    "description": "Create the main task list display component with basic filtering.\n\nRequirements:\n- Data table showing: ID, Title, Status, Priority, Tags, Due Date, Assignees\n- Search filter by title (debounced input)\n- Status filter (multi-select dropdown with all available statuses)\n- Priority filter (dropdown: low/medium/high)\n- Project filter (multi-select dropdown)\n- Loading state with skeleton loaders\n- Error handling with retry button\n- Responsive design (mobile + desktop)\n- Sort by column headers (click to sort)\n- Pagination (25/50/100 per page)\n\nTechnical Details:\n- Use the useTeamworkTasks composable from Task 1\n- Implement client-side filtering and sorting\n- Store filter state in URL query params (shareable links)\n- Add keyboard navigation (arrow keys for row selection)\n\nexecute",
+    "tags": {
+      "prototype": "vite_vue",
+      "model": "sonnet",
+      "app": "teamwork_dashboard"
+    },
+    "execution_trigger": "execute",
+    "task_prompt": "Create the main task list display component with basic filtering.\n\nRequirements:\n- Data table showing: ID, Title, Status, Priority, Tags, Due Date, Assignees\n- Search filter by title (debounced input)\n- Status filter (multi-select dropdown with all available statuses)\n- Priority filter (dropdown: low/medium/high)\n- Project filter (multi-select dropdown)\n- Loading state with skeleton loaders\n- Error handling with retry button\n- Responsive design (mobile + desktop)\n- Sort by column headers (click to sort)\n- Pagination (25/50/100 per page)\n\nTechnical Details:\n- Use the useTeamworkTasks composable from Task 1\n- Implement client-side filtering and sorting\n- Store filter state in URL query params (shareable links)\n- Add keyboard navigation (arrow keys for row selection)",
+    "assigned_to": null,
+    "created_time": "2025-11-05T18:38:16Z",
+    "due_date": null,
+    "project_id": "805682",
+    "priority": "high",
+    "progress": 0
+  },
+  {
+    "task_id": "26735890",
+    "title": "Create Task Detail Sidebar Component",
+    "status": "new",
+    "description": "Build a side panel that displays detailed task information.\n\nRequirements:\n- Slide-in panel from right side (smooth animation)\n- Display full task description with Markdown rendering\n- Show all metadata:\n  - Assignees (with avatars)\n  - Due date and start date\n  - Priority (with colored badge)\n  - Status (with colored badge)\n  - Tags (clickable for filtering)\n  - Progress percentage\n  - Estimated time vs actual time\n- List comments section (read-only for now, functionality in Task 5)\n- Display task history/activity timeline\n- Show related tasks (predecessors/successors)\n- Edit button (non-functional placeholder)\n- Close button (X icon)\n\nTechnical Details:\n- Use Teleport for modal overlay\n- Implement focus trap for accessibility\n- Escape key to close\n- Click outside to close (optional)\n- Deep link support (/tasks/:taskId)\n\nexecute",
+    "tags": {
+      "prototype": "vite_vue",
+      "model": "sonnet",
+      "app": "teamwork_dashboard"
+    },
+    "execution_trigger": "execute",
+    "task_prompt": "Build a side panel that displays detailed task information.\n\nRequirements:\n- Slide-in panel from right side (smooth animation)\n- Display full task description with Markdown rendering\n- Show all metadata:\n  - Assignees (with avatars)\n  - Due date and start date\n  - Priority (with colored badge)\n  - Status (with colored badge)\n  - Tags (clickable for filtering)\n  - Progress percentage\n  - Estimated time vs actual time\n- List comments section (read-only for now, functionality in Task 5)\n- Display task history/activity timeline\n- Show related tasks (predecessors/successors)\n- Edit button (non-functional placeholder)\n- Close button (X icon)\n\nTechnical Details:\n- Use Teleport for modal overlay\n- Implement focus trap for accessibility\n- Escape key to close\n- Click outside to close (optional)\n- Deep link support (/tasks/:taskId)",
+    "assigned_to": null,
+    "created_time": "2025-11-05T18:38:17Z",
+    "due_date": null,
+    "project_id": "805682",
+    "priority": "medium",
+    "progress": 0
+  }
+]

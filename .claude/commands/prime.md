@@ -1,12 +1,17 @@
-# Prime
-Execute the `Run`, `Read` and `Report` sections to understand the codebase then summarize your understanding.
+# Purpose
 
-## Run
-git ls-files
+Follow the `Workflow` to understand the codebase and instructions then report your understanding.
 
-## Read
-README.md
-adws/README.md if it exists
+## Workflow
+
+@README.md
+@prompts/full_stack/
+@.claude/skills/agent-sandboxes/SKILL.md
+@.claude/skills/agent-sandboxes/sandbox_cli/src/main.py
+@.claude/skills/agent-sandboxes/prompts
+@prompts/full_stack/
+!`git ls-files`
 
 ## Report
-Summarize your understanding of the codebase.
+
+Your understanding of the codebase and instructions.

@@ -1,3 +1,9 @@
+---
+description: List tasks from a Teamwork project with minimal processing
+argument-hint: <project_id> [limit]
+allowed-tools: Skill(manage-teamwork)
+---
+
 # List Teamwork Tasks
 
 Simple command to list tasks from a Teamwork project with minimal processing.
