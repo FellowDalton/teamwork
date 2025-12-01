@@ -125,28 +125,26 @@ describe('utils', () => {
     });
 
     it('should return empty array when all vars present', () => {
-      process.env.ANTHROPIC_API_KEY = 'test-key';
       process.env.CLAUDE_CODE_PATH = '/usr/bin/claude';
 
-      const { missing } = checkEnvVars(['ANTHROPIC_API_KEY', 'CLAUDE_CODE_PATH']);
+      const { missing } = checkEnvVars(['CLAUDE_CODE_PATH']);
       expect(missing).toEqual([]);
     });
 
     it('should return missing variable names', () => {
-      delete process.env.ANTHROPIC_API_KEY;
-      process.env.CLAUDE_CODE_PATH = '/usr/bin/claude';
+      delete process.env.CLAUDE_CODE_PATH;
+      process.env.SOME_OTHER_VAR = 'test';
 
-      const { missing } = checkEnvVars(['ANTHROPIC_API_KEY', 'CLAUDE_CODE_PATH']);
-      expect(missing).toEqual(['ANTHROPIC_API_KEY']);
+      const { missing } = checkEnvVars(['SOME_OTHER_VAR', 'CLAUDE_CODE_PATH']);
+      expect(missing).toEqual(['CLAUDE_CODE_PATH']);
     });
 
-    it('should check default vars when none provided', () => {
-      delete process.env.ANTHROPIC_API_KEY;
+    it('should check default vars when none provided (only CLAUDE_CODE_PATH)', () => {
       delete process.env.CLAUDE_CODE_PATH;
 
       const { missing } = checkEnvVars();
-      expect(missing).toContain('ANTHROPIC_API_KEY');
       expect(missing).toContain('CLAUDE_CODE_PATH');
+      expect(missing.length).toBe(1);
     });
 
     it('should work with logger', () => {
@@ -271,10 +269,10 @@ describe('utils', () => {
       process.env = { ...originalEnv };
     });
 
-    it('should include ANTHROPIC_API_KEY', () => {
+    it('should NOT include ANTHROPIC_API_KEY (to use Claude Code subscription)', () => {
       process.env.ANTHROPIC_API_KEY = 'test-key';
       const env = getSafeSubprocessEnv();
-      expect(env.ANTHROPIC_API_KEY).toBe('test-key');
+      expect(env.ANTHROPIC_API_KEY).toBeUndefined();
     });
 
     it('should include CLAUDE_CODE_PATH with default', () => {

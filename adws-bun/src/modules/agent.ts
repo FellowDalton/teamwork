@@ -36,8 +36,10 @@ export function generateShortId(): string {
  */
 export function getSafeSubprocessEnv(): Record<string, string> {
   const safeEnvVars: Record<string, string | undefined> = {
-    // Anthropic Configuration (required)
-    ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
+    // NOTE: ANTHROPIC_API_KEY is intentionally NOT included here!
+    // When running Claude Code with a subscription, passing ANTHROPIC_API_KEY
+    // forces it into API mode which consumes credits instead of using the subscription.
+    // Only pass this if you explicitly want API mode.
 
     // Claude Code Configuration
     CLAUDE_CODE_PATH: process.env.CLAUDE_CODE_PATH || 'claude',

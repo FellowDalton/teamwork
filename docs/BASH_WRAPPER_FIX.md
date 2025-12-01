@@ -123,13 +123,13 @@ This matches how BMAD works and avoids the rate limiting detection.
 ### Simple Test
 ```bash
 # Test bash wrapper directly
-./test_bash_wrapper_direct.sh
+./scripts/tests/test_bash_wrapper_direct.sh
 ```
 
 ### Full Workflow Test
 ```bash
 # Test via Python workflow
-./test_bun_workflows_manual.sh
+./scripts/tests/test_bun_workflows_manual.sh
 ```
 
 ## Next Steps

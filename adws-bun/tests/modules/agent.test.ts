@@ -108,10 +108,10 @@ describe('agent', () => {
       process.env = { ...originalEnv };
     });
 
-    it('should include ANTHROPIC_API_KEY', () => {
+    it('should NOT include ANTHROPIC_API_KEY (to use Claude Code subscription)', () => {
       process.env.ANTHROPIC_API_KEY = 'test-key';
       const env = getSafeSubprocessEnv();
-      expect(env.ANTHROPIC_API_KEY).toBe('test-key');
+      expect(env.ANTHROPIC_API_KEY).toBeUndefined();
     });
 
     it('should use default CLAUDE_CODE_PATH', () => {

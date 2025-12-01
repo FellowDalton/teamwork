@@ -696,13 +696,13 @@ export const TeamworkTaskSchema = z.object({
   /** Extracted task prompt for agent processing */
   task_prompt: z.string().optional(),
   /** User assigned to this task */
-  assigned_to: z.string().optional(),
+  assigned_to: z.string().nullable().optional(),
   /** Task creation timestamp */
-  created_time: z.date().optional(),
+  created_time: z.string().optional(),
   /** Last modification timestamp */
-  last_edited_time: z.date().optional(),
+  last_edited_time: z.string().optional(),
   /** Task due date */
-  due_date: z.string().optional(),
+  due_date: z.string().nullable().optional(),
   /** Task priority */
   priority: z.string().optional(),
   /** Estimated time in minutes */

@@ -202,7 +202,7 @@ export function parseJson<T extends z.ZodType>(text: string, schema?: T): unknow
 
   // Try to find JSON array or object boundaries if not already clean
   if (!jsonStr.startsWith('[') && !jsonStr.startsWith('{')) {
-    // Look for JSON array
+    // Look for JSON array (prefer arrays as they're more common in API responses)
     const arrayStart = jsonStr.indexOf('[');
     const arrayEnd = jsonStr.lastIndexOf(']');
 
@@ -219,6 +219,32 @@ export function parseJson<T extends z.ZodType>(text: string, schema?: T): unknow
       if (objEnd !== -1) {
         jsonStr = jsonStr.slice(objStart, objEnd + 1);
       }
+    }
+  }
+
+  // Additional fallback: if still no valid JSON start, try more aggressive extraction
+  // This handles cases where there's prose before the JSON
+  if (!jsonStr.startsWith('[') && !jsonStr.startsWith('{')) {
+    // Look for first occurrence of [ or { and last occurrence of ] or }
+    const firstArrayIndex = jsonStr.indexOf('[');
+    const firstObjIndex = jsonStr.indexOf('{');
+    const lastArrayIndex = jsonStr.lastIndexOf(']');
+    const lastObjIndex = jsonStr.lastIndexOf('}');
+
+    // Find which delimiter appears first
+    const startIndex =
+      firstArrayIndex !== -1 && (firstObjIndex === -1 || firstArrayIndex < firstObjIndex)
+        ? firstArrayIndex
+        : firstObjIndex;
+
+    // Find which delimiter appears last
+    const endIndex =
+      lastArrayIndex !== -1 && lastArrayIndex > lastObjIndex
+        ? lastArrayIndex
+        : lastObjIndex;
+
+    if (startIndex !== -1 && endIndex !== -1 && startIndex < endIndex) {
+      jsonStr = jsonStr.slice(startIndex, endIndex + 1);
     }
   }
 
@@ -244,20 +270,23 @@ export function parseJson<T extends z.ZodType>(text: string, schema?: T): unknow
 /**
  * Check that required environment variables are set.
  *
+ * NOTE: ANTHROPIC_API_KEY is not required by default because Claude Code
+ * subscriptions don't need it. Only check for it if you're using API mode.
+ *
  * @param requiredVars - Array of required environment variable names
  * @param logger - Optional logger instance for error reporting
  * @returns Object with missing variable names (empty array if all present)
  *
  * @example
  * ```typescript
- * const { missing } = checkEnvVars(["ANTHROPIC_API_KEY", "CLAUDE_CODE_PATH"], logger);
+ * const { missing } = checkEnvVars(["CLAUDE_CODE_PATH"], logger);
  * if (missing.length > 0) {
  *   process.exit(1);
  * }
  * ```
  */
 export function checkEnvVars(
-  requiredVars: string[] = ['ANTHROPIC_API_KEY', 'CLAUDE_CODE_PATH'],
+  requiredVars: string[] = ['CLAUDE_CODE_PATH'],
   logger?: Logger
 ): { missing: string[] } {
   const missing = requiredVars.filter((varName) => !process.env[varName]);
@@ -339,8 +368,10 @@ export function formatWorktreeStatus(action: string, worktree: string, adwId?: s
  */
 export function getSafeSubprocessEnv(): Record<string, string> {
   const safeEnvVars: Record<string, string | undefined> = {
-    // Anthropic Configuration (required)
-    ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
+    // NOTE: ANTHROPIC_API_KEY is intentionally NOT included here!
+    // When running Claude Code with a subscription, passing ANTHROPIC_API_KEY
+    // forces it into API mode which consumes credits instead of using the subscription.
+    // Only pass this if you explicitly want API mode.
 
     // GitHub Configuration (optional)
     // GITHUB_PAT is optional - if not set, will use default gh auth

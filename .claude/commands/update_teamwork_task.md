@@ -72,14 +72,42 @@ Comments are formatted with emoji indicators and structured metadata:
   "model": "sonnet",
   "workflow": "plan-implement-update",
   "worktree_name": "proto-sentiment",
+  "workflow_stage": "Review",
   "result": "Implementation completed successfully...",
   "error": ""
 }
 ```
 
+### Optional Fields
+
+- **`workflow_stage`** (optional): Target workflow stage name (e.g., "Ready", "In progress", "Review", "Done")
+  - When provided, appends a workflow stage directive to the comment
+  - Format: `WORKFLOW: Move to "{stage_name}" stage`
+  - See `TEAMWORK_WORKFLOW_STAGES.md` for details on the workaround
+
 ## Comment Examples
 
-### Success Comment
+### Success Comment (with Workflow Stage)
+
+```markdown
+✅ **Status Update: Complete**
+- **ADW ID**: `abc12345`
+- **Commit Hash**: `a1b2c3d4`
+- **Timestamp**: 2025-01-15T14:45:00Z
+- **Model**: sonnet
+- **Workflow**: plan-implement-update
+- **Worktree**: `proto-sentiment`
+
+---
+
+**Result**: Implementation completed successfully. Created apps/sentiment_analyzer/ with full functionality.
+
+---
+
+⚠️ **WORKFLOW: Move to "Review" stage**
+```
+
+### Success Comment (without Workflow Stage)
 
 ```markdown
 ✅ **Status Update: Complete**
@@ -142,6 +170,14 @@ mcp__teamwork__twprojects-update_task(task_id, status=teamwork_status)
 - Add emoji based on status
 - Include ADW ID, timestamp, commit hash, etc.
 - Add result or error message
+- **If `workflow_stage` is provided**: Append workflow stage directive
+
+**Step 4a**: Append workflow stage directive (if provided):
+```markdown
+---
+
+⚠️ **WORKFLOW: Move to "{workflow_stage}" stage**
+```
 
 **Step 5**: Post comment to task:
 ```
@@ -165,10 +201,20 @@ mcp__teamwork__twprojects-update_task(task_id, tag_ids=[...existing, new_tag_id]
 - Comment posting fails: Log error but don't fail entire operation
 - Tag creation fails: Log warning, continue without tag
 
-## Example
+## Examples
+
+### Basic Update
 
 ```bash
 /update_teamwork_task 12345 "Done" '{"adw_id":"abc123","commit_hash":"a1b2c3d4","model":"sonnet","workflow":"plan-implement","result":"Success"}'
 ```
 
 Updates task 12345 to "Complete" status and posts a success comment with metadata.
+
+### Update with Workflow Stage Directive
+
+```bash
+/update_teamwork_task 12345 "Done" '{"adw_id":"abc123","commit_hash":"a1b2c3d4","model":"sonnet","workflow":"plan-implement","workflow_stage":"Review","result":"Implementation complete, ready for review"}'
+```
+
+Updates task 12345 to "Complete" status, posts a success comment, and includes a workflow stage directive asking to move the task to the "Review" stage.

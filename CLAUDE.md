@@ -488,4 +488,4 @@ If you encounter this error:
 
 **Why Bun works:** Bun's native subprocess spawning is treated like direct execution - no detection or rate limiting.
 
-See `PYTHON_TO_BUN_MIGRATION_PLAN.md` for complete migration details.
+See `docs/PYTHON_TO_BUN_MIGRATION_PLAN.md` for complete migration details.
