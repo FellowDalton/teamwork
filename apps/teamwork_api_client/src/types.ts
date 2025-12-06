@@ -125,7 +125,7 @@ export const ApiTaskSchema = z.object({
   name: z.string(),
   description: z.string().optional().default(''),
   status: z.string().optional(),
-  priority: z.string().optional(),
+  priority: z.string().nullable().optional(),
   progress: z.number().optional(),
   estimatedMinutes: z.number().optional(),
   startDate: z.string().nullable().optional(),
@@ -154,7 +154,7 @@ export const ApiTaskSchema = z.object({
       ),
     ])
     .optional(),
-  tags: z.array(TagSchema).optional(),
+  tags: z.array(TagSchema).nullable().optional(),
   // Workflow stage info
   workflowColumn: z
     .object({
@@ -550,3 +550,202 @@ export const ProcessedTaskSchema = z.object({
 });
 
 export type ProcessedTask = z.infer<typeof ProcessedTaskSchema>;
+
+// ============================================================================
+// Time Entries (Timelogs)
+// ============================================================================
+
+/**
+ * Time entry object from API.
+ */
+export const TimeEntrySchema = z.object({
+  id: z.number(),
+  minutes: z.number(),
+  hours: z.number().optional(),
+  description: z.string().optional().default(''),
+  date: z.string().optional(),
+  timeLogged: z.string().optional(),
+  dateCreated: z.string().optional(),
+  dateEdited: z.string().nullable().optional(),
+  billable: z.boolean().optional(),
+  isBillable: z.boolean().optional().default(true),
+  hasStartTime: z.boolean().optional(),
+  userId: z.number().optional(),
+  taskId: z.number().nullable().optional(),
+  projectId: z.number().optional(),
+  tasklistId: z.number().nullable().optional(),
+  createdAt: z.string().optional(),
+  updatedAt: z.string().optional(),
+  deletedAt: z.string().nullable().optional(),
+  invoiceId: z.number().nullable().optional(),
+  tagIds: z.array(z.number()).nullable().optional(),
+  deleted: z.boolean().optional(),
+});
+
+export type TimeEntry = z.infer<typeof TimeEntrySchema>;
+
+/**
+ * Time entry list response.
+ */
+export const TimeEntryListResponseSchema = z.object({
+  timelogs: z.array(TimeEntrySchema),
+  meta: PaginationMetaSchema.optional(),
+  included: z
+    .object({
+      users: z.record(z.string(), UserSchema).optional(),
+      tasks: z.record(z.string(), ApiTaskSchema).optional(),
+      projects: z.record(z.string(), ProjectSchema).optional(),
+    })
+    .optional(),
+});
+
+export type TimeEntryListResponse = z.infer<typeof TimeEntryListResponseSchema>;
+
+/**
+ * Single time entry response.
+ */
+export const TimeEntryResponseSchema = z.object({
+  timelog: TimeEntrySchema,
+  included: z
+    .object({
+      users: z.record(z.string(), UserSchema).optional(),
+      tasks: z.record(z.string(), ApiTaskSchema).optional(),
+      projects: z.record(z.string(), ProjectSchema).optional(),
+    })
+    .optional(),
+});
+
+export type TimeEntryResponse = z.infer<typeof TimeEntryResponseSchema>;
+
+/**
+ * Create time entry request.
+ */
+export const CreateTimeEntryRequestSchema = z.object({
+  timelog: z.object({
+    taskId: z.number().optional(),
+    minutes: z.number(),
+    date: z.string(),
+    description: z.string().optional(),
+    isBillable: z.boolean().optional(),
+    time: z.string().optional(),
+    tagIds: z.array(z.number()).optional(),
+  }),
+});
+
+export type CreateTimeEntryRequest = z.infer<typeof CreateTimeEntryRequestSchema>;
+
+/**
+ * Update time entry request.
+ */
+export const UpdateTimeEntryRequestSchema = z.object({
+  timelog: z.object({
+    minutes: z.number().optional(),
+    date: z.string().optional(),
+    description: z.string().optional(),
+    isBillable: z.boolean().optional(),
+    time: z.string().optional(),
+    tagIds: z.array(z.number()).optional(),
+  }),
+});
+
+export type UpdateTimeEntryRequest = z.infer<typeof UpdateTimeEntryRequestSchema>;
+
+// ============================================================================
+// People / Current User (Me)
+// ============================================================================
+
+/**
+ * Full person object from /me endpoint.
+ */
+export const PersonSchema = z.object({
+  id: z.number(),
+  firstName: z.string().optional(),
+  lastName: z.string().optional(),
+  email: z.string().optional(),
+  emailAddress: z.string().optional(),
+  title: z.string().optional(),
+  avatarUrl: z.string().optional(),
+  companyId: z.number().optional(),
+  company: z.object({
+    id: z.number(),
+    type: z.string().optional(),
+  }).optional(),
+  administrator: z.boolean().optional(),
+  isAdmin: z.boolean().optional(),
+  isClientUser: z.boolean().optional(),
+  isServiceAccount: z.boolean().optional(),
+  siteOwner: z.boolean().optional(),
+  inOwnerCompany: z.boolean().optional(),
+  canAddProjects: z.boolean().optional(),
+  timezone: z.string().optional(),
+  lengthOfDay: z.number().optional(),
+  lastLogin: z.string().optional(),
+  createdAt: z.string().optional(),
+  updatedAt: z.string().optional(),
+  teams: z.array(z.object({
+    id: z.number(),
+    type: z.string().optional(),
+  })).optional(),
+  deleted: z.boolean().optional(),
+});
+
+export type Person = z.infer<typeof PersonSchema>;
+
+/**
+ * Response from /me endpoint.
+ */
+export const MeResponseSchema = z.object({
+  person: PersonSchema,
+});
+
+export type MeResponse = z.infer<typeof MeResponseSchema>;
+
+// ============================================================================
+// Activity
+// ============================================================================
+
+/**
+ * Activity item from latestactivity endpoint.
+ */
+export const ActivitySchema = z.object({
+  id: z.number(),
+  activityType: z.string(),
+  dateTime: z.string(),
+  description: z.string().optional(),
+  extraDescription: z.string().optional(),
+  itemId: z.number().optional(),
+  itemType: z.string().optional(),
+  itemLink: z.string().optional(),
+  itemDescription: z.string().optional(),
+  projectId: z.number().optional(),
+  companyId: z.number().optional(),
+  forUserId: z.number().optional(),
+  forUserName: z.string().optional(),
+  dueDate: z.string().nullable().optional(),
+  isPrivate: z.union([z.boolean(), z.number()]).optional(),
+  project: z.object({
+    id: z.number(),
+    type: z.string().optional(),
+  }).optional(),
+  user: z.object({
+    id: z.number(),
+    type: z.string().optional(),
+  }).optional(),
+});
+
+export type Activity = z.infer<typeof ActivitySchema>;
+
+/**
+ * Activity list response.
+ */
+export const ActivityListResponseSchema = z.object({
+  activities: z.array(ActivitySchema),
+  meta: PaginationMetaSchema.optional(),
+  included: z.object({
+    users: z.record(z.string(), UserSchema).optional(),
+    projects: z.record(z.string(), ProjectSchema).optional(),
+    companies: z.record(z.string(), z.unknown()).optional(),
+  }).optional(),
+});
+
+export type ActivityListResponse = z.infer<typeof ActivityListResponseSchema>;

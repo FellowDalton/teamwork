@@ -38,9 +38,4 @@ export interface Project {
   lastUpdated: string;
 }
 
-export type ViewState = 'dashboard' | 'project';
-
-export interface DragItem {
-  taskId: string;
-  sourceStageId: string;
-}
+// ViewState and DragItem removed - no longer used in chat-centric UI

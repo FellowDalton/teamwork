@@ -65,6 +65,52 @@
         background-image: url("data:image/svg+xml,%3Csvg width='12' height='12' viewBox='0 0 12 12' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='6' cy='8' r='3.5' fill='black' fill-opacity='0.4' /%3E%3Ccircle cx='6' cy='5' r='3.5' fill='white' fill-opacity='0.8' /%3E%3C/svg%3E");
       }
 
+      /* --- CUSTOM SCROLLBARS --- */
+      
+      /* Dark scrollbar */
+      .custom-scrollbar-dark::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+      .custom-scrollbar-dark::-webkit-scrollbar-track {
+        background: rgba(0, 0, 0, 0.2);
+        border-radius: 4px;
+      }
+      .custom-scrollbar-dark::-webkit-scrollbar-thumb {
+        background: rgba(113, 113, 122, 0.5);
+        border-radius: 4px;
+        border: 1px solid rgba(0, 0, 0, 0.3);
+      }
+      .custom-scrollbar-dark::-webkit-scrollbar-thumb:hover {
+        background: rgba(113, 113, 122, 0.7);
+      }
+      .custom-scrollbar-dark {
+        scrollbar-width: thin;
+        scrollbar-color: rgba(113, 113, 122, 0.5) rgba(0, 0, 0, 0.2);
+      }
+
+      /* Light scrollbar */
+      .custom-scrollbar-light::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+      .custom-scrollbar-light::-webkit-scrollbar-track {
+        background: rgba(0, 0, 0, 0.05);
+        border-radius: 4px;
+      }
+      .custom-scrollbar-light::-webkit-scrollbar-thumb {
+        background: rgba(161, 161, 170, 0.6);
+        border-radius: 4px;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+      }
+      .custom-scrollbar-light::-webkit-scrollbar-thumb:hover {
+        background: rgba(161, 161, 170, 0.8);
+      }
+      .custom-scrollbar-light {
+        scrollbar-width: thin;
+        scrollbar-color: rgba(161, 161, 170, 0.6) rgba(0, 0, 0, 0.05);
+      }
+
     </style>
 </head>
   <body>

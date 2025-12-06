@@ -1,20 +1,16 @@
 import { Project, Task } from "../types";
+import { DisplayData, DisplayItem, ConversationTopic } from "../types/conversation";
 
-const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
-
-// Helper to call Claude API
+// Helper to call Claude API via backend proxy
 async function callClaude(
   systemPrompt: string,
   userMessage: string,
   tools?: any[]
 ): Promise<any> {
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
+  const response = await fetch("/api/chat", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "x-api-key": ANTHROPIC_API_KEY || "",
-      "anthropic-version": "2023-06-01",
-      "anthropic-dangerous-direct-browser-access": "true",
     },
     body: JSON.stringify({
       model: "claude-sonnet-4-20250514",
@@ -225,6 +221,104 @@ const tools = [
       required: ["name", "description", "stages"],
     },
   },
+  {
+    name: "displayTasks",
+    description:
+      "Display a list of tasks in the data panel. Use this when the user asks to see tasks, task lists, or project progress.",
+    input_schema: {
+      type: "object",
+      properties: {
+        title: {
+          type: "string",
+          description: "Title for the display panel (e.g. 'Project Tasks', 'High Priority Items')",
+        },
+        subtitle: {
+          type: "string",
+          description: "Optional subtitle with additional context",
+        },
+        filter: {
+          type: "object",
+          description: "Optional filter criteria for tasks",
+          properties: {
+            priority: { type: "string", enum: ["low", "medium", "high"] },
+            stageName: { type: "string" },
+            limit: { type: "number" },
+          },
+        },
+      },
+      required: ["title"],
+    },
+  },
+  {
+    name: "displayTimelogs",
+    description:
+      "Display time log entries in the data panel. Use when user asks about logged hours or time tracking.",
+    input_schema: {
+      type: "object",
+      properties: {
+        title: {
+          type: "string",
+          description: "Title for the display (e.g. 'Recent Time Entries', 'This Week')",
+        },
+        subtitle: {
+          type: "string",
+          description: "Optional subtitle",
+        },
+        taskName: {
+          type: "string",
+          description: "Optional task name to filter time logs",
+        },
+        limit: {
+          type: "number",
+          description: "Maximum number of entries to show",
+        },
+      },
+      required: ["title"],
+    },
+  },
+  {
+    name: "displayStatus",
+    description:
+      "Display project status metrics and overview in the data panel. Use when user asks about status, progress, or project overview.",
+    input_schema: {
+      type: "object",
+      properties: {
+        title: {
+          type: "string",
+          description: "Title for the status display",
+        },
+        showMetrics: {
+          type: "boolean",
+          description: "Whether to include numerical metrics (task counts, hours, etc.)",
+        },
+        showTasks: {
+          type: "boolean",
+          description: "Whether to include task breakdown by stage",
+        },
+      },
+      required: ["title"],
+    },
+  },
+  {
+    name: "displayActivityStatus",
+    description:
+      "Display user activity status - what they worked on, time logged, and recent activity. Use when user asks 'what did I work on today/this week?', 'show my activity', 'how many hours did I log?', etc.",
+    input_schema: {
+      type: "object",
+      properties: {
+        title: {
+          type: "string",
+          description: "Title for the activity display (e.g. 'Today's Activity', 'This Week's Work')",
+        },
+        period: {
+          type: "string",
+          enum: ["today", "yesterday", "thisweek", "lastweek"],
+          description: "Time period to show activity for. Defaults to 'today'.",
+        },
+      },
+      required: ["title"],
+    },
+  },
 ];
 
 export interface ToolCallResponse {
@@ -239,40 +333,315 @@ export interface TextResponse {
   text: string;
 }
 
-export const processChatCommand = async (
-  message: string,
-  systemContext: string
-): Promise<ToolCallResponse | TextResponse> => {
+export interface ChatCommandOptions {
+  message: string;
+  systemContext: string;
+  topic: ConversationTopic;
+}
+
+export interface CardData {
+  id: string;
+  type: 'timelog';
+  projectName: string;
+  taskName: string;
+  hours: number;
+  date: string;
+  description?: string;
+}
+
+export interface CardAgentResponse {
+  cards: CardData[];
+  summary: {
+    totalHours: number;
+    totalEntries: number;
+    totalTasks: number;
+    periodLabel: string;
+  };
+}
+
+export interface VisualizationSpec {
+  type: 'summary' | 'cards' | 'chart';
+  title?: string;
+  metrics?: Array<{ label: string; value: string; emphasis?: boolean }>;
+  breakdown?: Array<{ label: string; hours: number; percentage: number }>;
+  items?: Array<{
+    id: string;
+    date: string;
+    taskName: string;
+    projectName: string;
+    hours: number;
+    description?: string;
+  }>;
+  chartType?: 'bar' | 'line';
+  data?: Array<{ label: string; value: number }>;
+  summary?: {
+    totalHours?: number;
+    totalEntries?: number;
+    totalTasks?: number;
+    total?: number;
+    average?: number;
+  };
+}
+
+export interface StreamingChatOptions {
+  message: string;
+  topic: ConversationTopic;
+  projectId?: number;
+  projectName?: string;
+  onChunk: (text: string) => void;
+  onThinking: (thinking: string, fullText?: string) => void;
+  onCards?: (data: CardAgentResponse) => void;
+  onVisualization?: (spec: VisualizationSpec) => void;
+  onComplete: (fullText: string) => void;
+  onError: (error: Error) => void;
+}
+
+// Streaming chat using Server-Sent Events
+// TODO: When backend migrates to Agent SDK, this will get true streaming
+// Currently receives full response at once due to Claude CLI limitations
+export const processStreamingChat = async (options: StreamingChatOptions): Promise<void> => {
+  const { message, topic, projectId, projectName, onChunk, onThinking, onCards, onVisualization, onComplete, onError } = options;
+  
+  const modeMap: Record<ConversationTopic, string> = {
+    project: 'project',
+    status: 'status',
+    timelog: 'timelog',
+    general: 'general',
+  };
+
   try {
-    const systemPrompt = `You are an advanced Project AI assistant integrated into a Kanban-style workflow app.
+    const response = await fetch("/api/claude/stream", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        message: message,
+        mode: modeMap[topic],
+        projectId: projectId,
+        projectName: projectName,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Stream error: ${response.status}`);
+    }
+
+    const reader = response.body?.getReader();
+    if (!reader) {
+      throw new Error("No response body");
+    }
+
+    const decoder = new TextDecoder();
+    let fullText = "";
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      const chunk = decoder.decode(value);
+      const lines = chunk.split("\n").filter(line => line.startsWith("data: "));
+
+      for (const line of lines) {
+        try {
+          const data = JSON.parse(line.slice(6));
+          if (data.done) {
+            onComplete(fullText);
+            return;
+          }
+          
+          // Handle different event types
+          if (data.type === 'thinking' && data.thinking) {
+            onThinking(data.thinking, data.fullText);
+          } else if (data.type === 'tool_use') {
+            // Don't show tool usage in chat - user only wants to see thoughts
+            console.log('Agent using tool:', data.tool);
+          } else if (data.type === 'text' && data.text) {
+            fullText += data.text;
+            onChunk(data.text);
+          } else if (data.type === 'result' && data.text) {
+            fullText = data.text;
+            onChunk(data.text);
+          } else if (data.type === 'cards' && data.cards && onCards) {
+            // CardAgent response - display in data panel (legacy)
+            onCards({ cards: data.cards, summary: data.summary });
+          } else if (data.type === 'visualization' && data.spec && onVisualization) {
+            // Creative visualization agent response
+            onVisualization(data.spec);
+          } else if (data.text) {
+            // Legacy format fallback
+            if (data.final) {
+              fullText = data.text;
+            } else {
+              fullText += data.text;
+            }
+            onChunk(data.text);
+          }
+        } catch {
+          // Skip invalid JSON
+        }
+      }
+    }
+
+    onComplete(fullText);
+  } catch (error) {
+    onError(error instanceof Error ? error : new Error(String(error)));
+  }
+};
+
+// Agent SDK streaming - uses skills for intelligent Teamwork interactions
+// No hard-coded date parsing - Claude handles everything via skills
+export const processAgentStream = async (options: StreamingChatOptions): Promise<void> => {
+  const { message, topic, projectId, projectName, onChunk, onThinking, onVisualization, onComplete, onError } = options;
+  
+  const modeMap: Record<ConversationTopic, string> = {
+    project: 'project',
+    status: 'status',
+    timelog: 'timelog',
+    general: 'general',
+  };
+
+  try {
+    const response = await fetch("/api/agent/stream", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        message: message,
+        mode: modeMap[topic],
+        projectId: projectId,
+        projectName: projectName,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Agent stream error: ${response.status}`);
+    }
+
+    const reader = response.body?.getReader();
+    if (!reader) {
+      throw new Error("No response body");
+    }
+
+    const decoder = new TextDecoder();
+    let fullText = "";
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      const chunk = decoder.decode(value);
+      const lines = chunk.split("\n").filter(line => line.startsWith("data: "));
+
+      for (const line of lines) {
+        const data = line.slice(6); // Remove "data: " prefix
+        
+        if (data === "[DONE]") {
+          break;
+        }
+
+        try {
+          const parsed = JSON.parse(data);
+          
+          if (parsed.type === 'init') {
+            console.log('Agent initialized:', parsed.model, parsed.tools);
+          } else if (parsed.type === 'text' && parsed.text) {
+            fullText += parsed.text;
+            onChunk(parsed.text);
+          } else if (parsed.type === 'thinking' && parsed.thinking) {
+            onThinking(parsed.thinking, parsed.fullText);
+          } else if (parsed.type === 'tool_use') {
+            // Don't show tool usage in chat - user only wants to see thoughts
+            console.log('Agent using tool:', parsed.tool);
+          } else if (parsed.type === 'result' && parsed.text) {
+            fullText = parsed.text;
+            onChunk(parsed.text);
+          } else if (parsed.type === 'visualization' && parsed.spec && onVisualization) {
+            onVisualization(parsed.spec);
+          } else if (parsed.type === 'error') {
+            throw new Error(parsed.error);
+          }
+        } catch (e) {
+          if (e instanceof SyntaxError) continue; // Skip invalid JSON
+          throw e;
+        }
+      }
+    }
+
+    onComplete(fullText);
+  } catch (error) {
+    onError(error instanceof Error ? error : new Error(String(error)));
+  }
+};
+
+export const processChatCommand = async (
+  options: ChatCommandOptions
+): Promise<ToolCallResponse | TextResponse> => {
+  const { message, systemContext, topic } = options;
+
+  try {
+    // Topic-specific instructions
+    const topicInstructions: Record<ConversationTopic, string> = {
+      project: `The user is in PROJECT CREATION mode. Help them create a new project.
+When they describe a project, use 'createProject' to generate a full project structure with appropriate stages and tasks.
+Don't ask for every detail - infer a good structure from their high-level description.`,
+      status: `The user is in STATUS mode, wanting to see project status and progress.
+When they ask about status, use 'displayStatus' to show metrics and progress.
+Use 'displayTasks' to show task breakdowns when relevant.
+Provide concise status summaries and insights.`,
+      timelog: `The user is in TIME LOG mode, focused on time tracking.
+When they want to log time, use 'logWork' with the appropriate task and hours.
+When they want to see logged time, use 'displayTimelogs'.
+Help them track and understand their time usage.`,
+      general: `The user is in general chat mode.
+Help with any questions about their projects, tasks, or workflow.
+Use display tools when showing data would be helpful.
+Be proactive in offering relevant information.`
+    };
+
+    const systemPrompt = `You are an advanced Project AI assistant integrated into a workflow management app.
+The interface has two panels: a chat panel (where we're talking) and a data display panel on the right.
+You can populate the data display panel using the display tools.
+
+CURRENT MODE: ${topic.toUpperCase()}
+${topicInstructions[topic]}
 
 CURRENT APP CONTEXT:
 ${systemContext}
 
-CAPABILITIES:
-1. Log Work: If the user mentions working, hours, or logging time, use 'logWork'. Match task names fuzzily.
-2. Create Project: If the user wants to start a new project, plan, or workflow, use 'createProject'. You must generate the full structure (stages/tasks) in the tool call arguments based on their request.
-3. General Advice: Answer questions about project management, suggest improvements to the current board, or explain features.
+AVAILABLE TOOLS:
+1. logWork - Log working hours to a task
+2. createProject - Create a new project with stages and tasks
+3. displayTasks - Show tasks in the data panel (use when user asks to see tasks)
+4. displayTimelogs - Show time log entries in the data panel
+5. displayStatus - Show project status/metrics in the data panel
+6. displayActivityStatus - Show user's work activity (use when user asks "what did I work on today/this week?")
 
 BEHAVIOR:
 - Be concise and professional, like a hardware synth interface.
-- If the user asks to create a project, don't ask for every detail. Infer a good structure from their high-level description and call the tool.
-- If the user is vague about a task for logging time, ask for clarification or make a best guess if obvious.`;
+- Use short, technical responses.
+- When showing data would help the user, use the appropriate display tool.
+- When in status mode, proactively show relevant metrics.
+- Match task names fuzzily when logging time.`;
 
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
+    // Map topic to mode for Claude CLI
+    const modeMap: Record<ConversationTopic, string> = {
+      project: 'project',
+      status: 'status',
+      timelog: 'timelog',
+      general: 'general',
+    };
+
+    // Use Claude CLI endpoint (uses subscription auth, no API credits needed)
+    const response = await fetch("/api/claude", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-api-key": ANTHROPIC_API_KEY || "",
-        "anthropic-version": "2023-06-01",
-        "anthropic-dangerous-direct-browser-access": "true",
       },
       body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
-        max_tokens: 4096,
-        system: systemPrompt,
-        messages: [{ role: "user", content: message }],
-        tools,
+        message: message,
+        mode: modeMap[topic],
       }),
     });
 
@@ -283,23 +652,34 @@ BEHAVIOR:
 
     const data = await response.json();
 
-    // Check for tool use
-    const toolUse = data.content.find((c: any) => c.type === "tool_use");
-
-    if (toolUse) {
+    // Check if response suggests showing activity status
+    const lowerMessage = message.toLowerCase();
+    
+    // Auto-detect if we should show activity status
+    if (topic === 'status' && (
+      lowerMessage.includes('work on') ||
+      lowerMessage.includes('activity') ||
+      lowerMessage.includes('hours') ||
+      lowerMessage.includes('logged')
+    )) {
+      // Detect period from message
+      let period = 'today';
+      if (lowerMessage.includes('yesterday')) period = 'yesterday';
+      else if (lowerMessage.includes('this week')) period = 'thisweek';
+      else if (lowerMessage.includes('last week')) period = 'lastweek';
+      
       return {
         type: "tool_call",
-        functionName: toolUse.name,
-        args: toolUse.input,
-        text: "Command received. Processing logic...",
+        functionName: "displayActivityStatus",
+        args: { title: "Activity Status", period },
+        text: data.response,
       };
     }
 
     // Return text response
-    const textContent = data.content.find((c: any) => c.type === "text")?.text;
     return {
       type: "text",
-      text: textContent || "I'm not sure how to help with that.",
+      text: data.response || "I'm not sure how to help with that.",
     };
   } catch (error) {
     console.error("Chat Error:", error);

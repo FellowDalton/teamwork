@@ -42,6 +42,9 @@ import { TasksResource as Tasks } from './resources/tasks.ts';
 import { WorkflowsResource as Workflows } from './resources/workflows.ts';
 import { ProjectsResource as Projects } from './resources/projects.ts';
 import { CommentsResource as Comments } from './resources/comments.ts';
+import { TimeEntriesResource as TimeEntries } from './resources/time-entries.ts';
+import { PeopleResource as People } from './resources/people.ts';
+import { ActivityResource as Activity } from './resources/activity.ts';
 
 export { TasksResource, type ListTasksOptions, type CreateTaskOptions, type UpdateTaskOptions } from './resources/tasks.ts';
 
@@ -55,6 +58,17 @@ export {
   type CreateCommentOptions,
   type AdwStatusUpdate,
 } from './resources/comments.ts';
+
+export {
+  TimeEntriesResource,
+  type ListTimeEntriesOptions,
+  type CreateTimeEntryOptions,
+  type UpdateTimeEntryOptions,
+} from './resources/time-entries.ts';
+
+export { PeopleResource } from './resources/people.ts';
+
+export { ActivityResource, type ListActivityOptions } from './resources/activity.ts';
 
 // High-level facade
 export {
@@ -97,5 +111,8 @@ export function createTeamworkClient(config: {
     workflows: new Workflows(httpClient),
     projects: new Projects(httpClient),
     comments: new Comments(httpClient),
+    timeEntries: new TimeEntries(httpClient),
+    people: new People(httpClient),
+    activity: new Activity(httpClient),
   };
 }

@@ -8,11 +8,14 @@ export default defineConfig(({ mode }) => {
       server: {
         port: 3050,
         host: '0.0.0.0',
+        proxy: {
+          '/api': {
+            target: 'http://localhost:3051',
+            changeOrigin: true,
+          },
+        },
       },
       plugins: [react()],
-      define: {
-        'process.env.ANTHROPIC_API_KEY': JSON.stringify(env.ANTHROPIC_API_KEY)
-      },
       resolve: {
         alias: {
           '@': path.resolve(__dirname, '.'),

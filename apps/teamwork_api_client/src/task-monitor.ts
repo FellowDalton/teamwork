@@ -8,6 +8,7 @@ import { TasksResource } from './resources/tasks.ts';
 import { WorkflowsResource } from './resources/workflows.ts';
 import { ProjectsResource } from './resources/projects.ts';
 import { CommentsResource, type AdwStatusUpdate } from './resources/comments.ts';
+import { TimeEntriesResource } from './resources/time-entries.ts';
 import { type ApiTask, type ProcessedTask, ProcessedTaskSchema } from './types.ts';
 
 // ============================================================================
@@ -139,6 +140,7 @@ export class TeamworkTaskMonitor {
   readonly workflows: WorkflowsResource;
   readonly projects: ProjectsResource;
   readonly comments: CommentsResource;
+  readonly timeEntries: TimeEntriesResource;
 
   private readonly defaultProjectId?: number;
   private readonly statusMapping: Record<string, string>;
@@ -160,6 +162,7 @@ export class TeamworkTaskMonitor {
     this.workflows = new WorkflowsResource(this.client);
     this.projects = new ProjectsResource(this.client);
     this.comments = new CommentsResource(this.client);
+    this.timeEntries = new TimeEntriesResource(this.client);
 
     // Configuration
     this.defaultProjectId = config?.defaultProjectId;
