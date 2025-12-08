@@ -13,7 +13,7 @@ import {
 import { AnalogButton } from "./components/AnalogButton";
 import { ConversationPanel } from "./components/ConversationPanel";
 import { DataDisplayPanel } from "./components/DataDisplayPanel";
-import { processChatCommand, processStreamingChat, processAgentStream, VisualizationSpec } from "./services/claudeService";
+import { processChatCommand, processStreamingChat, processAgentStream, requestAdditionalChart, VisualizationSpec, TimelogDraftData, TimelogDraftEntry, submitTimelogEntries } from "./services/claudeService";
 import { teamworkService, TeamworkTask, TeamworkTimeEntry } from "./services/teamworkService";
 import {
   Layout,
@@ -116,6 +116,11 @@ export default function App() {
 
   // Data display state
   const [displayData, setDisplayData] = useState<DisplayData | null>(null);
+  const [isChartLoading, setIsChartLoading] = useState(false);
+  
+  // Timelog draft state
+  const [timelogDraft, setTimelogDraft] = useState<TimelogDraftData | null>(null);
+  const [isSubmittingTimelog, setIsSubmittingTimelog] = useState(false);
 
   const activeProject = projects.find((p) => p.id === activeProjectId) || null;
   const isLight = theme === "light";
@@ -213,6 +218,7 @@ export default function App() {
 
     setMessages([welcomeMsg]);
     setDisplayData(null);
+    setTimelogDraft(null); // Clear any draft when switching topics
   }, [activeTopic]);
 
   // --- Theme Styles ---
@@ -247,6 +253,265 @@ export default function App() {
     }
   };
 
+  // Handle chart request from dropdown options
+  const handleRequestChart = async (chartType: string) => {
+    if (!activeProjectId) return;
+    
+    setIsChartLoading(true);
+    const numericProjectId = parseInt(activeProjectId.replace('proj-', ''));
+    
+    await requestAdditionalChart({
+      chartType,
+      projectId: numericProjectId,
+      onVisualization: (spec) => {
+        console.log("Additional chart received:", spec);
+        
+        setDisplayData((prev) => {
+          const newItems: DisplayItem[] = prev?.items ? [...prev.items] : [];
+          
+          if (spec.type === "chart") {
+            newItems.push({
+              id: `chart-${chartType}-${Date.now()}`,
+              type: "chart",
+              data: {
+                chartType: spec.chartType || "bar",
+                title: spec.title || chartType,
+                data: spec.data || [],
+                summary: spec.summary,
+              },
+            });
+          } else if (spec.type === "summary" && spec.metrics) {
+            for (const metric of spec.metrics) {
+              newItems.push({
+                id: `metric-${metric.label}-${Date.now()}`,
+                type: "metric",
+                data: {
+                  label: metric.label,
+                  value: metric.value,
+                  color: metric.emphasis ? "green" : "blue",
+                } as MetricDisplayData,
+              });
+            }
+          }
+          
+          return {
+            type: prev?.type || "status",
+            title: prev?.title || "Data Display",
+            subtitle: prev?.subtitle,
+            items: newItems,
+          };
+        });
+      },
+      onError: (error) => {
+        console.error("Chart request error:", error);
+      },
+      onComplete: () => {
+        setIsChartLoading(false);
+      },
+    });
+  };
+
+  // --- Timelog Draft Handlers ---
+  
+  const handleTimelogDraftUpdate = (id: string, updates: Partial<TimelogDraftEntry>) => {
+    if (!timelogDraft) return;
+    
+    setTimelogDraft({
+      ...timelogDraft,
+      entries: timelogDraft.entries.map(entry =>
+        entry.id === id ? { ...entry, ...updates } : entry
+      ),
+      summary: {
+        ...timelogDraft.summary,
+        totalHours: timelogDraft.entries.reduce((sum, entry) => {
+          if (entry.id === id && updates.hours !== undefined) {
+            return sum + updates.hours;
+          }
+          return sum + entry.hours;
+        }, 0),
+      },
+    });
+  };
+  
+  const handleTimelogDraftRemove = (id: string) => {
+    if (!timelogDraft) return;
+    
+    const updatedEntries = timelogDraft.entries.filter(entry => entry.id !== id);
+    
+    if (updatedEntries.length === 0) {
+      setTimelogDraft(null);
+      return;
+    }
+    
+    setTimelogDraft({
+      ...timelogDraft,
+      entries: updatedEntries,
+      summary: {
+        ...timelogDraft.summary,
+        totalHours: updatedEntries.reduce((sum, entry) => sum + entry.hours, 0),
+        totalEntries: updatedEntries.length,
+      },
+    });
+  };
+  
+  const handleTimelogDraftSubmit = async () => {
+    if (!timelogDraft || timelogDraft.entries.length === 0) return;
+    
+    setIsSubmittingTimelog(true);
+    
+    try {
+      const result = await submitTimelogEntries(
+        timelogDraft.entries.map(entry => ({
+          taskId: entry.taskId,
+          hours: entry.hours,
+          date: entry.date,
+          comment: entry.comment,
+        }))
+      );
+      
+      // Clear the draft
+      setTimelogDraft(null);
+      
+      // Add success message to chat
+      const successMsg: ChatMessage = {
+        id: `msg-${Date.now()}`,
+        role: "assistant",
+        content: result.message,
+        timestamp: new Date().toISOString(),
+        topic: "timelog",
+      };
+      setMessages(prev => [...prev, successMsg]);
+      
+    } catch (error) {
+      console.error("Failed to submit time entries:", error);
+      
+      // Add error message to chat
+      const errorMsg: ChatMessage = {
+        id: `msg-${Date.now()}`,
+        role: "assistant",
+        content: `Failed to submit time entries: ${error instanceof Error ? error.message : "Unknown error"}`,
+        timestamp: new Date().toISOString(),
+        topic: "timelog",
+      };
+      setMessages(prev => [...prev, errorMsg]);
+    } finally {
+      setIsSubmittingTimelog(false);
+    }
+  };
+
+  // Handle custom visualization request from input - sends prompt to AI for interpretation
+  const handleVisualizationRequest = async (prompt: string) => {
+    console.log("Visualization request:", prompt);
+    setIsChartLoading(true);
+    
+    const numericProjectId = activeProjectId 
+      ? parseInt(activeProjectId.replace('proj-', '')) 
+      : undefined;
+
+    try {
+      const response = await fetch("/api/agent/visualize", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          prompt,
+          projectId: numericProjectId,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Visualization request error: ${response.status}`);
+      }
+
+      const reader = response.body?.getReader();
+      if (!reader) {
+        throw new Error("No response body");
+      }
+
+      const decoder = new TextDecoder();
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value);
+        const lines = chunk.split("\n").filter(line => line.startsWith("data: "));
+
+        for (const line of lines) {
+          const data = line.slice(6);
+          
+          if (data === "[DONE]") {
+            break;
+          }
+
+          try {
+            const parsed = JSON.parse(data);
+            
+            if (parsed.type === 'visualization' && parsed.spec) {
+              // Replace with new visualization (don't accumulate for custom requests)
+              setDisplayData((prev) => {
+                const newItems: DisplayItem[] = [];
+                
+                if (parsed.spec.type === "chart" && parsed.spec.data) {
+                  newItems.push({
+                    id: `chart-${parsed.spec.title || 'main'}-${Date.now()}`,
+                    type: "chart",
+                    data: {
+                      chartType: parsed.spec.chartType || "bar",
+                      title: parsed.spec.title || "Chart",
+                      data: parsed.spec.data,
+                      summary: parsed.spec.summary,
+                    },
+                  });
+                } else if (parsed.spec.type === "custom" && parsed.spec.svg) {
+                  // Custom AI-generated SVG visualization
+                  newItems.push({
+                    id: `custom-${parsed.spec.title || 'viz'}-${Date.now()}`,
+                    type: "custom",
+                    data: {
+                      title: parsed.spec.title || "Custom Visualization",
+                      svg: parsed.spec.svg,
+                      description: parsed.spec.description,
+                    },
+                  });
+                } else if (parsed.spec.type === "summary" && parsed.spec.metrics) {
+                  for (const metric of parsed.spec.metrics) {
+                    newItems.push({
+                      id: `metric-${metric.label}-${Date.now()}`,
+                      type: "metric",
+                      data: {
+                        label: metric.label,
+                        value: metric.value,
+                        color: metric.emphasis ? "green" : "blue",
+                      } as MetricDisplayData,
+                    });
+                  }
+                }
+                
+                return {
+                  type: prev?.type || "status",
+                  title: parsed.spec.title || prev?.title || "Visualization",
+                  subtitle: prev?.subtitle,
+                  items: newItems,
+                };
+              });
+            } else if (parsed.type === 'error') {
+              throw new Error(parsed.error);
+            }
+          } catch (e) {
+            if (e instanceof SyntaxError) continue;
+            throw e;
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Visualization request error:", error);
+    } finally {
+      setIsChartLoading(false);
+    }
+  };
+
   const handleSendMessage = async (content: string) => {
     // Add user message
     const userMsg: ChatMessage = {
@@ -259,11 +524,14 @@ export default function App() {
     setMessages((prev) => [...prev, userMsg]);
     setInputValue("");
     setIsProcessing(true);
+    setDisplayData(null); // Clear previous visualizations
+    setTimelogDraft(null); // Clear any previous draft
 
     try {
       // Use streaming chat - show status while processing
       let receivedText = "";
       let streamedContent = "";
+      let accumulatedThinking = "";
       setThinkingStatus("");
       // Get numeric project ID if a project is selected
       const numericProjectId = activeProjectId 
@@ -283,8 +551,9 @@ export default function App() {
           streamedContent = text;
         },
         onThinking: (thinking) => {
-          // Show thinking status in the processing indicator
-          setThinkingStatus(thinking);
+          // Accumulate thinking text so user can see the full stream
+          accumulatedThinking += thinking;
+          setThinkingStatus(accumulatedThinking);
         },
         onCards: (cardData) => {
           // CardAgent returned structured card data - display it
@@ -324,116 +593,86 @@ export default function App() {
           });
         },
         onVisualization: (spec) => {
-          // Creative visualization agent returned a visualization spec
+          // Creative visualization agent - can send multiple specs
+          // ACCUMULATE items from all visualization specs
           console.log("Visualization spec received:", spec);
-          const items: DisplayItem[] = [];
           
-          if (spec.type === "summary") {
-            // Summary visualization - show metrics
-            if (spec.metrics) {
-              for (const metric of spec.metrics) {
-                items.push({
-                  id: `metric-${metric.label}`,
+          setDisplayData((prev) => {
+            const newItems: DisplayItem[] = prev?.items ? [...prev.items] : [];
+            
+            if (spec.type === "summary") {
+              // Summary visualization - show metrics
+              if (spec.metrics) {
+                for (const metric of spec.metrics) {
+                  newItems.push({
+                    id: `metric-${metric.label}-${Date.now()}`,
+                    type: "metric",
+                    data: {
+                      label: metric.label,
+                      value: metric.value,
+                      color: metric.emphasis ? "green" : "blue",
+                    } as MetricDisplayData,
+                  });
+                }
+              }
+            } else if (spec.type === "cards" && spec.items) {
+              // Activity cards
+              for (const item of spec.items.slice(0, 15)) {
+                newItems.push({
+                  id: item.id || `card-${item.date}-${item.taskName}-${Date.now()}`,
+                  type: "timelog",
+                  data: {
+                    timelog: {
+                      id: item.id,
+                      hours: item.hours,
+                      comment: item.description || "",
+                      isBillable: true,
+                      date: item.date,
+                    },
+                    taskTitle: item.taskName,
+                    projectName: item.projectName,
+                  } as TimelogDisplayData,
+                });
+              }
+              // Add summary
+              if (spec.summary) {
+                newItems.push({
+                  id: `metric-total-${Date.now()}`,
                   type: "metric",
                   data: {
-                    label: metric.label,
-                    value: metric.value,
-                    color: metric.emphasis ? "green" : "blue",
+                    label: "Total Hours",
+                    value: `${spec.summary.totalHours?.toFixed(1) || 0}h`,
+                    subValue: `${spec.summary.totalEntries || 0} entries · ${spec.summary.totalTasks || 0} tasks`,
+                    color: "green",
                   } as MetricDisplayData,
                 });
               }
+            } else if (spec.type === "chart" && spec.data) {
+              // Chart visualization
+              newItems.push({
+                id: `chart-${spec.title || 'main'}-${Date.now()}`,
+                type: "chart",
+                data: {
+                  chartType: spec.chartType || "bar",
+                  title: spec.title || "Chart",
+                  data: spec.data,
+                  summary: spec.summary,
+                },
+              });
             }
-            // Add breakdown if present
-            if (spec.breakdown) {
-              for (const item of spec.breakdown) {
-                items.push({
-                  id: `breakdown-${item.label}`,
-                  type: "metric",
-                  data: {
-                    label: item.label,
-                    value: `${item.hours.toFixed(1)}h`,
-                    subValue: `${item.percentage}%`,
-                    color: "cyan",
-                  } as MetricDisplayData,
-                });
-              }
-            }
-            setDisplayData({
+            
+            return {
               type: "status",
-              title: spec.title || "Summary",
-              subtitle: spec.summary ? `${spec.summary.totalEntries} entries` : "",
-              items,
-            });
-          } else if (spec.type === "cards" && spec.items) {
-            // Activity cards
-            for (const item of spec.items.slice(0, 15)) {
-              items.push({
-                id: item.id || `card-${item.date}-${item.taskName}`,
-                type: "timelog",
-                data: {
-                  timelog: {
-                    id: item.id,
-                    hours: item.hours,
-                    comment: item.description || "",
-                    isBillable: true,
-                    date: item.date,
-                  },
-                  taskTitle: item.taskName,
-                  projectName: item.projectName,
-                } as TimelogDisplayData,
-              });
-            }
-            // Add summary at bottom
-            if (spec.summary) {
-              items.push({
-                id: "metric-total",
-                type: "metric",
-                data: {
-                  label: "Total Hours",
-                  value: `${spec.summary.totalHours?.toFixed(1) || 0}h`,
-                  subValue: `${spec.summary.totalEntries || 0} entries · ${spec.summary.totalTasks || 0} tasks`,
-                  color: "green",
-                } as MetricDisplayData,
-              });
-            }
-            setDisplayData({
-              type: "activity",
-              title: spec.title || "Activity",
+              title: spec.title || prev?.title || "Data",
               subtitle: "",
-              items,
-            });
-          } else if (spec.type === "chart" && spec.data) {
-            // Chart visualization - for now show as metrics until we add chart component
-            for (const point of spec.data) {
-              items.push({
-                id: `chart-${point.label}`,
-                type: "metric",
-                data: {
-                  label: point.label,
-                  value: `${point.value.toFixed(1)}h`,
-                  color: "cyan",
-                } as MetricDisplayData,
-              });
-            }
-            if (spec.summary) {
-              items.push({
-                id: "chart-total",
-                type: "metric",
-                data: {
-                  label: "Total",
-                  value: `${spec.summary.total?.toFixed(1) || 0}h`,
-                  subValue: spec.summary.average ? `Avg: ${spec.summary.average.toFixed(1)}h` : "",
-                  color: "green",
-                } as MetricDisplayData,
-              });
-            }
-            setDisplayData({
-              type: "status",
-              title: spec.title || "Chart",
-              subtitle: spec.chartType || "",
-              items,
-            });
-          }
+              items: newItems,
+            };
+          });
+        },
+        onTimelogDraft: (draft) => {
+          // Timelog agent returned draft entries for review
+          console.log("Timelog draft received:", draft.entries.length, "entries");
+          setTimelogDraft(draft);
         },
         onComplete: (fullText) => {
           setThinkingStatus("");
@@ -1239,7 +1478,18 @@ export default function App() {
 
             {/* Right: Data Display Panel */}
             <div className="flex-1 min-w-0 h-full">
-              <DataDisplayPanel data={displayData} theme={theme} />
+              <DataDisplayPanel 
+                data={displayData} 
+                theme={theme} 
+                onRequestChart={handleRequestChart}
+                onVisualizationRequest={handleVisualizationRequest}
+                isLoading={isChartLoading}
+                draftData={timelogDraft}
+                onDraftUpdate={handleTimelogDraftUpdate}
+                onDraftRemove={handleTimelogDraftRemove}
+                onDraftSubmit={handleTimelogDraftSubmit}
+                isSubmitting={isSubmittingTimelog}
+              />
             </div>
           </div>
         </div>

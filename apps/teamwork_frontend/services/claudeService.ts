@@ -383,6 +383,31 @@ export interface VisualizationSpec {
   };
 }
 
+// Timelog draft data structure
+export interface TimelogDraftEntry {
+  id: string;
+  taskId: number;
+  taskName: string;
+  projectId: number;
+  projectName: string;
+  hours: number;
+  date: string;
+  comment: string;
+  confidence: number;
+  isBillable: boolean;
+}
+
+export interface TimelogDraftData {
+  entries: TimelogDraftEntry[];
+  summary: {
+    totalHours: number;
+    totalEntries: number;
+    dateRange: string;
+  };
+  message: string;
+  isDraft: true;
+}
+
 export interface StreamingChatOptions {
   message: string;
   topic: ConversationTopic;
@@ -392,6 +417,7 @@ export interface StreamingChatOptions {
   onThinking: (thinking: string, fullText?: string) => void;
   onCards?: (data: CardAgentResponse) => void;
   onVisualization?: (spec: VisualizationSpec) => void;
+  onTimelogDraft?: (draft: TimelogDraftData) => void;
   onComplete: (fullText: string) => void;
   onError: (error: Error) => void;
 }
@@ -492,7 +518,7 @@ export const processStreamingChat = async (options: StreamingChatOptions): Promi
 // Agent SDK streaming - uses skills for intelligent Teamwork interactions
 // No hard-coded date parsing - Claude handles everything via skills
 export const processAgentStream = async (options: StreamingChatOptions): Promise<void> => {
-  const { message, topic, projectId, projectName, onChunk, onThinking, onVisualization, onComplete, onError } = options;
+  const { message, topic, projectId, projectName, onChunk, onThinking, onVisualization, onTimelogDraft, onComplete, onError } = options;
   
   const modeMap: Record<ConversationTopic, string> = {
     project: 'project',
@@ -559,6 +585,15 @@ export const processAgentStream = async (options: StreamingChatOptions): Promise
             onChunk(parsed.text);
           } else if (parsed.type === 'visualization' && parsed.spec && onVisualization) {
             onVisualization(parsed.spec);
+          } else if (parsed.type === 'timelog_draft' && parsed.draft && onTimelogDraft) {
+            // Handle draft timelog entries for review/editing
+            const draft: TimelogDraftData = {
+              entries: parsed.draft.entries,
+              summary: parsed.draft.summary,
+              message: parsed.draft.message,
+              isDraft: true,
+            };
+            onTimelogDraft(draft);
           } else if (parsed.type === 'error') {
             throw new Error(parsed.error);
           }
@@ -685,4 +720,107 @@ BEHAVIOR:
     console.error("Chat Error:", error);
     return { type: "text", text: "System Error: Connection interrupted." };
   }
+};
+
+// Request an additional chart visualization
+export interface ChartRequestOptions {
+  chartType: string;
+  projectId?: number;
+  onVisualization: (spec: VisualizationSpec) => void;
+  onError: (error: Error) => void;
+  onComplete: () => void;
+}
+
+export const requestAdditionalChart = async (options: ChartRequestOptions): Promise<void> => {
+  const { chartType, projectId, onVisualization, onError, onComplete } = options;
+
+  try {
+    const response = await fetch("/api/agent/chart", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        chartType,
+        projectId,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Chart request error: ${response.status}`);
+    }
+
+    const reader = response.body?.getReader();
+    if (!reader) {
+      throw new Error("No response body");
+    }
+
+    const decoder = new TextDecoder();
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      const chunk = decoder.decode(value);
+      const lines = chunk.split("\n").filter(line => line.startsWith("data: "));
+
+      for (const line of lines) {
+        const data = line.slice(6);
+        
+        if (data === "[DONE]") {
+          break;
+        }
+
+        try {
+          const parsed = JSON.parse(data);
+          
+          if (parsed.type === 'visualization' && parsed.spec) {
+            onVisualization(parsed.spec);
+          } else if (parsed.type === 'error') {
+            throw new Error(parsed.error);
+          }
+        } catch (e) {
+          if (e instanceof SyntaxError) continue;
+          throw e;
+        }
+      }
+    }
+
+    onComplete();
+  } catch (error) {
+    onError(error instanceof Error ? error : new Error(String(error)));
+  }
+};
+
+// Submit timelog entries to Teamwork
+export interface TimelogSubmitResult {
+  success: boolean;
+  submitted: number;
+  total: number;
+  totalHours: number;
+  message: string;
+  results: Array<{ success: boolean; taskId: number; error?: string }>;
+}
+
+export const submitTimelogEntries = async (
+  entries: Array<{
+    taskId: number;
+    hours: number;
+    date: string;
+    comment: string;
+  }>
+): Promise<TimelogSubmitResult> => {
+  const response = await fetch("/api/agent/timelog/submit", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ entries }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to submit time entries: ${response.status}`);
+  }
+
+  return response.json();
 };

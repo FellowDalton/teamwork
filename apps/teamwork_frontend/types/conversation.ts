@@ -15,7 +15,7 @@ export interface ChatMessage {
 }
 
 // Data display panel types
-export type DisplayType = 'tasks' | 'timelogs' | 'status' | 'project-overview' | 'empty';
+export type DisplayType = 'tasks' | 'timelogs' | 'status' | 'project-overview' | 'activity' | 'empty';
 
 export interface DisplayData {
   type: DisplayType;
@@ -24,10 +24,31 @@ export interface DisplayData {
   items: DisplayItem[];
 }
 
+export interface ChartDataPoint {
+  label: string;
+  value: number;
+}
+
+export interface ChartDisplayData {
+  chartType: 'bar' | 'line';
+  title: string;
+  data: ChartDataPoint[];
+  summary?: {
+    total?: number;
+    average?: number;
+  };
+}
+
+export interface CustomDisplayData {
+  title: string;
+  svg: string;
+  description?: string;
+}
+
 export interface DisplayItem {
   id: string;
-  type: 'task' | 'timelog' | 'comment' | 'metric' | 'project-summary';
-  data: TaskDisplayData | TimelogDisplayData | CommentDisplayData | MetricDisplayData | ProjectSummaryData;
+  type: 'task' | 'timelog' | 'comment' | 'metric' | 'project-summary' | 'chart' | 'custom';
+  data: TaskDisplayData | TimelogDisplayData | CommentDisplayData | MetricDisplayData | ProjectSummaryData | ChartDisplayData | CustomDisplayData;
 }
 
 // Specific display data types
@@ -83,4 +104,30 @@ export interface ProjectStatus {
     description: string;
     timestamp: string;
   }[];
+}
+
+// Timelog draft entry (editable before submission)
+export interface TimelogDraftEntry {
+  id: string;
+  taskId: number;
+  taskName: string;
+  projectId: number;
+  projectName: string;
+  hours: number;
+  date: string;
+  comment: string;
+  confidence: number;
+  isBillable: boolean;
+}
+
+// Timelog draft data for display panel
+export interface TimelogDraftData {
+  entries: TimelogDraftEntry[];
+  summary: {
+    totalHours: number;
+    totalEntries: number;
+    dateRange: string;
+  };
+  message: string;
+  isDraft: true;
 }

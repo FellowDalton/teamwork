@@ -252,18 +252,22 @@ export const ConversationPanel: React.FC<ConversationPanelProps> = ({
         {/* Processing indicator */}
         {isProcessing && (
           <div className="flex gap-3">
-            <div className={`w-7 h-7 rounded-full flex items-center justify-center border ${isLight ? 'bg-cyan-100 border-cyan-200' : 'bg-cyan-900/20 border-cyan-800'}`}>
+            <div className={`w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center border ${isLight ? 'bg-cyan-100 border-cyan-200' : 'bg-cyan-900/20 border-cyan-800'}`}>
               <Sparkles size={12} className={accentColor} />
             </div>
-            <div className={`flex items-center gap-2 p-3 rounded-lg border ${isLight ? 'bg-white border-zinc-200' : 'bg-[#1a1a1c] border-zinc-800'}`}>
+            <div className={`flex-1 p-3 rounded-lg border ${isLight ? 'bg-white border-zinc-200' : 'bg-[#1a1a1c] border-zinc-800'}`}>
               {thinkingStatus ? (
-                <span className={`text-xs ${accentColor}`}>{thinkingStatus}</span>
+                <div className="max-h-40 overflow-y-auto">
+                  <p className={`text-xs ${accentColor} whitespace-pre-wrap break-words font-mono leading-relaxed`}>
+                    {thinkingStatus}
+                  </p>
+                </div>
               ) : (
-                <>
+                <div className="flex items-center gap-2">
                   <div className="w-1.5 h-1.5 bg-cyan-500 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
                   <div className="w-1.5 h-1.5 bg-cyan-500 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
                   <div className="w-1.5 h-1.5 bg-cyan-500 rounded-full animate-bounce"></div>
-                </>
+                </div>
               )}
             </div>
           </div>
