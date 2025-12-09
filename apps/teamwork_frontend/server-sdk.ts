@@ -242,7 +242,7 @@ async function runChatAgent(context: {
   data: any;
   periodLabel: string;
   projectName?: string;
-}, onChunk: (text: string) => void): Promise<string> {
+}, onChunk: (text: string) => void, onThinking?: (text: string) => void): Promise<string> {
   const chatSystemPrompt = `You are a helpful time tracking assistant. The user asked a question and data has already been fetched.
 
 Analyze the data and provide a helpful, concise response. Be conversational but informative.
@@ -297,6 +297,10 @@ Provide a helpful analysis:`;
           if (delta?.type === 'text_delta' && delta.text) {
             fullText += delta.text;
             onChunk(delta.text);
+            // Also send as thinking for accumulated display
+            if (onThinking) {
+              onThinking(delta.text);
+            }
           }
         }
       } else if (event.type === 'result' && event.subtype === 'success') {
@@ -812,9 +816,16 @@ async function handleAgentChat(body: {
         
         // Start both agents simultaneously
         const vizPromise = runVisualizationAgent(agentContext);
-        const chatPromise = runChatAgent(agentContext, (chunk) => {
-          safeEnqueue(`data: ${JSON.stringify({ type: 'text', text: chunk })}\n\n`);
-        });
+        const chatPromise = runChatAgent(
+          agentContext,
+          (chunk) => {
+            // Don't send text chunks - we'll send the final result at the end
+          },
+          (thinking) => {
+            // Stream thinking for accumulated display in UI
+            safeEnqueue(`data: ${JSON.stringify({ type: 'thinking', thinking })}\n\n`);
+          }
+        );
         
         // Wait for both to complete
         const [vizSpecs, chatResult] = await Promise.all([vizPromise, chatPromise]);
