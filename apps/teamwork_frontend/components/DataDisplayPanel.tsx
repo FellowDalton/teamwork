@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { Database, Inbox, BarChart3, Clock, FolderOpen, Plus, TrendingUp, LayoutGrid, Send, Sparkles, CheckCircle2, Loader2 } from 'lucide-react';
-import { DisplayData, DisplayType, ChartDisplayData, CustomDisplayData, TimelogDraftEntry, TimelogDraftData } from '../types/conversation';
+import { Database, Inbox, BarChart3, Clock, FolderOpen, Plus, TrendingUp, LayoutGrid, Send, Sparkles, CheckCircle2, Loader2, Rocket } from 'lucide-react';
+import { DisplayData, DisplayType, ChartDisplayData, CustomDisplayData, TimelogDraftEntry, TimelogDraftData, ProjectDraftData, TasklistDraft, TaskDraft } from '../types/conversation';
 import { DataCard } from './DataCard';
 import { ChartCard } from './ChartCard';
 import { TimelogDraftCard } from './TimelogDraftCard';
+import { ProjectDraftCard } from './ProjectDraftCard';
 
 // Visualization type options
 const VIZ_TYPES = [
@@ -27,12 +28,18 @@ interface DataDisplayPanelProps {
   onRequestChart?: (chartType: string) => void;
   onVisualizationRequest?: (prompt: string) => void;
   isLoading?: boolean;
-  // Draft mode props
+  // Timelog draft mode props
   draftData?: TimelogDraftData | null;
   onDraftUpdate?: (id: string, updates: Partial<TimelogDraftEntry>) => void;
   onDraftRemove?: (id: string) => void;
   onDraftSubmit?: () => void;
   isSubmitting?: boolean;
+  // Project draft mode props
+  projectDraftData?: ProjectDraftData | null;
+  onProjectDraftSubmit?: () => void;
+  isCreatingProject?: boolean;
+  onUpdateProjectTasklist?: (tasklistId: string, updates: Partial<TasklistDraft>) => void;
+  onUpdateProjectTask?: (tasklistId: string, taskId: string, updates: Partial<TaskDraft>) => void;
 }
 
 // Screw component for hardware aesthetic
@@ -54,6 +61,11 @@ export const DataDisplayPanel: React.FC<DataDisplayPanelProps> = ({
   onDraftRemove,
   onDraftSubmit,
   isSubmitting = false,
+  projectDraftData,
+  onProjectDraftSubmit,
+  isCreatingProject = false,
+  onUpdateProjectTasklist,
+  onUpdateProjectTask,
 }) => {
   const isLight = theme === 'light';
   const [selectedVizType, setSelectedVizType] = useState('bar');
@@ -62,6 +74,7 @@ export const DataDisplayPanel: React.FC<DataDisplayPanelProps> = ({
   
   // Check if we're in draft mode
   const isDraftMode = draftData && draftData.isDraft && draftData.entries.length > 0;
+  const isProjectDraftMode = projectDraftData && projectDraftData.isDraft;
 
   const handleVizInputSubmit = () => {
     if (vizInput.trim() && onVisualizationRequest) {
@@ -184,16 +197,6 @@ export const DataDisplayPanel: React.FC<DataDisplayPanelProps> = ({
               </div>
             </div>
             
-            {/* Draft message */}
-            {draftData!.message && (
-              <div className={`
-                text-xs mb-3 p-2 rounded
-                ${isLight ? 'bg-cyan-50 text-cyan-700' : 'bg-cyan-900/30 text-cyan-300'}
-              `}>
-                {draftData!.message}
-              </div>
-            )}
-            
             {/* Draft Cards Grid */}
             <div className="grid gap-3 grid-cols-1">
               {draftData!.entries.map(entry => (
@@ -236,9 +239,86 @@ export const DataDisplayPanel: React.FC<DataDisplayPanelProps> = ({
             </div>
           </div>
         )}
+
+        {/* Project Draft Mode - Create Project Preview */}
+        {isProjectDraftMode && (
+          <div className="mb-4">
+            {/* Draft Header */}
+            <div className={`
+              flex items-center justify-between mb-3 pb-2 border-b
+              ${isLight ? 'border-zinc-300' : 'border-zinc-700'}
+            `}>
+              <div className="flex items-center gap-2">
+                <FolderOpen size={14} className="text-purple-500" />
+                <span className={`text-sm font-medium ${isLight ? 'text-zinc-700' : 'text-zinc-200'}`}>
+                  New Project Preview
+                </span>
+              </div>
+              <div className={`text-xs ${isLight ? 'text-zinc-500' : 'text-zinc-500'}`}>
+                Review before creating
+              </div>
+            </div>
+            
+            {/* Project Draft Card */}
+            <ProjectDraftCard
+              data={projectDraftData!}
+              theme={theme}
+              onUpdateTasklist={onUpdateProjectTasklist}
+              onUpdateTask={onUpdateProjectTask}
+            />
+            
+            {/* Create Project Button */}
+            <div className="mt-4 flex justify-end gap-3">
+              {projectDraftData!.isCreated && projectDraftData!.createdProjectUrl && (
+                <a
+                  href={projectDraftData!.createdProjectUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`
+                    flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm
+                    transition-all duration-200
+                    bg-cyan-600 text-white hover:bg-cyan-500 cursor-pointer shadow-lg hover:shadow-cyan-500/25
+                  `}
+                >
+                  <FolderOpen size={16} />
+                  <span>Open in Teamwork</span>
+                </a>
+              )}
+              <button
+                onClick={onProjectDraftSubmit}
+                disabled={isCreatingProject || projectDraftData!.isCreated}
+                className={`
+                  flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm
+                  transition-all duration-200
+                  ${isCreatingProject || projectDraftData!.isCreated
+                    ? 'opacity-50 cursor-not-allowed bg-zinc-600 text-zinc-400'
+                    : 'bg-purple-600 text-white hover:bg-purple-500 cursor-pointer shadow-lg hover:shadow-purple-500/25'
+                  }
+                `}
+              >
+                {isCreatingProject ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" />
+                    <span>Creating Project...</span>
+                  </>
+                ) : projectDraftData!.isCreated ? (
+                  <>
+                    <CheckCircle2 size={16} />
+                    <span>Project Created</span>
+                  </>
+                ) : (
+                  <>
+                    <Rocket size={16} />
+                    <span>Create Project</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        )}
         
         {/* Data Cards Grid - show when NOT in draft mode */}
-        {!isDraftMode && data && data.items && data.items.length > 0 && (
+        {!isDraftMode && !isProjectDraftMode && data && data.items && data.items.length > 0 && (
           <div className={`
             grid gap-3 mb-4
             ${data.type === 'status' || data.type === 'timelogs'
@@ -289,7 +369,7 @@ export const DataDisplayPanel: React.FC<DataDisplayPanelProps> = ({
         )}
 
         {/* Add Visualization Card - only show when there's data and NOT in draft mode */}
-        {!isDraftMode && data?.items && data.items.length > 0 && (
+        {!isDraftMode && !isProjectDraftMode && data?.items && data.items.length > 0 && (
         <div className={`
           rounded-lg border-2 border-dashed p-4
           ${isLight ? 'border-zinc-300 bg-zinc-100/50' : 'border-zinc-700 bg-zinc-900/50'}
@@ -411,7 +491,7 @@ export const DataDisplayPanel: React.FC<DataDisplayPanelProps> = ({
         )}
 
         {/* Empty State - show when no data and NOT in draft mode */}
-        {!isDraftMode && (!data || data.type === 'empty' || !data.items || data.items.length === 0) && (
+        {!isDraftMode && !isProjectDraftMode && (!data || data.type === 'empty' || !data.items || data.items.length === 0) && (
           <div className={`flex flex-col items-center justify-center flex-1 ${textSecondary}`}>
             <div className={`w-16 h-16 rounded-full border-2 border-dashed flex items-center justify-center mb-4 ${isLight ? 'border-zinc-300' : 'border-zinc-800'}`}>
               <Inbox size={24} className="opacity-30" />

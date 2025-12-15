@@ -364,7 +364,66 @@ const teamwork = createTeamworkClient({
 });
 
 // ============================================================================
-// MCP SERVER: Teamwork Tools
+// SAFETY ARCHITECTURE: Read-Only MCP Tools
+// ============================================================================
+// 
+// CRITICAL: This MCP server contains ONLY read-only tools. Write operations
+// (creating time entries, projects, tasks) are intentionally EXCLUDED.
+//
+// Why: To prevent the AI from making changes to Teamwork without user review.
+//
+// How it works:
+// 1. Chat agents can ONLY use read tools (get_time_entries, search_tasks, etc.)
+// 2. Agents output draft JSON (timelog_draft, project_draft) for user review
+// 3. Users review drafts in the UI and click Submit/Create
+// 4. Separate submit endpoints (/api/agent/timelog/submit, /api/agent/project/submit)
+//    handle the actual write operations
+//
+// BLOCKED OPERATIONS (not available to chat agents):
+// - log_time - Use /api/agent/timelog/submit instead
+// - create_project - Use /api/agent/project/submit instead  
+// - create_task - Use /api/agent/task/submit instead
+// - update_task - Use /api/agent/task/update instead
+//
+// ============================================================================
+
+// List of blocked tool names (for validation/logging)
+const BLOCKED_WRITE_TOOLS = [
+  'log_time',
+  'create_project', 
+  'create_task',
+  'update_task',
+  'delete_task',
+  'create_timelog',
+];
+
+// Validation helper to detect if agent is trying to use blocked operations
+function validateAgentResponse(response: string): { safe: boolean; warning?: string } {
+  // Check for any patterns that might indicate the agent is trying to bypass safety
+  const dangerPatterns = [
+    /teamwork\.timeEntries\.create/i,
+    /teamwork\.projects\.create/i,
+    /teamwork\.tasks\.create/i,
+    /\.create\s*\(/i,
+    /\.update\s*\(/i,
+    /\.delete\s*\(/i,
+  ];
+  
+  for (const pattern of dangerPatterns) {
+    if (pattern.test(response)) {
+      console.warn('SAFETY WARNING: Agent response contains potential write operation:', pattern.source);
+      return { 
+        safe: false, 
+        warning: `Blocked potential write operation matching: ${pattern.source}` 
+      };
+    }
+  }
+  
+  return { safe: true };
+}
+
+// ============================================================================
+// MCP SERVER: Teamwork Tools (READ-ONLY)
 // These tools are called directly by Claude - no code writing needed
 // ============================================================================
 
@@ -612,52 +671,11 @@ const teamworkMcpServer = createSdkMcpServer({
       }
     ),
     
-    // Log time to a task
-    tool(
-      'log_time',
-      'Log time to a task. Returns the created time entry.',
-      {
-        taskId: z.union([z.number(), z.string()]).describe('The task ID to log time to'),
-        hours: z.union([z.number(), z.string()]).describe('Number of hours to log'),
-        description: z.string().describe('Description of work done'),
-        date: z.string().optional().describe('Date in YYYY-MM-DD format, defaults to today'),
-      },
-      async ({ taskId, hours, description, date }) => {
-        try {
-          const numericTaskId = Number(taskId);
-          const numericHours = Number(hours);
-          const logDate = date || new Date().toISOString().split('T')[0];
-          const minutes = Math.round(numericHours * 60);
-          
-          const result = await teamwork.timeEntries.create(numericTaskId, {
-            description,
-            minutes,
-            date: logDate,
-            isBillable: true,
-          });
-          
-          return {
-            content: [{
-              type: 'text',
-              text: JSON.stringify({
-                success: true,
-                timeEntryId: result.id,
-                taskId,
-                hours,
-                minutes,
-                description,
-                date: logDate,
-              }, null, 2),
-            }],
-          };
-        } catch (err) {
-          return {
-            content: [{ type: 'text', text: `Error logging time: ${err}` }],
-            isError: true,
-          };
-        }
-      }
-    ),
+    // SAFETY: log_time tool REMOVED from chat agent MCP server
+    // Write operations are only allowed via explicit submit endpoints:
+    // - /api/agent/timelog/submit (for time entries)
+    // - /api/agent/project/submit (for project creation)
+    // This ensures users always review changes before they're applied.
   ],
 });
 
@@ -699,9 +717,13 @@ async function handleAgentChat(body: {
     return new Response('Message is required', { status: 400, headers: corsHeaders });
   }
 
-  // For non-status modes, use MCP-based flow (timelog needs interactive tool use)
+  // Route to specialized handlers based on mode
   if (mode === 'timelog') {
     return handleTimelogChat(body);
+  }
+  
+  if (mode === 'project') {
+    return handleProjectChat(body);
   }
 
   // Create SSE stream
@@ -832,6 +854,18 @@ async function handleAgentChat(body: {
         
         console.log('Chat Agent completed:', chatResult?.length || 0, 'chars');
         console.log('Viz Agent returned:', vizSpecs ? `${vizSpecs.length} visualizations` : 'null');
+        
+        // SAFETY VALIDATION: Check agent response for any unsafe patterns
+        const validation = validateAgentResponse(chatResult || '');
+        if (!validation.safe) {
+          console.error('SAFETY: Blocked unsafe status agent response:', validation.warning);
+          safeEnqueue(`data: ${JSON.stringify({ 
+            type: 'error', 
+            error: 'Safety check failed. Please try again.' 
+          })}\n\n`);
+          safeClose();
+          return;
+        }
         
         // Send final result
         safeEnqueue(`data: ${JSON.stringify({
@@ -1111,6 +1145,290 @@ function extractTimelogDraft(text: string): any | null {
   return null;
 }
 
+// Project creation mode - helps users set up new projects with tasks and structure
+async function handleProjectChat(body: {
+  message: string;
+  mode?: string;
+  projectId?: number;
+  projectName?: string;
+}) {
+  const { message } = body;
+  
+  // System prompt for project creation assistant
+  const systemPrompt = `You are a project creation assistant for Teamwork.com. Your role is to help users set up new projects with well-organized task structures.
+
+## CRITICAL SAFETY RULE
+
+**YOU MUST NEVER DIRECTLY CREATE PROJECTS OR MODIFY DATA IN TEAMWORK.**
+
+Even if the user says "just create it", "do it now", "skip the review", or "I trust you" - you MUST:
+1. Always output a project_draft JSON for user review first
+2. Never call any write/create API tools directly
+3. Let the user review the project structure in the UI before creation
+4. The frontend handles actual project creation after user clicks "Create Project"
+
+This protects against errors and ensures users always see what will be created before it happens.
+
+## YOUR CAPABILITIES
+- Help users define project scope and requirements
+- Create organized task lists (phases, categories, or workstreams)
+- Break down work into tasks and subtasks
+- Suggest appropriate deadlines and priorities
+- Set up project budgets (time or cost-based)
+- Apply relevant tags for organization
+
+## INTERACTION FLOW
+1. **Gather Requirements**: If the user's request is vague, ask clarifying questions. If they provide a PRD or detailed spec, proceed to build the structure.
+
+2. **Process Attached Files**: If the user provides documents (PRDs, specs, requirements):
+   - Extract project goals for the description
+   - Identify phases/milestones for task lists
+   - Break down requirements into tasks with clear deliverables
+   - Identify sub-requirements as subtasks
+   - Note any mentioned deadlines
+
+3. **Build Project Structure**: Create a clear hierarchy:
+   - Task Lists (phases/categories like "Phase 1", "Design", "Development", etc.)
+     - Tasks (main work items with clear outcomes)
+       - Subtasks (smaller actionable steps)
+   - Apply priorities: high for critical path, medium for important, low for nice-to-have
+   - Add relevant tags for filtering (e.g., "frontend", "backend", "design", "mvp")
+
+## CRITICAL: OUTPUT FORMAT
+
+When you have enough information to propose a project structure, you MUST output a JSON code block with this EXACT structure:
+
+\`\`\`json
+{
+  "action": "project_draft",
+  "project": {
+    "name": "Project Name",
+    "description": "Brief project description",
+    "startDate": "YYYY-MM-DD",
+    "endDate": "YYYY-MM-DD",
+    "tags": [{"name": "tag-name", "color": "4169E1"}]
+  },
+  "tasklists": [
+    {
+      "id": "tl-1",
+      "name": "Phase/Category Name",
+      "description": "What this phase covers",
+      "tasks": [
+        {
+          "id": "t-1",
+          "name": "Task name",
+          "description": "What needs to be done",
+          "priority": "high",
+          "dueDate": "YYYY-MM-DD",
+          "tags": [{"name": "frontend"}],
+          "subtasks": [
+            {"id": "st-1", "name": "Subtask name"}
+          ]
+        }
+      ]
+    }
+  ],
+  "budget": {
+    "type": "time",
+    "capacity": 100
+  }
+}
+\`\`\`
+
+IMPORTANT RULES:
+- priority must be: "none", "low", "medium", or "high"
+- Dates must be YYYY-MM-DD format
+- Generate unique IDs like "tl-1", "t-1", "st-1" for tasklists, tasks, subtasks
+- Tag colors are optional hex codes without #
+- After the JSON block, add a brief summary asking if the user wants to modify anything
+
+## CURRENT CONTEXT
+- Today's date: ${new Date().toISOString().split('T')[0]}
+
+If the user provides a PRD or detailed requirements, analyze them and output the project structure JSON immediately. For vague requests, ask clarifying questions first.`;
+
+  const options: Options = {
+    cwd: process.cwd() + '/../..',
+    model: 'opus',
+    mcpServers: { teamwork: teamworkMcpServer },
+    disallowedTools: ['Bash', 'Edit', 'Write', 'MultiEdit', 'Read', 'Glob', 'Grep', 'Task', 'WebSearch', 'WebFetch', 'TodoWrite', 'NotebookEdit'],
+    systemPrompt,
+    includePartialMessages: true,
+    permissionMode: 'bypassPermissions',
+    allowDangerouslySkipPermissions: true,
+    maxTurns: 10,
+    env: cleanEnv,
+    pathToClaudeCodeExecutable: '/Users/dalton/.nvm/versions/node/v20.19.5/bin/claude',
+  };
+
+  const stream = new ReadableStream({
+    async start(controller) {
+      const encoder = new TextEncoder();
+      let closed = false;
+      let fullText = '';
+      
+      const safeEnqueue = (data: string) => {
+        if (!closed) {
+          try { controller.enqueue(encoder.encode(data)); } catch { closed = true; }
+        }
+      };
+      
+      const safeClose = () => {
+        if (!closed) {
+          closed = true;
+          try { controller.close(); } catch {}
+        }
+      };
+      
+      try {
+        console.log('=== PROJECT CREATION AGENT ===');
+        console.log('Message:', message.slice(0, 200));
+        
+        safeEnqueue(`data: ${JSON.stringify({
+          type: 'init',
+          model: 'project-agent',
+          info: 'Analyzing your project requirements...',
+        })}\n\n`);
+        
+        for await (const event of query({ prompt: message, options })) {
+          if (event.type === 'stream_event') {
+            const streamEvent = event.event;
+            if (streamEvent.type === 'content_block_delta') {
+              const delta = (streamEvent as any).delta;
+              if (delta?.type === 'text_delta' && delta.text) {
+                fullText += delta.text;
+                safeEnqueue(`data: ${JSON.stringify({
+                  type: 'thinking',
+                  thinking: delta.text,
+                })}\n\n`);
+              }
+            }
+          } else if (event.type === 'result') {
+            fullText = (event as any).result || fullText;
+          }
+        }
+        
+        // SAFETY VALIDATION: Check agent response for any unsafe patterns
+        const validation = validateAgentResponse(fullText);
+        if (!validation.safe) {
+          console.error('SAFETY: Blocked unsafe project agent response:', validation.warning);
+          safeEnqueue(`data: ${JSON.stringify({ 
+            type: 'error', 
+            error: 'Safety check failed. Please try again.' 
+          })}\n\n`);
+          safeClose();
+          return;
+        }
+        
+        // Try to extract project draft JSON from response
+        const jsonMatch = fullText.match(/```json\s*([\s\S]*?)```/);
+        if (jsonMatch) {
+          try {
+            const projectData = JSON.parse(jsonMatch[1]);
+            if (projectData.action === 'project_draft' && projectData.project && projectData.tasklists) {
+              // Calculate summary stats
+              let totalTasks = 0;
+              let totalSubtasks = 0;
+              for (const tl of projectData.tasklists) {
+                totalTasks += tl.tasks?.length || 0;
+                for (const task of tl.tasks || []) {
+                  totalSubtasks += task.subtasks?.length || 0;
+                }
+              }
+              
+              // Remove the JSON block from text for clean message
+              const messageText = fullText
+                .replace(/```json[\s\S]*?```/, '')
+                .trim();
+              
+              // Emit project draft event
+              safeEnqueue(`data: ${JSON.stringify({
+                type: 'project_draft',
+                draft: {
+                  project: {
+                    name: projectData.project.name,
+                    description: projectData.project.description,
+                    startDate: projectData.project.startDate,
+                    endDate: projectData.project.endDate,
+                    tags: projectData.project.tags || [],
+                  },
+                  tasklists: projectData.tasklists.map((tl: any) => ({
+                    id: tl.id,
+                    name: tl.name,
+                    description: tl.description,
+                    tasks: (tl.tasks || []).map((t: any) => ({
+                      id: t.id,
+                      name: t.name,
+                      description: t.description,
+                      priority: t.priority || 'none',
+                      dueDate: t.dueDate,
+                      startDate: t.startDate,
+                      estimatedMinutes: t.estimatedMinutes,
+                      tags: t.tags || [],
+                      subtasks: (t.subtasks || []).map((st: any) => ({
+                        id: st.id,
+                        name: st.name,
+                        description: st.description,
+                        dueDate: st.dueDate,
+                      })),
+                    })),
+                  })),
+                  budget: projectData.budget,
+                  summary: {
+                    totalTasklists: projectData.tasklists.length,
+                    totalTasks,
+                    totalSubtasks,
+                  },
+                  message: messageText,
+                  isDraft: true,
+                },
+              })}\n\n`);
+              
+              // Send clean text result (without JSON block)
+              safeEnqueue(`data: ${JSON.stringify({
+                type: 'result',
+                text: messageText,
+              })}\n\n`);
+              
+              safeEnqueue('data: [DONE]\n\n');
+              safeClose();
+              return;
+            }
+          } catch (parseErr) {
+            console.error('Failed to parse project JSON:', parseErr);
+          }
+        }
+        
+        // No valid project draft found, send as regular text
+        safeEnqueue(`data: ${JSON.stringify({
+          type: 'result',
+          text: fullText,
+        })}\n\n`);
+        
+        safeEnqueue('data: [DONE]\n\n');
+        safeClose();
+        
+      } catch (error) {
+        console.error('Project agent error:', error);
+        safeEnqueue(`data: ${JSON.stringify({
+          type: 'error',
+          error: error instanceof Error ? error.message : 'Unknown error',
+        })}\n\n`);
+        safeClose();
+      }
+    },
+  });
+
+  return new Response(stream, {
+    headers: {
+      ...corsHeaders,
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+    },
+  });
+}
+
 // Timelog mode - uses timelog agent with MCP tools for intelligent time logging
 async function handleTimelogChat(body: {
   message: string;
@@ -1192,10 +1510,14 @@ ${projectId ? `- Selected project: ${projectName} (ID: ${projectId})` : '- No pr
               const delta = (streamEvent as any).delta;
               if (delta?.type === 'text_delta' && delta.text) {
                 fullText += delta.text;
-                // Stream thinking status but don't send raw text yet
-                const thinkingPreview = delta.text.slice(0, 100);
-                if (!thinkingPreview.includes('{') && !thinkingPreview.includes('```')) {
-                  safeEnqueue(`data: ${JSON.stringify({ type: 'thinking', thinking: thinkingPreview })}\n\n`);
+                // Stream thinking status but filter out JSON data
+                const chunk = delta.text;
+                // Skip chunks that look like JSON or code blocks
+                const isJson = chunk.includes('{') || chunk.includes('}') || 
+                               chunk.includes('```') || chunk.includes('"action"') ||
+                               chunk.includes('"entries"') || chunk.includes('"taskId"');
+                if (!isJson && chunk.trim().length > 0) {
+                  safeEnqueue(`data: ${JSON.stringify({ type: 'thinking', thinking: chunk })}\n\n`);
                 }
               }
             }
@@ -1205,6 +1527,18 @@ ${projectId ? `- Selected project: ${projectName} (ID: ${projectId})` : '- No pr
         }
         
         console.log('Timelog agent response length:', fullText.length);
+        
+        // SAFETY VALIDATION: Check agent response for any unsafe patterns
+        const validation = validateAgentResponse(fullText);
+        if (!validation.safe) {
+          console.error('SAFETY: Blocked unsafe agent response:', validation.warning);
+          safeEnqueue(`data: ${JSON.stringify({ 
+            type: 'error', 
+            error: 'Safety check failed. Please try again.' 
+          })}\n\n`);
+          safeClose();
+          return;
+        }
         
         // Check if response contains a timelog draft
         const draft = extractTimelogDraft(fullText);
@@ -1260,6 +1594,139 @@ ${projectId ? `- Selected project: ${projectName} (ID: ${projectId})` : '- No pr
   return new Response(stream, {
     headers: { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', ...corsHeaders },
   });
+}
+
+// Submit project (called when user confirms project draft)
+async function handleProjectSubmit(body: {
+  project: {
+    name: string;
+    description?: string;
+    startDate?: string;
+    endDate?: string;
+    tags?: Array<{ name: string; color?: string }>;
+  };
+  tasklists: Array<{
+    name: string;
+    description?: string;
+    tasks: Array<{
+      name: string;
+      description?: string;
+      priority?: string;
+      dueDate?: string;
+      tags?: Array<{ name: string }>;
+      subtasks?: Array<{ name: string; description?: string }>;
+    }>;
+  }>;
+  budget?: {
+    type: 'time' | 'money';
+    capacity: number;
+  };
+}) {
+  const { project, tasklists, budget } = body;
+  
+  if (!project?.name) {
+    return jsonResponse({ error: 'Project name is required' }, 400);
+  }
+  
+  try {
+    // 1. Create the project
+    console.log('Creating project with options:', {
+      name: project.name,
+      description: project.description,
+      startDate: project.startDate?.replace(/-/g, ''),
+      endDate: project.endDate?.replace(/-/g, ''),
+    });
+    
+    const projectResult = await teamwork.projects.create({
+      name: project.name,
+      description: project.description,
+      startDate: project.startDate?.replace(/-/g, ''),
+      endDate: project.endDate?.replace(/-/g, ''),
+    });
+    
+    console.log('Project creation result:', projectResult);
+    
+    if (!projectResult?.id) {
+      throw new Error('Project creation failed - no ID returned');
+    }
+    
+    const projectId = parseInt(projectResult.id, 10);
+    console.log(`Created project: ${projectId} - ${project.name}`);
+    
+    let totalTasksCreated = 0;
+    let totalSubtasksCreated = 0;
+    
+    // 2. Create task lists and tasks
+    for (const tasklist of (tasklists || [])) {
+      const tasklistResult = await teamwork.projects.createTasklist(projectId, {
+        name: tasklist.name,
+        description: tasklist.description,
+      });
+      
+      const tasklistId = parseInt(tasklistResult.id, 10);
+      console.log(`Created tasklist: ${tasklistId} - ${tasklist.name}`);
+      
+      // 3. Create tasks in each list
+      for (const task of tasklist.tasks || []) {
+        try {
+          console.log(`Creating task: ${task.name} with dueDate: ${task.dueDate}, priority: ${task.priority}`);
+          
+          const createdTask = await teamwork.tasks.create(tasklistId, {
+            name: task.name,
+            description: task.description,
+            priority: (task.priority === 'none' ? undefined : task.priority) as any,
+            dueDate: task.dueDate,
+            startDate: task.startDate,
+          });
+          
+          totalTasksCreated++;
+          console.log(`Created task: ${createdTask.id} - ${task.name}`);
+        
+          // 4. Create subtasks
+          for (const subtask of task.subtasks || []) {
+            try {
+              await teamwork.http.post(
+                `/projects/api/v3/tasks/${createdTask.id}/subtasks.json`,
+                {
+                  task: {
+                    name: subtask.name,
+                    description: subtask.description,
+                  }
+                }
+              );
+              totalSubtasksCreated++;
+            } catch (err) {
+              console.error(`Failed to create subtask: ${subtask.name}`, err);
+            }
+          }
+        } catch (err: any) {
+          console.error(`Failed to create task: ${task.name}`);
+          console.error('Error details:', err?.body || err?.message || err);
+          // Continue with other tasks even if one fails
+        }
+      }
+    }
+    
+    const tasklistCount = tasklists?.length || 0;
+    return jsonResponse({
+      success: true,
+      projectId,
+      projectName: project.name,
+      projectUrl: `${TEAMWORK_API_URL}/app/projects/${projectId}`,
+      summary: {
+        tasklistsCreated: tasklistCount,
+        tasksCreated: totalTasksCreated,
+        subtasksCreated: totalSubtasksCreated,
+      },
+      message: `Successfully created project "${project.name}" with ${tasklistCount} task lists and ${totalTasksCreated} tasks.`,
+    });
+  } catch (err) {
+    console.error('Project creation error:', err);
+    return jsonResponse({ 
+      error: err instanceof Error ? err.message : 'Failed to create project',
+      success: false,
+    }, 500);
+  }
 }
 
 // Submit timelog entries (called when user confirms draft)
@@ -1499,6 +1966,12 @@ const server = Bun.serve({
       if (path === '/api/agent/timelog/submit' && req.method === 'POST') {
         const body = await req.json();
         return handleTimelogSubmit(body);
+      }
+      
+      // Project submit endpoint (confirms and creates project from draft)
+      if (path === '/api/agent/project/submit' && req.method === 'POST') {
+        const body = await req.json();
+        return handleProjectSubmit(body);
       }
       
       // Teamwork API endpoints

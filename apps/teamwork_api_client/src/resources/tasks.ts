@@ -215,13 +215,14 @@ export class TasksResource {
    * Create a new task in a tasklist.
    */
   async create(tasklistId: number, options: CreateTaskOptions): Promise<ApiTask> {
-    const body: CreateTaskRequest = {
+    // Note: V3 API expects 'dueAt' and 'startAt' for creation, but returns 'dueDate' and 'startDate'
+    const body: any = {
       task: {
         name: options.name,
         description: options.description,
         priority: options.priority,
-        startDate: options.startDate,
-        dueDate: options.dueDate,
+        startAt: options.startDate,  // API uses 'startAt' for input
+        dueAt: options.dueDate,      // API uses 'dueAt' for input
         estimatedMinutes: options.estimatedMinutes,
         tagIds: options.tagIds,
       },

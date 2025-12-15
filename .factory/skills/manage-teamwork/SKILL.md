@@ -71,8 +71,10 @@ What would you like to do with Teamwork?
 4. **Move task** - Move a task between board stages
 5. **Comment on task** - Add a comment to a task
 6. **Log time** - Log time on a task
-7. **Manage projects** - List, create, or get project details
+7. **Manage projects** - List or get project details
 8. **Get activity status** - See what you've worked on in a time period
+9. **Get budget** - View budget information for a project
+10. **Create project** - Create a new project with tasks and structure
 
 **Wait for response before proceeding.**
 </intake>
@@ -86,8 +88,10 @@ What would you like to do with Teamwork?
 | 4, "move", "stage", "board", "kanban" | `workflows/move-task.md` |
 | 5, "comment" | `workflows/comment-on-task.md` |
 | 6, "time", "log", "track" | `workflows/log-time.md` |
-| 7, "project" | `workflows/manage-projects.md` |
+| 7, "project", "list projects" | `workflows/manage-projects.md` |
 | 8, "status", "activity", "what did I work on", "hours" | `workflows/get-activity-status.md` |
+| 9, "budget", "spending", "cost", "utilization" | `workflows/get-budget.md` |
+| 10, "create project", "new project", "setup project" | `workflows/create-project.md` |
 
 **After reading the workflow, follow it exactly.**
 </routing>
@@ -109,8 +113,10 @@ All domain knowledge in `references/`:
 | move-task.md | Move tasks between workflow/board stages |
 | comment-on-task.md | Add comments to tasks |
 | log-time.md | Log time entries on tasks |
-| manage-projects.md | List, get, or create projects |
+| manage-projects.md | List or get project details |
 | get-activity-status.md | Report on user work activity for a time period |
+| get-budget.md | View project budget information and utilization |
+| create-project.md | Create a new project with task lists, tasks, and budget |
 </workflows_index>
 
 <quick_reference>
@@ -142,6 +148,13 @@ await client.workflows.moveTaskToStage(taskId, workflowId, stageId);
 **Add comment:**
 ```typescript
 await client.comments.postMarkdown(taskId, '**Update:** Work completed.');
+```
+
+**Get project budget:**
+```typescript
+const budgets = await client.budgets.listByProject(projectId);
+const activeBudget = await client.budgets.getActiveByProject(projectId);
+const utilization = await client.budgets.getUtilization(projectId);
 ```
 </quick_reference>
 

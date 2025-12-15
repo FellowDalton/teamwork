@@ -65,6 +65,7 @@ out/
 .nuxt/
 .cache/
 .parcel-cache/
+.vite/
 .vercel
 .output
 .temp

@@ -1,5 +1,5 @@
 import { Project, Task } from "../types";
-import { DisplayData, DisplayItem, ConversationTopic } from "../types/conversation";
+import { DisplayData, DisplayItem, ConversationTopic, ProjectDraftData } from "../types/conversation";
 
 // Helper to call Claude API via backend proxy
 async function callClaude(
@@ -418,6 +418,7 @@ export interface StreamingChatOptions {
   onCards?: (data: CardAgentResponse) => void;
   onVisualization?: (spec: VisualizationSpec) => void;
   onTimelogDraft?: (draft: TimelogDraftData) => void;
+  onProjectDraft?: (draft: ProjectDraftData) => void;
   onComplete: (fullText: string) => void;
   onError: (error: Error) => void;
 }
@@ -518,7 +519,7 @@ export const processStreamingChat = async (options: StreamingChatOptions): Promi
 // Agent SDK streaming - uses skills for intelligent Teamwork interactions
 // No hard-coded date parsing - Claude handles everything via skills
 export const processAgentStream = async (options: StreamingChatOptions): Promise<void> => {
-  const { message, topic, projectId, projectName, onChunk, onThinking, onVisualization, onTimelogDraft, onComplete, onError } = options;
+  const { message, topic, projectId, projectName, onChunk, onThinking, onVisualization, onTimelogDraft, onProjectDraft, onComplete, onError } = options;
   
   const modeMap: Record<ConversationTopic, string> = {
     project: 'project',
@@ -594,6 +595,17 @@ export const processAgentStream = async (options: StreamingChatOptions): Promise
               isDraft: true,
             };
             onTimelogDraft(draft);
+          } else if (parsed.type === 'project_draft' && parsed.draft && onProjectDraft) {
+            // Handle project draft for review/editing
+            const draft: ProjectDraftData = {
+              project: parsed.draft.project,
+              tasklists: parsed.draft.tasklists,
+              budget: parsed.draft.budget,
+              summary: parsed.draft.summary,
+              message: parsed.draft.message,
+              isDraft: true,
+            };
+            onProjectDraft(draft);
           } else if (parsed.type === 'error') {
             throw new Error(parsed.error);
           }
@@ -820,6 +832,64 @@ export const submitTimelogEntries = async (
 
   if (!response.ok) {
     throw new Error(`Failed to submit time entries: ${response.status}`);
+  }
+
+  return response.json();
+};
+
+// Submit project to Teamwork
+export interface ProjectSubmitResult {
+  success: boolean;
+  projectId?: number;
+  projectName?: string;
+  projectUrl?: string;
+  summary?: {
+    tasklistsCreated: number;
+    tasksCreated: number;
+    subtasksCreated: number;
+  };
+  message: string;
+  error?: string;
+}
+
+export const submitProject = async (
+  projectData: {
+    project: {
+      name: string;
+      description?: string;
+      startDate?: string;
+      endDate?: string;
+      tags?: Array<{ name: string; color?: string }>;
+    };
+    tasklists: Array<{
+      name: string;
+      description?: string;
+      tasks: Array<{
+        name: string;
+        description?: string;
+        priority?: string;
+        dueDate?: string;
+        tags?: Array<{ name: string }>;
+        subtasks?: Array<{ name: string; description?: string }>;
+      }>;
+    }>;
+    budget?: {
+      type: 'time' | 'money';
+      capacity: number;
+    };
+  }
+): Promise<ProjectSubmitResult> => {
+  const response = await fetch("/api/agent/project/submit", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(projectData),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+    throw new Error(error.error || `Failed to create project: ${response.status}`);
   }
 
   return response.json();

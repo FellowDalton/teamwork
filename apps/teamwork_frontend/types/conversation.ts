@@ -131,3 +131,75 @@ export interface TimelogDraftData {
   message: string;
   isDraft: true;
 }
+
+// Project draft types for create project wizard
+export interface ProjectDraftTag {
+  id?: number;
+  name: string;
+  color?: string;
+  isNew?: boolean;
+}
+
+export interface SubtaskDraft {
+  id: string;
+  name: string;
+  description?: string;
+  dueDate?: string;
+  estimatedMinutes?: number;
+}
+
+export interface TaskDraft {
+  id: string;
+  name: string;
+  description?: string;
+  priority?: 'none' | 'low' | 'medium' | 'high';
+  dueDate?: string;
+  startDate?: string;
+  estimatedMinutes?: number;
+  tags: ProjectDraftTag[];
+  subtasks: SubtaskDraft[];
+}
+
+export interface TasklistDraft {
+  id: string;
+  name: string;
+  description?: string;
+  tasks: TaskDraft[];
+}
+
+export interface ProjectBudgetDraft {
+  type: 'time' | 'money';
+  capacity: number;
+  timelogType?: 'all' | 'billable';
+}
+
+export interface ProjectDraftData {
+  project: {
+    name: string;
+    description?: string;
+    startDate?: string;
+    endDate?: string;
+    tags: ProjectDraftTag[];
+  };
+  tasklists: TasklistDraft[];
+  budget?: ProjectBudgetDraft;
+  summary: {
+    totalTasklists: number;
+    totalTasks: number;
+    totalSubtasks: number;
+  };
+  message: string;
+  isDraft: true;
+  // Set after successful creation
+  isCreated?: boolean;
+  createdProjectUrl?: string;
+}
+
+// File attachment for conversation
+export interface FileAttachment {
+  id: string;
+  name: string;
+  size: number;
+  type: string;
+  content?: string;
+}

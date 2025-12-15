@@ -6,6 +6,7 @@
 import type { TeamworkHttpClient } from '../client.ts';
 import {
   type Project,
+  type Tasklist,
   type ProjectListResponse,
   type ProjectResponse,
   type TasklistListResponse,
@@ -35,6 +36,58 @@ export interface ListProjectsOptions {
   page?: number;
   /** Items per page */
   pageSize?: number;
+}
+
+export interface CreateProjectOptions {
+  /** Project name (required) */
+  name: string;
+  /** Project description */
+  description?: string;
+  /** Start date (format: yyyymmdd) */
+  startDate?: string;
+  /** End date (format: yyyymmdd) */
+  endDate?: string;
+  /** Company ID to associate the project with */
+  companyId?: number;
+  /** Category ID */
+  categoryId?: number;
+  /** Project owner user ID */
+  projectOwnerId?: number;
+  /** Tag IDs (comma separated) */
+  tagIds?: string;
+  /** People IDs to grant access */
+  people?: string;
+  /** Whether project is private */
+  isPrivate?: boolean;
+  /** Enable tasks feature */
+  useTasks?: boolean;
+  /** Enable milestones feature */
+  useMilestones?: boolean;
+  /** Enable messages feature */
+  useMessages?: boolean;
+  /** Enable files feature */
+  useFiles?: boolean;
+  /** Enable time tracking feature */
+  useTime?: boolean;
+  /** Enable notebooks feature */
+  useNotebook?: boolean;
+  /** Enable billing feature */
+  useBilling?: boolean;
+}
+
+export interface CreateTasklistOptions {
+  /** Tasklist name (required) */
+  name: string;
+  /** Tasklist description */
+  description?: string;
+  /** Milestone ID to associate with */
+  milestoneId?: number;
+  /** Whether the tasklist is private */
+  isPrivate?: boolean;
+  /** Add to top of tasklists list */
+  addToTop?: boolean;
+  /** Template ID to base the tasklist on */
+  todoListTemplateId?: number;
 }
 
 /**
@@ -176,5 +229,88 @@ export class ProjectsResource {
     const projects = await this.searchByName(name);
     const lowerName = name.toLowerCase();
     return projects.find((p) => p.name.toLowerCase() === lowerName) ?? null;
+  }
+
+  /**
+   * Create a new project (V1 API).
+   * @returns The created project ID
+   */
+  async create(options: CreateProjectOptions): Promise<{ id: string; status: string }> {
+    const body: Record<string, unknown> = {
+      project: {
+        name: options.name,
+        description: options.description,
+        'start-date': options.startDate,
+        'end-date': options.endDate,
+        companyId: options.companyId,
+        'category-id': options.categoryId,
+        projectOwnerId: options.projectOwnerId,
+        tagIds: options.tagIds,
+        people: options.people,
+        private: options.isPrivate,
+        'use-tasks': options.useTasks ?? true,
+        'use-milestones': options.useMilestones ?? true,
+        'use-messages': options.useMessages ?? true,
+        'use-files': options.useFiles ?? true,
+        'use-time': options.useTime ?? true,
+        'use-notebook': options.useNotebook ?? true,
+        'use-billing': options.useBilling ?? false,
+      },
+    };
+
+    // Remove undefined values
+    const projectData = body.project as Record<string, unknown>;
+    Object.keys(projectData).forEach(key => {
+      if (projectData[key] === undefined) {
+        delete projectData[key];
+      }
+    });
+
+    const response = await this.client.post<{ id: string; STATUS: string }>('/projects.json', body);
+    return { id: response.id, status: response.STATUS };
+  }
+
+  /**
+   * Create a new tasklist in a project (V1 API).
+   * @returns The created tasklist ID
+   */
+  async createTasklist(projectId: number, options: CreateTasklistOptions): Promise<{ id: string; status: string }> {
+    const body: Record<string, unknown> = {
+      'todo-list': {
+        name: options.name,
+        description: options.description,
+        'milestone-id': options.milestoneId,
+        private: options.isPrivate,
+        'todo-list-template-id': options.todoListTemplateId,
+      },
+      addToTop: options.addToTop,
+    };
+
+    // Remove undefined values
+    const todoListData = body['todo-list'] as Record<string, unknown>;
+    Object.keys(todoListData).forEach(key => {
+      if (todoListData[key] === undefined) {
+        delete todoListData[key];
+      }
+    });
+    if (body.addToTop === undefined) {
+      delete body.addToTop;
+    }
+
+    const response = await this.client.post<{ TASKLISTID: string; STATUS: string }>(
+      `/projects/${projectId}/tasklists.json`,
+      body
+    );
+    return { id: response.TASKLISTID, status: response.STATUS };
+  }
+
+  /**
+   * Get a tasklist by ID.
+   */
+  async getTasklist(tasklistId: number): Promise<Tasklist> {
+    const response = await this.client.get<{ tasklist: Tasklist }>(
+      `/projects/api/v3/tasklists/${tasklistId}.json`
+    );
+    return response.tasklist;
   }
 }

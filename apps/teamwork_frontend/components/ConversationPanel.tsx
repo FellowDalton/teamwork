@@ -1,7 +1,8 @@
-import React, { useRef, useEffect } from 'react';
-import { Bot, User, Sparkles, Command, ChevronRight, CheckCircle2, AlertCircle } from 'lucide-react';
+import React, { useRef, useEffect, useCallback, useState } from 'react';
+import { Bot, User, Sparkles, Command, ChevronRight, CheckCircle2, AlertCircle, Paperclip } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
-import { ChatMessage, ConversationTopic } from '../types/conversation';
+import { ChatMessage, ConversationTopic, FileAttachment } from '../types/conversation';
+import { FileAttachmentsBar } from './FileAttachment';
 
 // Convert bullet characters to markdown list syntax
 const normalizeMarkdown = (text: string): string => {
@@ -45,7 +46,7 @@ const normalizeMarkdown = (text: string): string => {
 
 interface ConversationPanelProps {
   messages: ChatMessage[];
-  onSend: (message: string) => void;
+  onSend: (message: string, files?: FileAttachment[]) => void;
   topic: ConversationTopic;
   isProcessing: boolean;
   thinkingStatus?: string;
@@ -53,6 +54,8 @@ interface ConversationPanelProps {
   onInputChange: (value: string) => void;
   projectName?: string;
   theme?: 'light' | 'dark';
+  attachedFiles?: FileAttachment[];
+  onFilesChange?: (files: FileAttachment[]) => void;
 }
 
 // Screw component for hardware aesthetic
@@ -71,27 +74,91 @@ export const ConversationPanel: React.FC<ConversationPanelProps> = ({
   inputValue,
   onInputChange,
   projectName,
-  theme = 'dark'
+  theme = 'dark',
+  attachedFiles = [],
+  onFilesChange,
 }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const thinkingRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const isLight = theme === 'light';
+  const [isDragging, setIsDragging] = useState(false);
 
   // Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // Auto-scroll thinking container to bottom when content changes
+  useEffect(() => {
+    if (thinkingRef.current) {
+      thinkingRef.current.scrollTop = thinkingRef.current.scrollHeight;
+    }
+  }, [thinkingStatus]);
+
   // Focus input on mount
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
 
+  // File handling
+  const handleFileSelect = useCallback(async (files: FileList | null) => {
+    if (!files || !onFilesChange) return;
+    
+    const newFiles: FileAttachment[] = [];
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      // Read file content for text files
+      let content: string | undefined;
+      if (file.type.startsWith('text/') || 
+          file.name.endsWith('.md') || 
+          file.name.endsWith('.json') ||
+          file.name.endsWith('.txt')) {
+        content = await file.text();
+      }
+      
+      newFiles.push({
+        id: `file-${Date.now()}-${i}`,
+        name: file.name,
+        size: file.size,
+        type: file.type || 'application/octet-stream',
+        content,
+      });
+    }
+    
+    onFilesChange([...attachedFiles, ...newFiles]);
+  }, [attachedFiles, onFilesChange]);
+
+  const handleRemoveFile = useCallback((id: string) => {
+    if (onFilesChange) {
+      onFilesChange(attachedFiles.filter(f => f.id !== id));
+    }
+  }, [attachedFiles, onFilesChange]);
+
+  // Drag and drop
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    handleFileSelect(e.dataTransfer.files);
+  }, [handleFileSelect]);
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       if (inputValue.trim() && !isProcessing) {
-        onSend(inputValue.trim());
+        onSend(inputValue.trim(), attachedFiles.length > 0 ? attachedFiles : undefined);
+        if (onFilesChange) onFilesChange([]); // Clear files after send
       }
     }
   };
@@ -238,6 +305,7 @@ export const ConversationPanel: React.FC<ConversationPanelProps> = ({
                     th: ({ children }) => <th className={`text-left p-2 border-b ${isLight ? 'border-zinc-200' : 'border-zinc-700'} font-semibold`}>{children}</th>,
                     td: ({ children }) => <td className={`p-2 border-b ${isLight ? 'border-zinc-100' : 'border-zinc-800'}`}>{children}</td>,
                     hr: () => <hr className={`my-3 ${isLight ? 'border-zinc-200' : 'border-zinc-700'}`} />,
+                    a: ({ href, children }) => <a href={href} target="_blank" rel="noopener noreferrer" className={`underline ${isLight ? 'text-cyan-600 hover:text-cyan-700' : 'text-cyan-400 hover:text-cyan-300'}`}>{children}</a>,
                   }}
                 >
                   {normalizeMarkdown(msg.content)}
@@ -257,7 +325,7 @@ export const ConversationPanel: React.FC<ConversationPanelProps> = ({
             </div>
             <div className={`flex-1 p-3 rounded-lg border ${isLight ? 'bg-white border-zinc-200' : 'bg-[#1a1a1c] border-zinc-800'}`}>
               {thinkingStatus ? (
-                <div className="max-h-40 overflow-y-auto">
+                <div ref={thinkingRef} className="max-h-40 overflow-y-auto">
                   <p className={`text-xs ${accentColor} whitespace-pre-wrap break-words font-mono leading-relaxed`}>
                     {thinkingStatus}
                   </p>
@@ -277,12 +345,52 @@ export const ConversationPanel: React.FC<ConversationPanelProps> = ({
       </div>
 
       {/* Input Area */}
-      <div className={`p-3 border-t ${headerBg} ${headerBorder}`}>
+      <div 
+        className={`p-3 border-t ${headerBg} ${headerBorder} ${isDragging ? 'ring-2 ring-cyan-500 ring-inset' : ''}`}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
+        {/* Hidden file input */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          accept=".txt,.md,.json,.pdf,.docx"
+          onChange={(e) => handleFileSelect(e.target.files)}
+          className="hidden"
+        />
+        
+        {/* Attached files display */}
+        {attachedFiles.length > 0 && (
+          <FileAttachmentsBar
+            files={attachedFiles}
+            theme={theme}
+            onRemove={handleRemoveFile}
+          />
+        )}
+        
         <div className={`
           flex items-center gap-2 p-1 pl-3 rounded-lg border transition-all
           ${inputBg}
           ${isLight ? 'focus-within:border-cyan-500/50 focus-within:ring-1 focus-within:ring-cyan-500/20' : 'focus-within:border-amber-500/50 focus-within:ring-1 focus-within:ring-amber-500/20'}
         `}>
+          {/* Attach file button */}
+          {onFilesChange && (
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isProcessing}
+              className={`
+                p-1 rounded transition-colors
+                ${isProcessing ? 'opacity-30' : 'opacity-70 hover:opacity-100'}
+                ${textSecondary} hover:text-cyan-500
+              `}
+              title="Attach files"
+            >
+              <Paperclip size={14} />
+            </button>
+          )}
+          
           <Command size={14} className={textSecondary} />
           <input
             ref={inputRef}
@@ -290,12 +398,17 @@ export const ConversationPanel: React.FC<ConversationPanelProps> = ({
             value={inputValue}
             onChange={(e) => onInputChange(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={getPlaceholder()}
+            placeholder={isDragging ? 'Drop files here...' : getPlaceholder()}
             disabled={isProcessing}
             className={`flex-1 bg-transparent border-none focus:ring-0 outline-none h-9 text-sm ${textPrimary} placeholder:opacity-50 disabled:opacity-50`}
           />
           <button
-            onClick={() => inputValue.trim() && !isProcessing && onSend(inputValue.trim())}
+            onClick={() => {
+              if (inputValue.trim() && !isProcessing) {
+                onSend(inputValue.trim(), attachedFiles.length > 0 ? attachedFiles : undefined);
+                if (onFilesChange) onFilesChange([]);
+              }
+            }}
             disabled={!inputValue.trim() || isProcessing}
             className={`
               h-8 w-8 flex items-center justify-center rounded-md transition-all

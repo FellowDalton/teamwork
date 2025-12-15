@@ -1,0 +1,1942 @@
+{
+    "project": {
+        "name": "MadRedder Platform Development",
+        "description": "Web platform connecting food businesses (restaurants, bakeries, supermarkets, canteens) with consumers to reduce food waste. Businesses sell surplus food at discounted prices before closing time or expiration dates. Target: 50 partners, 5,000 consumers in year 1. Tech stack: React/TypeScript frontend, Node.js/Express backend, PostgreSQL, AWS hosting.",
+        "startDate": "2025-01-06",
+        "endDate": "2025-06-30",
+        "tags": [
+            {
+                "name": "web-platform",
+                "color": "4169E1"
+            },
+            {
+                "name": "react",
+                "color": "61DAFB"
+            },
+            {
+                "name": "nodejs",
+                "color": "339933"
+            },
+            {
+                "name": "sustainability",
+                "color": "22C55E"
+            }
+        ]
+    },
+    "tasklists": [
+        {
+            "id": "tl-1",
+            "name": "Phase 1: Project Setup & Design",
+            "description": "Kickoff, environment setup, wireframes and UI design (M1-M2: Jan 6 - Jan 31)",
+            "tasks": [
+                {
+                    "id": "t-1-1",
+                    "name": "Project kickoff and team onboarding",
+                    "description": "Initial kickoff meeting, define communication channels, set up project management tools",
+                    "priority": "high",
+                    "dueDate": "2025-01-08",
+                    "tags": [
+                        {
+                            "name": "planning"
+                        }
+                    ],
+                    "subtasks": [
+                        {
+                            "id": "st-1-1-1",
+                            "name": "Schedule kickoff meeting with GrønStart team"
+                        },
+                        {
+                            "id": "st-1-1-2",
+                            "name": "Set up Slack/Teams channels for communication"
+                        },
+                        {
+                            "id": "st-1-1-3",
+                            "name": "Create project documentation structure"
+                        }
+                    ]
+                },
+                {
+                    "id": "t-1-2",
+                    "name": "Development environment setup",
+                    "description": "Configure AWS infrastructure, CI/CD pipelines, and local development environments",
+                    "priority": "high",
+                    "dueDate": "2025-01-15",
+                    "tags": [
+                        {
+                            "name": "devops"
+                        }
+                    ],
+                    "subtasks": [
+                        {
+                            "id": "st-1-2-1",
+                            "name": "Set up AWS account and IAM roles"
+                        },
+                        {
+                            "id": "st-1-2-2",
+                            "name": "Configure GitHub repository and branch protection"
+                        },
+                        {
+                            "id": "st-1-2-3",
+                            "name": "Set up GitHub Actions CI/CD pipeline"
+                        },
+                        {
+                            "id": "st-1-2-4",
+                            "name": "Configure development, staging, and production environments"
+                        },
+                        {
+                            "id": "st-1-2-5",
+                            "name": "Set up Datadog monitoring"
+                        }
+                    ]
+                },
+                {
+                    "id": "t-1-3",
+                    "name": "Domain registration and SSL setup",
+                    "description": "Register madredder.dk domain and configure SSL certificate",
+                    "priority": "high",
+                    "dueDate": "2025-01-10",
+                    "tags": [
+                        {
+                            "name": "devops"
+                        }
+                    ],
+                    "subtasks": [
+                        {
+                            "id": "st-1-3-1",
+                            "name": "Register madredder.dk domain"
+                        },
+                        {
+                            "id": "st-1-3-2",
+                            "name": "Configure AWS CloudFront with SSL"
+                        },
+                        {
+                            "id": "st-1-3-3",
+                            "name": "Set up DNS records"
+                        }
+                    ]
+                },
+                {
+                    "id": "t-1-4",
+                    "name": "UX research and user flow mapping",
+                    "description": "Define user journeys for consumers, partners, and admins",
+                    "priority": "high",
+                    "dueDate": "2025-01-17",
+                    "tags": [
+                        {
+                            "name": "design"
+                        }
+                    ],
+                    "subtasks": [
+                        {
+                            "id": "st-1-4-1",
+                            "name": "Map consumer purchase flow"
+                        },
+                        {
+                            "id": "st-1-4-2",
+                            "name": "Map partner offer creation flow"
+                        },
+                        {
+                            "id": "st-1-4-3",
+                            "name": "Map admin approval and management flows"
+                        },
+                        {
+                            "id": "st-1-4-4",
+                            "name": "Define information architecture"
+                        }
+                    ]
+                },
+                {
+                    "id": "t-1-5",
+                    "name": "Wireframe design",
+                    "description": "Create wireframes for all major screens and user flows",
+                    "priority": "high",
+                    "dueDate": "2025-01-24",
+                    "tags": [
+                        {
+                            "name": "design"
+                        }
+                    ],
+                    "subtasks": [
+                        {
+                            "id": "st-1-5-1",
+                            "name": "Design homepage and landing pages wireframes"
+                        },
+                        {
+                            "id": "st-1-5-2",
+                            "name": "Design consumer dashboard and search wireframes"
+                        },
+                        {
+                            "id": "st-1-5-3",
+                            "name": "Design partner dashboard wireframes"
+                        },
+                        {
+                            "id": "st-1-5-4",
+                            "name": "Design admin panel wireframes"
+                        },
+                        {
+                            "id": "st-1-5-5",
+                            "name": "Design mobile responsive layouts"
+                        }
+                    ]
+                },
+                {
+                    "id": "t-1-6",
+                    "name": "UI design and design system",
+                    "description": "Create final UI designs, component library, and style guide using Tailwind CSS",
+                    "priority": "high",
+                    "dueDate": "2025-01-31",
+                    "tags": [
+                        {
+                            "name": "design"
+                        }
+                    ],
+                    "subtasks": [
+                        {
+                            "id": "st-1-6-1",
+                            "name": "Define brand colors, typography, and visual identity"
+                        },
+                        {
+                            "id": "st-1-6-2",
+                            "name": "Create Tailwind CSS configuration and theme"
+                        },
+                        {
+                            "id": "st-1-6-3",
+                            "name": "Design reusable component library"
+                        },
+                        {
+                            "id": "st-1-6-4",
+                            "name": "Create high-fidelity mockups for all screens"
+                        },
+                        {
+                            "id": "st-1-6-5",
+                            "name": "Design review and approval from Product Owner"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "tl-2",
+            "name": "Phase 2: Backend MVP Development",
+            "description": "Core API, database schema, and authentication (M3: Feb 1 - Feb 28)",
+            "tasks": [
+                {
+                    "id": "t-2-1",
+                    "name": "Database schema design and setup",
+                    "description": "Design and implement PostgreSQL database schema based on domain model",
+                    "priority": "high",
+                    "dueDate": "2025-02-07",
+                    "tags": [
+                        {
+                            "name": "backend"
+                        },
+                        {
+                            "name": "database"
+                        }
+                    ],
+                    "subtasks": [
+                        {
+                            "id": "st-2-1-1",
+                            "name": "Create User entity schema with roles"
+                        },
+                        {
+                            "id": "st-2-1-2",
+                            "name": "Create Partner entity schema"
+                        },
+                        {
+                            "id": "st-2-1-3",
+                            "name": "Create Offer entity schema"
+                        },
+                        {
+                            "id": "st-2-1-4",
+                            "name": "Create Order entity schema"
+                        },
+                        {
+                            "id": "st-2-1-5",
+                            "name": "Create Review entity schema"
+                        },
+                        {
+                            "id": "st-2-1-6",
+                            "name": "Set up database migrations"
+                        },
+                        {
+                            "id": "st-2-1-7",
+                            "name": "Configure Redis for caching"
+                        }
+                    ]
+                },
+                {
+                    "id": "t-2-2",
+                    "name": "Authentication and authorization system",
+                    "description": "Implement user authentication with JWT, social login, and role-based access control",
+                    "priority": "high",
+                    "dueDate": "2025-02-14",
+                    "tags": [
+                        {
+                            "name": "backend"
+                        },
+                        {
+                            "name": "security"
+                        }
+                    ],
+                    "subtasks": [
+                        {
+                            "id": "st-2-2-1",
+                            "name": "Implement email/password registration and login"
+                        },
+                        {
+                            "id": "st-2-2-2",
+                            "name": "Implement JWT with refresh tokens (15 min expiry)"
+                        },
+                        {
+                            "id": "st-2-2-3",
+                            "name": "Implement Google OAuth integration"
+                        },
+                        {
+                            "id": "st-2-2-4",
+                            "name": "Implement Facebook OAuth integration"
+                        },
+                        {
+                            "id": "st-2-2-5",
+                            "name": "Implement magic link authentication"
+                        },
+                        {
+                            "id": "st-2-2-6",
+                            "name": "Implement role-based access control (admin, partner, consumer)"
+                        },
+                        {
+                            "id": "st-2-2-7",
+                            "name": "Implement optional 2FA for partners"
+                        },
+                        {
+                            "id": "st-2-2-8",
+                            "name": "Email verification flow"
+                        }
+                    ]
+                },
+                {
+                    "id": "t-2-3",
+                    "name": "User and profile management API",
+                    "description": "CRUD operations for users, consumer profiles, and partner profiles",
+                    "priority": "high",
+                    "dueDate": "2025-02-18",
+                    "tags": [
+                        {
+                            "name": "backend"
+                        }
+                    ],
+                    "subtasks": [
+                        {
+                            "id": "st-2-3-1",
+                            "name": "User CRUD endpoints"
+                        },
+                        {
+                            "id": "st-2-3-2",
+                            "name": "Consumer profile management"
+                        },
+                        {
+                            "id": "st-2-3-3",
+                            "name": "Partner profile and company info management"
+                        },
+                        {
+                            "id": "st-2-3-4",
+                            "name": "Partner team member management"
+                        },
+                        {
+                            "id": "st-2-3-5",
+                            "name": "Profile image upload to S3"
+                        }
+                    ]
+                },
+                {
+                    "id": "t-2-4",
+                    "name": "Partner management and approval API",
+                    "description": "Partner registration, admin approval workflow, and partner management",
+                    "priority": "high",
+                    "dueDate": "2025-02-21",
+                    "tags": [
+                        {
+                            "name": "backend"
+                        }
+                    ],
+                    "subtasks": [
+                        {
+                            "id": "st-2-4-1",
+                            "name": "Partner registration endpoint"
+                        },
+                        {
+                            "id": "st-2-4-2",
+                            "name": "Admin partner approval/rejection workflow"
+                        },
+                        {
+                            "id": "st-2-4-3",
+                            "name": "Partner suspension functionality"
+                        },
+                        {
+                            "id": "st-2-4-4",
+                            "name": "CVR number validation"
+                        }
+                    ]
+                },
+                {
+                    "id": "t-2-5",
+                    "name": "Offer management API",
+                    "description": "CRUD operations for offers including validation rules",
+                    "priority": "high",
+                    "dueDate": "2025-02-25",
+                    "tags": [
+                        {
+                            "name": "backend"
+                        }
+                    ],
+                    "subtasks": [
+                        {
+                            "id": "st-2-5-1",
+                            "name": "Create offer endpoint with validations"
+                        },
+                        {
+                            "id": "st-2-5-2",
+                            "name": "Enforce 30% minimum discount rule"
+                        },
+                        {
+                            "id": "st-2-5-3",
+                            "name": "Pickup window within opening hours validation"
+                        },
+                        {
+                            "id": "st-2-5-4",
+                            "name": "Offer image upload"
+                        },
+                        {
+                            "id": "st-2-5-5",
+                            "name": "Dietary info and allergen tagging"
+                        },
+                        {
+                            "id": "st-2-5-6",
+                            "name": "Offer template saving functionality"
+                        }
+                    ]
+                },
+                {
+                    "id": "t-2-6",
+                    "name": "Search and filtering API",
+                    "description": "Location-based search with filters for offers",
+                    "priority": "high",
+                    "dueDate": "2025-02-28",
+                    "tags": [
+                        {
+                            "name": "backend"
+                        }
+                    ],
+                    "subtasks": [
+                        {
+                            "id": "st-2-6-1",
+                            "name": "Geolocation-based offer search"
+                        },
+                        {
+                            "id": "st-2-6-2",
+                            "name": "Category filtering (restaurant, bakery, etc.)"
+                        },
+                        {
+                            "id": "st-2-6-3",
+                            "name": "Price range filtering"
+                        },
+                        {
+                            "id": "st-2-6-4",
+                            "name": "Pickup time filtering"
+                        },
+                        {
+                            "id": "st-2-6-5",
+                            "name": "Dietary preference filtering"
+                        },
+                        {
+                            "id": "st-2-6-6",
+                            "name": "Rating-based sorting"
+                        }
+                    ]
+                },
+                {
+                    "id": "t-2-7",
+                    "name": "Security hardening",
+                    "description": "Implement security measures as per requirements",
+                    "priority": "high",
+                    "dueDate": "2025-02-28",
+                    "tags": [
+                        {
+                            "name": "backend"
+                        },
+                        {
+                            "name": "security"
+                        }
+                    ],
+                    "subtasks": [
+                        {
+                            "id": "st-2-7-1",
+                            "name": "Configure bcrypt password hashing (cost 12)"
+                        },
+                        {
+                            "id": "st-2-7-2",
+                            "name": "Implement rate limiting on all endpoints"
+                        },
+                        {
+                            "id": "st-2-7-3",
+                            "name": "SQL injection protection"
+                        },
+                        {
+                            "id": "st-2-7-4",
+                            "name": "XSS protection middleware"
+                        },
+                        {
+                            "id": "st-2-7-5",
+                            "name": "CORS configuration"
+                        },
+                        {
+                            "id": "st-2-7-6",
+                            "name": "Input validation and sanitization"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "tl-3",
+            "name": "Phase 3: Frontend MVP Development",
+            "description": "Core user interfaces and flows (M4: Mar 1 - Mar 31)",
+            "tasks": [
+                {
+                    "id": "t-3-1",
+                    "name": "React project setup and architecture",
+                    "description": "Initialize React/TypeScript project with Tailwind CSS and establish code patterns",
+                    "priority": "high",
+                    "dueDate": "2025-03-05",
+                    "tags": [
+                        {
+                            "name": "frontend"
+                        }
+                    ],
+                    "subtasks": [
+                        {
+                            "id": "st-3-1-1",
+                            "name": "Initialize React project with TypeScript"
+                        },
+                        {
+                            "id": "st-3-1-2",
+                            "name": "Configure Tailwind CSS with design system"
+                        },
+                        {
+                            "id": "st-3-1-3",
+                            "name": "Set up routing structure"
+                        },
+                        {
+                            "id": "st-3-1-4",
+                            "name": "Configure state management"
+                        },
+                        {
+                            "id": "st-3-1-5",
+                            "name": "Set up API client and error handling"
+                        }
+                    ]
+                },
+                {
+                    "id": "t-3-2",
+                    "name": "Public pages and navigation",
+                    "description": "Build public-facing pages and main navigation",
+                    "priority": "high",
+                    "dueDate": "2025-03-10",
+                    "tags": [
+                        {
+                            "name": "frontend"
+                        }
+                    ],
+                    "subtasks": [
+                        {
+                            "id": "st-3-2-1",
+                            "name": "Homepage with value proposition"
+                        },
+                        {
+                            "id": "st-3-2-2",
+                            "name": "About MadRedder page"
+                        },
+                        {
+                            "id": "st-3-2-3",
+                            "name": "How it works guide"
+                        },
+                        {
+                            "id": "st-3-2-4",
+                            "name": "Become a partner page"
+                        },
+                        {
+                            "id": "st-3-2-5",
+                            "name": "FAQ page"
+                        },
+                        {
+                            "id": "st-3-2-6",
+                            "name": "Header and footer navigation"
+                        },
+                        {
+                            "id": "st-3-2-7",
+                            "name": "Cookie consent banner"
+                        }
+                    ]
+                },
+                {
+                    "id": "t-3-3",
+                    "name": "Authentication UI",
+                    "description": "Login, registration, and authentication flows",
+                    "priority": "high",
+                    "dueDate": "2025-03-14",
+                    "tags": [
+                        {
+                            "name": "frontend"
+                        }
+                    ],
+                    "subtasks": [
+                        {
+                            "id": "st-3-3-1",
+                            "name": "Consumer registration form with GDPR consent"
+                        },
+                        {
+                            "id": "st-3-3-2",
+                            "name": "Partner registration form with agreement acceptance"
+                        },
+                        {
+                            "id": "st-3-3-3",
+                            "name": "Login form with email/password"
+                        },
+                        {
+                            "id": "st-3-3-4",
+                            "name": "Social login buttons (Google, Facebook)"
+                        },
+                        {
+                            "id": "st-3-3-5",
+                            "name": "Magic link request form"
+                        },
+                        {
+                            "id": "st-3-3-6",
+                            "name": "Password reset flow"
+                        },
+                        {
+                            "id": "st-3-3-7",
+                            "name": "Email verification page"
+                        }
+                    ]
+                },
+                {
+                    "id": "t-3-4",
+                    "name": "Consumer dashboard and profile",
+                    "description": "Consumer-specific pages and functionality",
+                    "priority": "high",
+                    "dueDate": "2025-03-19",
+                    "tags": [
+                        {
+                            "name": "frontend"
+                        }
+                    ],
+                    "subtasks": [
+                        {
+                            "id": "st-3-4-1",
+                            "name": "Consumer dashboard with active orders"
+                        },
+                        {
+                            "id": "st-3-4-2",
+                            "name": "Recommended offers section"
+                        },
+                        {
+                            "id": "st-3-4-3",
+                            "name": "Profile editing page"
+                        },
+                        {
+                            "id": "st-3-4-4",
+                            "name": "Notification preferences"
+                        },
+                        {
+                            "id": "st-3-4-5",
+                            "name": "Dietary preferences settings"
+                        },
+                        {
+                            "id": "st-3-4-6",
+                            "name": "Saved favorites list"
+                        },
+                        {
+                            "id": "st-3-4-7",
+                            "name": "Order history page"
+                        }
+                    ]
+                },
+                {
+                    "id": "t-3-5",
+                    "name": "Offer search and browsing",
+                    "description": "Search interface with map and list views",
+                    "priority": "high",
+                    "dueDate": "2025-03-24",
+                    "tags": [
+                        {
+                            "name": "frontend"
+                        }
+                    ],
+                    "subtasks": [
+                        {
+                            "id": "st-3-5-1",
+                            "name": "Integrate Google Maps API"
+                        },
+                        {
+                            "id": "st-3-5-2",
+                            "name": "Map view with offer markers"
+                        },
+                        {
+                            "id": "st-3-5-3",
+                            "name": "List view with offer cards"
+                        },
+                        {
+                            "id": "st-3-5-4",
+                            "name": "Location auto-detection and manual entry"
+                        },
+                        {
+                            "id": "st-3-5-5",
+                            "name": "Filter panel (category, price, time, dietary)"
+                        },
+                        {
+                            "id": "st-3-5-6",
+                            "name": "Offer detail modal/page"
+                        },
+                        {
+                            "id": "st-3-5-7",
+                            "name": "Partner profile page with reviews"
+                        }
+                    ]
+                },
+                {
+                    "id": "t-3-6",
+                    "name": "Partner dashboard and management",
+                    "description": "Partner-specific pages and functionality",
+                    "priority": "high",
+                    "dueDate": "2025-03-28",
+                    "tags": [
+                        {
+                            "name": "frontend"
+                        }
+                    ],
+                    "subtasks": [
+                        {
+                            "id": "st-3-6-1",
+                            "name": "Partner dashboard with today's offers"
+                        },
+                        {
+                            "id": "st-3-6-2",
+                            "name": "Orders awaiting pickup list"
+                        },
+                        {
+                            "id": "st-3-6-3",
+                            "name": "Weekly sales statistics chart"
+                        },
+                        {
+                            "id": "st-3-6-4",
+                            "name": "Offer creation form with preview"
+                        },
+                        {
+                            "id": "st-3-6-5",
+                            "name": "Offer template management"
+                        },
+                        {
+                            "id": "st-3-6-6",
+                            "name": "Company profile editing"
+                        },
+                        {
+                            "id": "st-3-6-7",
+                            "name": "Opening hours configuration"
+                        }
+                    ]
+                },
+                {
+                    "id": "t-3-7",
+                    "name": "Admin panel foundation",
+                    "description": "Basic admin interface for platform management",
+                    "priority": "medium",
+                    "dueDate": "2025-03-31",
+                    "tags": [
+                        {
+                            "name": "frontend"
+                        },
+                        {
+                            "name": "admin"
+                        }
+                    ],
+                    "subtasks": [
+                        {
+                            "id": "st-3-7-1",
+                            "name": "Admin dashboard with platform stats"
+                        },
+                        {
+                            "id": "st-3-7-2",
+                            "name": "Partner approval queue"
+                        },
+                        {
+                            "id": "st-3-7-3",
+                            "name": "User management list"
+                        },
+                        {
+                            "id": "st-3-7-4",
+                            "name": "Partner management list"
+                        },
+                        {
+                            "id": "st-3-7-5",
+                            "name": "Basic complaint handling view"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "tl-4",
+            "name": "Phase 4: Payment Integration",
+            "description": "Stripe integration for payments and payouts (M5: Apr 1 - Apr 15)",
+            "tasks": [
+                {
+                    "id": "t-4-1",
+                    "name": "Stripe Connect setup",
+                    "description": "Configure Stripe Connect for marketplace payments",
+                    "priority": "high",
+                    "dueDate": "2025-04-04",
+                    "tags": [
+                        {
+                            "name": "backend"
+                        },
+                        {
+                            "name": "payments"
+                        }
+                    ],
+                    "subtasks": [
+                        {
+                            "id": "st-4-1-1",
+                            "name": "Set up Stripe Connect account"
+                        },
+                        {
+                            "id": "st-4-1-2",
+                            "name": "Configure 15% platform fee"
+                        },
+                        {
+                            "id": "st-4-1-3",
+                            "name": "Partner onboarding to Stripe Connect"
+                        },
+                        {
+                            "id": "st-4-1-4",
+                            "name": "Bank account connection for partners"
+                        }
+                    ]
+                },
+                {
+                    "id": "t-4-2",
+                    "name": "Payment processing backend",
+                    "description": "Implement payment intents and order processing",
+                    "priority": "high",
+                    "dueDate": "2025-04-08",
+                    "tags": [
+                        {
+                            "name": "backend"
+                        },
+                        {
+                            "name": "payments"
+                        }
+                    ],
+                    "subtasks": [
+                        {
+                            "id": "st-4-2-1",
+                            "name": "Create payment intent endpoint"
+                        },
+                        {
+                            "id": "st-4-2-2",
+                            "name": "Handle payment confirmation webhooks"
+                        },
+                        {
+                            "id": "st-4-2-3",
+                            "name": "Calculate and split platform fee vs partner payout"
+                        },
+                        {
+                            "id": "st-4-2-4",
+                            "name": "Order status management based on payment"
+                        },
+                        {
+                            "id": "st-4-2-5",
+                            "name": "Generate unique pickup codes"
+                        }
+                    ]
+                },
+                {
+                    "id": "t-4-3",
+                    "name": "Payment UI implementation",
+                    "description": "Frontend payment flow with Stripe Elements",
+                    "priority": "high",
+                    "dueDate": "2025-04-11",
+                    "tags": [
+                        {
+                            "name": "frontend"
+                        },
+                        {
+                            "name": "payments"
+                        }
+                    ],
+                    "subtasks": [
+                        {
+                            "id": "st-4-3-1",
+                            "name": "Integrate Stripe Elements for card input"
+                        },
+                        {
+                            "id": "st-4-3-2",
+                            "name": "Implement MobilePay payment option"
+                        },
+                        {
+                            "id": "st-4-3-3",
+                            "name": "Saved payment methods management"
+                        },
+                        {
+                            "id": "st-4-3-4",
+                            "name": "Order confirmation page with pickup details"
+                        },
+                        {
+                            "id": "st-4-3-5",
+                            "name": "Payment error handling"
+                        }
+                    ]
+                },
+                {
+                    "id": "t-4-4",
+                    "name": "Refunds and cancellations",
+                    "description": "Handle order cancellations and refund processing",
+                    "priority": "high",
+                    "dueDate": "2025-04-14",
+                    "tags": [
+                        {
+                            "name": "backend"
+                        },
+                        {
+                            "name": "payments"
+                        }
+                    ],
+                    "subtasks": [
+                        {
+                            "id": "st-4-4-1",
+                            "name": "Order cancellation endpoint (1 hour before pickup)"
+                        },
+                        {
+                            "id": "st-4-4-2",
+                            "name": "Automatic refund processing"
+                        },
+                        {
+                            "id": "st-4-4-3",
+                            "name": "Admin manual refund capability"
+                        },
+                        {
+                            "id": "st-4-4-4",
+                            "name": "Cancellation notifications"
+                        }
+                    ]
+                },
+                {
+                    "id": "t-4-5",
+                    "name": "Partner payout management",
+                    "description": "Payout tracking and reporting for partners",
+                    "priority": "medium",
+                    "dueDate": "2025-04-15",
+                    "tags": [
+                        {
+                            "name": "backend"
+                        },
+                        {
+                            "name": "frontend"
+                        },
+                        {
+                            "name": "payments"
+                        }
+                    ],
+                    "subtasks": [
+                        {
+                            "id": "st-4-5-1",
+                            "name": "Payout overview endpoint"
+                        },
+                        {
+                            "id": "st-4-5-2",
+                            "name": "Partner payout dashboard UI"
+                        },
+                        {
+                            "id": "st-4-5-3",
+                            "name": "Transaction history for partners"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "tl-5",
+            "name": "Phase 5: Order Management & Notifications",
+            "description": "Complete order flows and notification system (Apr 16 - Apr 30)",
+            "tasks": [
+                {
+                    "id": "t-5-1",
+                    "name": "Order lifecycle backend",
+                    "description": "Complete order management API",
+                    "priority": "high",
+                    "dueDate": "2025-04-21",
+                    "tags": [
+                        {
+                            "name": "backend"
+                        }
+                    ],
+                    "subtasks": [
+                        {
+                            "id": "st-5-1-1",
+                            "name": "Order creation with inventory management"
+                        },
+                        {
+                            "id": "st-5-1-2",
+                            "name": "Order status transitions (pending→confirmed→picked_up)"
+                        },
+                        {
+                            "id": "st-5-1-3",
+                            "name": "Pickup code verification endpoint"
+                        },
+                        {
+                            "id": "st-5-1-4",
+                            "name": "No-show handling"
+                        },
+                        {
+                            "id": "st-5-1-5",
+                            "name": "Order history queries"
+                        }
+                    ]
+                },
+                {
+                    "id": "t-5-2",
+                    "name": "Order management UI",
+                    "description": "Order handling interfaces for all user types",
+                    "priority": "high",
+                    "dueDate": "2025-04-24",
+                    "tags": [
+                        {
+                            "name": "frontend"
+                        }
+                    ],
+                    "subtasks": [
+                        {
+                            "id": "st-5-2-1",
+                            "name": "Consumer active orders view with pickup code"
+                        },
+                        {
+                            "id": "st-5-2-2",
+                            "name": "Consumer order cancellation UI"
+                        },
+                        {
+                            "id": "st-5-2-3",
+                            "name": "Partner orders list with pickup code entry"
+                        },
+                        {
+                            "id": "st-5-2-4",
+                            "name": "Mark order as picked up functionality"
+                        },
+                        {
+                            "id": "st-5-2-5",
+                            "name": "Admin order overview and management"
+                        }
+                    ]
+                },
+                {
+                    "id": "t-5-3",
+                    "name": "Email notification system",
+                    "description": "SendGrid integration for transactional emails",
+                    "priority": "high",
+                    "dueDate": "2025-04-27",
+                    "tags": [
+                        {
+                            "name": "backend"
+                        }
+                    ],
+                    "subtasks": [
+                        {
+                            "id": "st-5-3-1",
+                            "name": "Configure SendGrid integration"
+                        },
+                        {
+                            "id": "st-5-3-2",
+                            "name": "Order confirmation email template"
+                        },
+                        {
+                            "id": "st-5-3-3",
+                            "name": "New order notification for partners"
+                        },
+                        {
+                            "id": "st-5-3-4",
+                            "name": "Pickup reminder (30 min before)"
+                        },
+                        {
+                            "id": "st-5-3-5",
+                            "name": "Order picked up / cancelled notifications"
+                        },
+                        {
+                            "id": "st-5-3-6",
+                            "name": "Review request email (after pickup)"
+                        },
+                        {
+                            "id": "st-5-3-7",
+                            "name": "Weekly summary for partners"
+                        }
+                    ]
+                },
+                {
+                    "id": "t-5-4",
+                    "name": "Push notification system",
+                    "description": "Firebase web push notifications",
+                    "priority": "medium",
+                    "dueDate": "2025-04-29",
+                    "tags": [
+                        {
+                            "name": "backend"
+                        },
+                        {
+                            "name": "frontend"
+                        }
+                    ],
+                    "subtasks": [
+                        {
+                            "id": "st-5-4-1",
+                            "name": "Configure Firebase Cloud Messaging"
+                        },
+                        {
+                            "id": "st-5-4-2",
+                            "name": "Push notification service worker"
+                        },
+                        {
+                            "id": "st-5-4-3",
+                            "name": "New order push for partners"
+                        },
+                        {
+                            "id": "st-5-4-4",
+                            "name": "Pickup reminder push"
+                        },
+                        {
+                            "id": "st-5-4-5",
+                            "name": "Nearby offers push (opt-in)"
+                        }
+                    ]
+                },
+                {
+                    "id": "t-5-5",
+                    "name": "In-app messaging",
+                    "description": "Direct communication between consumers and partners",
+                    "priority": "medium",
+                    "dueDate": "2025-04-30",
+                    "tags": [
+                        {
+                            "name": "backend"
+                        },
+                        {
+                            "name": "frontend"
+                        }
+                    ],
+                    "subtasks": [
+                        {
+                            "id": "st-5-5-1",
+                            "name": "Message API for order-specific communication"
+                        },
+                        {
+                            "id": "st-5-5-2",
+                            "name": "Message UI in order details"
+                        },
+                        {
+                            "id": "st-5-5-3",
+                            "name": "System message support for admins"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "tl-6",
+            "name": "Phase 6: Reviews, Reports & Admin",
+            "description": "Rating system, reporting, and admin features (M6: May 1 - May 15)",
+            "tasks": [
+                {
+                    "id": "t-6-1",
+                    "name": "Review and rating system",
+                    "description": "Post-pickup review functionality",
+                    "priority": "high",
+                    "dueDate": "2025-05-05",
+                    "tags": [
+                        {
+                            "name": "backend"
+                        },
+                        {
+                            "name": "frontend"
+                        }
+                    ],
+                    "subtasks": [
+                        {
+                            "id": "st-6-1-1",
+                            "name": "Review submission API (1-5 rating + comment)"
+                        },
+                        {
+                            "id": "st-6-1-2",
+                            "name": "Average rating calculation for partners"
+                        },
+                        {
+                            "id": "st-6-1-3",
+                            "name": "Review form UI (post-pickup)"
+                        },
+                        {
+                            "id": "st-6-1-4",
+                            "name": "Reviews display on partner profile"
+                        },
+                        {
+                            "id": "st-6-1-5",
+                            "name": "Admin review moderation"
+                        }
+                    ]
+                },
+                {
+                    "id": "t-6-2",
+                    "name": "Platform reports (Admin)",
+                    "description": "Administrative reporting and analytics",
+                    "priority": "high",
+                    "dueDate": "2025-05-09",
+                    "tags": [
+                        {
+                            "name": "backend"
+                        },
+                        {
+                            "name": "admin"
+                        }
+                    ],
+                    "subtasks": [
+                        {
+                            "id": "st-6-2-1",
+                            "name": "Daily transaction overview report"
+                        },
+                        {
+                            "id": "st-6-2-2",
+                            "name": "Weekly/monthly revenue report"
+                        },
+                        {
+                            "id": "st-6-2-3",
+                            "name": "New users and partners trends"
+                        },
+                        {
+                            "id": "st-6-2-4",
+                            "name": "Food saved (kg) estimation"
+                        },
+                        {
+                            "id": "st-6-2-5",
+                            "name": "Geographic activity distribution"
+                        },
+                        {
+                            "id": "st-6-2-6",
+                            "name": "CSV/Excel export functionality"
+                        }
+                    ]
+                },
+                {
+                    "id": "t-6-3",
+                    "name": "Partner reports",
+                    "description": "Sales and performance reports for partners",
+                    "priority": "medium",
+                    "dueDate": "2025-05-12",
+                    "tags": [
+                        {
+                            "name": "backend"
+                        },
+                        {
+                            "name": "frontend"
+                        }
+                    ],
+                    "subtasks": [
+                        {
+                            "id": "st-6-3-1",
+                            "name": "Sales report API (daily/weekly/monthly)"
+                        },
+                        {
+                            "id": "st-6-3-2",
+                            "name": "Payout overview report"
+                        },
+                        {
+                            "id": "st-6-3-3",
+                            "name": "Customer satisfaction trends"
+                        },
+                        {
+                            "id": "st-6-3-4",
+                            "name": "Popular offer types analysis"
+                        },
+                        {
+                            "id": "st-6-3-5",
+                            "name": "Partner reports UI dashboard"
+                        }
+                    ]
+                },
+                {
+                    "id": "t-6-4",
+                    "name": "Platform statistics",
+                    "description": "CO2 savings and impact metrics",
+                    "priority": "medium",
+                    "dueDate": "2025-05-14",
+                    "tags": [
+                        {
+                            "name": "backend"
+                        }
+                    ],
+                    "subtasks": [
+                        {
+                            "id": "st-6-4-1",
+                            "name": "CO2 savings calculation algorithm"
+                        },
+                        {
+                            "id": "st-6-4-2",
+                            "name": "Average order value tracking"
+                        },
+                        {
+                            "id": "st-6-4-3",
+                            "name": "Conversion rate metrics"
+                        },
+                        {
+                            "id": "st-6-4-4",
+                            "name": "Return customer rate"
+                        },
+                        {
+                            "id": "st-6-4-5",
+                            "name": "No-show rate tracking"
+                        }
+                    ]
+                },
+                {
+                    "id": "t-6-5",
+                    "name": "Admin complaint handling",
+                    "description": "User complaint and refund management",
+                    "priority": "medium",
+                    "dueDate": "2025-05-15",
+                    "tags": [
+                        {
+                            "name": "backend"
+                        },
+                        {
+                            "name": "admin"
+                        }
+                    ],
+                    "subtasks": [
+                        {
+                            "id": "st-6-5-1",
+                            "name": "Complaint submission API"
+                        },
+                        {
+                            "id": "st-6-5-2",
+                            "name": "Complaint management UI"
+                        },
+                        {
+                            "id": "st-6-5-3",
+                            "name": "Refund processing workflow"
+                        },
+                        {
+                            "id": "st-6-5-4",
+                            "name": "User/partner communication tools"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "tl-7",
+            "name": "Phase 7: Help Center & Content",
+            "description": "Support resources and content pages (May 16 - May 25)",
+            "tasks": [
+                {
+                    "id": "t-7-1",
+                    "name": "Help center backend",
+                    "description": "FAQ and help article management",
+                    "priority": "medium",
+                    "dueDate": "2025-05-19",
+                    "tags": [
+                        {
+                            "name": "backend"
+                        }
+                    ],
+                    "subtasks": [
+                        {
+                            "id": "st-7-1-1",
+                            "name": "Help article CRUD API"
+                        },
+                        {
+                            "id": "st-7-1-2",
+                            "name": "Article categorization"
+                        },
+                        {
+                            "id": "st-7-1-3",
+                            "name": "Search functionality"
+                        }
+                    ]
+                },
+                {
+                    "id": "t-7-2",
+                    "name": "Help center frontend",
+                    "description": "Self-service help resources",
+                    "priority": "medium",
+                    "dueDate": "2025-05-22",
+                    "tags": [
+                        {
+                            "name": "frontend"
+                        }
+                    ],
+                    "subtasks": [
+                        {
+                            "id": "st-7-2-1",
+                            "name": "Help center landing page"
+                        },
+                        {
+                            "id": "st-7-2-2",
+                            "name": "Categorized article listing"
+                        },
+                        {
+                            "id": "st-7-2-3",
+                            "name": "Article search UI"
+                        },
+                        {
+                            "id": "st-7-2-4",
+                            "name": "Contact support form"
+                        }
+                    ]
+                },
+                {
+                    "id": "t-7-3",
+                    "name": "Legal and policy pages",
+                    "description": "Terms, privacy policy, and legal content",
+                    "priority": "high",
+                    "dueDate": "2025-05-25",
+                    "tags": [
+                        {
+                            "name": "frontend"
+                        },
+                        {
+                            "name": "legal"
+                        }
+                    ],
+                    "subtasks": [
+                        {
+                            "id": "st-7-3-1",
+                            "name": "Terms and conditions page"
+                        },
+                        {
+                            "id": "st-7-3-2",
+                            "name": "Privacy policy page (GDPR compliant)"
+                        },
+                        {
+                            "id": "st-7-3-3",
+                            "name": "Partner agreement page"
+                        },
+                        {
+                            "id": "st-7-3-4",
+                            "name": "Cookie policy page"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "tl-8",
+            "name": "Phase 8: Data Management & GDPR",
+            "description": "Data retention, deletion, and GDPR compliance (May 26 - May 31)",
+            "tasks": [
+                {
+                    "id": "t-8-1",
+                    "name": "Account deletion functionality",
+                    "description": "User right to delete account and data",
+                    "priority": "high",
+                    "dueDate": "2025-05-28",
+                    "tags": [
+                        {
+                            "name": "backend"
+                        },
+                        {
+                            "name": "gdpr"
+                        }
+                    ],
+                    "subtasks": [
+                        {
+                            "id": "st-8-1-1",
+                            "name": "Consumer account deletion with data anonymization"
+                        },
+                        {
+                            "id": "st-8-1-2",
+                            "name": "Partner account deletion workflow"
+                        },
+                        {
+                            "id": "st-8-1-3",
+                            "name": "Order history anonymization (preserve for accounting)"
+                        },
+                        {
+                            "id": "st-8-1-4",
+                            "name": "Review anonymization"
+                        },
+                        {
+                            "id": "st-8-1-5",
+                            "name": "Account deletion UI"
+                        }
+                    ]
+                },
+                {
+                    "id": "t-8-2",
+                    "name": "Data retention automation",
+                    "description": "Automated data lifecycle management",
+                    "priority": "medium",
+                    "dueDate": "2025-05-30",
+                    "tags": [
+                        {
+                            "name": "backend"
+                        },
+                        {
+                            "name": "gdpr"
+                        }
+                    ],
+                    "subtasks": [
+                        {
+                            "id": "st-8-2-1",
+                            "name": "Inactive account reminder (12 months)"
+                        },
+                        {
+                            "id": "st-8-2-2",
+                            "name": "Auto-deletion after 24 months inactivity"
+                        },
+                        {
+                            "id": "st-8-2-3",
+                            "name": "Order data retention (5 years per accounting law)"
+                        },
+                        {
+                            "id": "st-8-2-4",
+                            "name": "Data export functionality (right to portability)"
+                        }
+                    ]
+                },
+                {
+                    "id": "t-8-3",
+                    "name": "GDPR compliance verification",
+                    "description": "Verify all GDPR requirements are met",
+                    "priority": "high",
+                    "dueDate": "2025-05-31",
+                    "tags": [
+                        {
+                            "name": "legal"
+                        },
+                        {
+                            "name": "gdpr"
+                        }
+                    ],
+                    "subtasks": [
+                        {
+                            "id": "st-8-3-1",
+                            "name": "Consent logging verification"
+                        },
+                        {
+                            "id": "st-8-3-2",
+                            "name": "Data access request handling"
+                        },
+                        {
+                            "id": "st-8-3-3",
+                            "name": "Cookie consent implementation review"
+                        },
+                        {
+                            "id": "st-8-3-4",
+                            "name": "Privacy policy completeness check"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "tl-9",
+            "name": "Phase 9: Testing & QA (UAT)",
+            "description": "Beta testing and user acceptance testing (M6-M7: May 1 - May 31)",
+            "tasks": [
+                {
+                    "id": "t-9-1",
+                    "name": "Automated testing setup",
+                    "description": "Unit and integration test suites",
+                    "priority": "high",
+                    "dueDate": "2025-05-05",
+                    "tags": [
+                        {
+                            "name": "testing"
+                        }
+                    ],
+                    "subtasks": [
+                        {
+                            "id": "st-9-1-1",
+                            "name": "Backend unit tests (Jest)"
+                        },
+                        {
+                            "id": "st-9-1-2",
+                            "name": "API integration tests"
+                        },
+                        {
+                            "id": "st-9-1-3",
+                            "name": "Frontend component tests"
+                        },
+                        {
+                            "id": "st-9-1-4",
+                            "name": "E2E tests for critical flows (Cypress)"
+                        }
+                    ]
+                },
+                {
+                    "id": "t-9-2",
+                    "name": "Security testing",
+                    "description": "Security audit and vulnerability scanning",
+                    "priority": "high",
+                    "dueDate": "2025-05-12",
+                    "tags": [
+                        {
+                            "name": "testing"
+                        },
+                        {
+                            "name": "security"
+                        }
+                    ],
+                    "subtasks": [
+                        {
+                            "id": "st-9-2-1",
+                            "name": "OWASP ZAP security scan"
+                        },
+                        {
+                            "id": "st-9-2-2",
+                            "name": "Penetration testing for authentication"
+                        },
+                        {
+                            "id": "st-9-2-3",
+                            "name": "Payment flow security review"
+                        },
+                        {
+                            "id": "st-9-2-4",
+                            "name": "Fix identified vulnerabilities"
+                        }
+                    ]
+                },
+                {
+                    "id": "t-9-3",
+                    "name": "Beta testing with partners",
+                    "description": "Internal testing with select partners (M6: Apr 30)",
+                    "priority": "high",
+                    "dueDate": "2025-05-15",
+                    "tags": [
+                        {
+                            "name": "testing"
+                        }
+                    ],
+                    "subtasks": [
+                        {
+                            "id": "st-9-3-1",
+                            "name": "Recruit 5-10 beta partners"
+                        },
+                        {
+                            "id": "st-9-3-2",
+                            "name": "Beta testing guide creation"
+                        },
+                        {
+                            "id": "st-9-3-3",
+                            "name": "Collect and document feedback"
+                        },
+                        {
+                            "id": "st-9-3-4",
+                            "name": "Priority bug fixes from beta"
+                        }
+                    ]
+                },
+                {
+                    "id": "t-9-4",
+                    "name": "User acceptance testing (UAT)",
+                    "description": "Formal UAT with real users (M7: May 31)",
+                    "priority": "high",
+                    "dueDate": "2025-05-31",
+                    "tags": [
+                        {
+                            "name": "testing"
+                        }
+                    ],
+                    "subtasks": [
+                        {
+                            "id": "st-9-4-1",
+                            "name": "Create UAT test scripts"
+                        },
+                        {
+                            "id": "st-9-4-2",
+                            "name": "Recruit UAT participants (consumers)"
+                        },
+                        {
+                            "id": "st-9-4-3",
+                            "name": "Execute UAT sessions"
+                        },
+                        {
+                            "id": "st-9-4-4",
+                            "name": "Document and prioritize issues"
+                        },
+                        {
+                            "id": "st-9-4-5",
+                            "name": "UAT sign-off from Product Owner"
+                        }
+                    ]
+                },
+                {
+                    "id": "t-9-5",
+                    "name": "Performance testing",
+                    "description": "Load testing and performance optimization",
+                    "priority": "medium",
+                    "dueDate": "2025-05-28",
+                    "tags": [
+                        {
+                            "name": "testing"
+                        }
+                    ],
+                    "subtasks": [
+                        {
+                            "id": "st-9-5-1",
+                            "name": "Define performance benchmarks"
+                        },
+                        {
+                            "id": "st-9-5-2",
+                            "name": "Load testing with expected user numbers"
+                        },
+                        {
+                            "id": "st-9-5-3",
+                            "name": "Database query optimization"
+                        },
+                        {
+                            "id": "st-9-5-4",
+                            "name": "Frontend performance optimization"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "tl-10",
+            "name": "Phase 10: Launch Preparation",
+            "description": "Final preparations for public launch (M8: Jun 1 - Jun 30)",
+            "tasks": [
+                {
+                    "id": "t-10-1",
+                    "name": "Bug fixes and polish",
+                    "description": "Address issues from testing phases",
+                    "priority": "high",
+                    "dueDate": "2025-06-10",
+                    "tags": [
+                        {
+                            "name": "bugfix"
+                        }
+                    ],
+                    "subtasks": [
+                        {
+                            "id": "st-10-1-1",
+                            "name": "Fix critical bugs from UAT"
+                        },
+                        {
+                            "id": "st-10-1-2",
+                            "name": "Fix medium priority bugs"
+                        },
+                        {
+                            "id": "st-10-1-3",
+                            "name": "UI polish and consistency check"
+                        },
+                        {
+                            "id": "st-10-1-4",
+                            "name": "Mobile responsiveness final review"
+                        }
+                    ]
+                },
+                {
+                    "id": "t-10-2",
+                    "name": "Documentation",
+                    "description": "Technical and user documentation",
+                    "priority": "medium",
+                    "dueDate": "2025-06-15",
+                    "tags": [
+                        {
+                            "name": "documentation"
+                        }
+                    ],
+                    "subtasks": [
+                        {
+                            "id": "st-10-2-1",
+                            "name": "API documentation"
+                        },
+                        {
+                            "id": "st-10-2-2",
+                            "name": "System architecture documentation"
+                        },
+                        {
+                            "id": "st-10-2-3",
+                            "name": "Deployment runbook"
+                        },
+                        {
+                            "id": "st-10-2-4",
+                            "name": "Admin user guide"
+                        },
+                        {
+                            "id": "st-10-2-5",
+                            "name": "Partner onboarding guide"
+                        }
+                    ]
+                },
+                {
+                    "id": "t-10-3",
+                    "name": "Production environment setup",
+                    "description": "Final production infrastructure configuration",
+                    "priority": "high",
+                    "dueDate": "2025-06-20",
+                    "tags": [
+                        {
+                            "name": "devops"
+                        }
+                    ],
+                    "subtasks": [
+                        {
+                            "id": "st-10-3-1",
+                            "name": "Production AWS infrastructure verification"
+                        },
+                        {
+                            "id": "st-10-3-2",
+                            "name": "Auto-scaling configuration"
+                        },
+                        {
+                            "id": "st-10-3-3",
+                            "name": "Backup and disaster recovery verification"
+                        },
+                        {
+                            "id": "st-10-3-4",
+                            "name": "Monitoring and alerting setup"
+                        },
+                        {
+                            "id": "st-10-3-5",
+                            "name": "Production Stripe configuration"
+                        }
+                    ]
+                },
+                {
+                    "id": "t-10-4",
+                    "name": "Partner onboarding",
+                    "description": "Onboard initial 20+ partners before launch",
+                    "priority": "high",
+                    "dueDate": "2025-06-25",
+                    "tags": [
+                        {
+                            "name": "launch"
+                        }
+                    ],
+                    "subtasks": [
+                        {
+                            "id": "st-10-4-1",
+                            "name": "Partner recruitment outreach"
+                        },
+                        {
+                            "id": "st-10-4-2",
+                            "name": "Partner registration and approval"
+                        },
+                        {
+                            "id": "st-10-4-3",
+                            "name": "Partner training sessions"
+                        },
+                        {
+                            "id": "st-10-4-4",
+                            "name": "Verify minimum 20 partners active"
+                        }
+                    ]
+                },
+                {
+                    "id": "t-10-5",
+                    "name": "Support setup",
+                    "description": "Customer support infrastructure",
+                    "priority": "high",
+                    "dueDate": "2025-06-25",
+                    "tags": [
+                        {
+                            "name": "launch"
+                        }
+                    ],
+                    "subtasks": [
+                        {
+                            "id": "st-10-5-1",
+                            "name": "Set up support@madredder.dk"
+                        },
+                        {
+                            "id": "st-10-5-2",
+                            "name": "Configure helpdesk system"
+                        },
+                        {
+                            "id": "st-10-5-3",
+                            "name": "Support team training"
+                        },
+                        {
+                            "id": "st-10-5-4",
+                            "name": "Populate initial FAQ content"
+                        }
+                    ]
+                },
+                {
+                    "id": "t-10-6",
+                    "name": "Launch execution",
+                    "description": "Public launch on June 30, 2025",
+                    "priority": "high",
+                    "dueDate": "2025-06-30",
+                    "tags": [
+                        {
+                            "name": "launch"
+                        },
+                        {
+                            "name": "mvp"
+                        }
+                    ],
+                    "subtasks": [
+                        {
+                            "id": "st-10-6-1",
+                            "name": "Final deployment to production"
+                        },
+                        {
+                            "id": "st-10-6-2",
+                            "name": "DNS cutover to production"
+                        },
+                        {
+                            "id": "st-10-6-3",
+                            "name": "Smoke testing on production"
+                        },
+                        {
+                            "id": "st-10-6-4",
+                            "name": "Monitor launch metrics"
+                        },
+                        {
+                            "id": "st-10-6-5",
+                            "name": "Launch announcement coordination with marketing"
+                        }
+                    ]
+                },
+                {
+                    "id": "t-10-7",
+                    "name": "Post-launch support handover",
+                    "description": "Transition support to GrønStart team",
+                    "priority": "medium",
+                    "dueDate": "2025-06-30",
+                    "tags": [
+                        {
+                            "name": "launch"
+                        }
+                    ],
+                    "subtasks": [
+                        {
+                            "id": "st-10-7-1",
+                            "name": "Knowledge transfer sessions"
+                        },
+                        {
+                            "id": "st-10-7-2",
+                            "name": "Escalation procedures documentation"
+                        },
+                        {
+                            "id": "st-10-7-3",
+                            "name": "3-month support period begins"
+                        }
+                    ]
+                }
+            ]
+        }
+    ],
+    "budget": {
+        "type": "cost",
+        "capacity": 500000
+    }
+}

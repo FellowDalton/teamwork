@@ -9,11 +9,14 @@ import {
   TimelogDisplayData,
   MetricDisplayData,
   ProjectSummaryData,
+  ProjectDraftData,
+  TasklistDraft,
+  TaskDraft,
 } from "./types/conversation";
 import { AnalogButton } from "./components/AnalogButton";
 import { ConversationPanel } from "./components/ConversationPanel";
 import { DataDisplayPanel } from "./components/DataDisplayPanel";
-import { processChatCommand, processStreamingChat, processAgentStream, requestAdditionalChart, VisualizationSpec, TimelogDraftData, TimelogDraftEntry, submitTimelogEntries } from "./services/claudeService";
+import { processChatCommand, processStreamingChat, processAgentStream, requestAdditionalChart, VisualizationSpec, TimelogDraftData, TimelogDraftEntry, submitTimelogEntries, submitProject } from "./services/claudeService";
 import { teamworkService, TeamworkTask, TeamworkTimeEntry } from "./services/teamworkService";
 import {
   Layout,
@@ -121,6 +124,10 @@ export default function App() {
   // Timelog draft state
   const [timelogDraft, setTimelogDraft] = useState<TimelogDraftData | null>(null);
   const [isSubmittingTimelog, setIsSubmittingTimelog] = useState(false);
+  
+  // Project draft state
+  const [projectDraft, setProjectDraft] = useState<ProjectDraftData | null>(null);
+  const [isCreatingProject, setIsCreatingProject] = useState(false);
 
   const activeProject = projects.find((p) => p.id === activeProjectId) || null;
   const isLight = theme === "light";
@@ -219,6 +226,7 @@ export default function App() {
     setMessages([welcomeMsg]);
     setDisplayData(null);
     setTimelogDraft(null); // Clear any draft when switching topics
+    setProjectDraft(null);
   }, [activeTopic]);
 
   // --- Theme Styles ---
@@ -242,6 +250,9 @@ export default function App() {
   const lcdLabel = isLight ? "text-cyan-700" : "text-cyan-600";
   const lcdText = isLight ? "text-zinc-800" : "text-cyan-400";
 
+  // File attachment state for create project
+  const [attachedFiles, setAttachedFiles] = useState<import('./types/conversation').FileAttachment[]>([]);
+
   // --- Handlers ---
 
   const handleTopicChange = (topic: ConversationTopic) => {
@@ -250,7 +261,13 @@ export default function App() {
       setActiveTopic("general");
     } else {
       setActiveTopic(topic);
+      // Deselect project when entering "create new project" mode
+      if (topic === "project") {
+        setActiveProjectId("");
+      }
     }
+    // Clear attached files when switching topics
+    setAttachedFiles([]);
   };
 
   // Handle chart request from dropdown options
@@ -399,6 +416,84 @@ export default function App() {
     }
   };
 
+  // --- Project Draft Submit Handler ---
+  const handleProjectDraftSubmit = async () => {
+    if (!projectDraft) return;
+    
+    setIsCreatingProject(true);
+    
+    try {
+      const result = await submitProject({
+        project: projectDraft.project,
+        tasklists: projectDraft.tasklists,
+        budget: projectDraft.budget,
+      });
+      
+      // Mark the draft as created (keep it visible with success state)
+      setProjectDraft({
+        ...projectDraft,
+        isCreated: true,
+        createdProjectUrl: result.projectUrl,
+      });
+      
+      // Add success message to chat
+      const successMsg: ChatMessage = {
+        id: `msg-${Date.now()}`,
+        role: "assistant",
+        content: result.message + (result.projectUrl ? `\n\n[View Project](${result.projectUrl})` : ''),
+        timestamp: new Date().toISOString(),
+        topic: "project",
+      };
+      setMessages(prev => [...prev, successMsg]);
+      
+      // Refresh project list to show new project
+      await loadProjectList();
+      
+    } catch (error) {
+      console.error("Failed to create project:", error);
+      
+      // Add error message to chat
+      const errorMsg: ChatMessage = {
+        id: `msg-${Date.now()}`,
+        role: "assistant",
+        content: `Failed to create project: ${error instanceof Error ? error.message : "Unknown error"}`,
+        timestamp: new Date().toISOString(),
+        topic: "project",
+      };
+      setMessages(prev => [...prev, errorMsg]);
+    } finally {
+      setIsCreatingProject(false);
+    }
+  };
+  
+  // --- Project Draft Update Handlers ---
+  const handleProjectTasklistUpdate = (tasklistId: string, updates: Partial<TasklistDraft>) => {
+    if (!projectDraft) return;
+    setProjectDraft({
+      ...projectDraft,
+      tasklists: projectDraft.tasklists.map(tl =>
+        tl.id === tasklistId ? { ...tl, ...updates } : tl
+      ),
+    });
+  };
+  
+  const handleProjectTaskUpdate = (tasklistId: string, taskId: string, updates: Partial<TaskDraft>) => {
+    if (!projectDraft) return;
+    setProjectDraft({
+      ...projectDraft,
+      tasklists: projectDraft.tasklists.map(tl =>
+        tl.id === tasklistId
+          ? {
+              ...tl,
+              tasks: tl.tasks.map(task =>
+                task.id === taskId ? { ...task, ...updates } : task
+              ),
+            }
+          : tl
+      ),
+    });
+  };
+
   // Handle custom visualization request from input - sends prompt to AI for interpretation
   const handleVisualizationRequest = async (prompt: string) => {
     console.log("Visualization request:", prompt);
@@ -512,17 +607,32 @@ export default function App() {
     }
   };
 
-  const handleSendMessage = async (content: string) => {
-    // Add user message
+  const handleSendMessage = async (content: string, files?: import('./types/conversation').FileAttachment[]) => {
+    // Build message content including file contents
+    let fullContent = content;
+    if (files && files.length > 0) {
+      const fileContents = files
+        .filter(f => f.content)
+        .map(f => `\n\n--- File: ${f.name} ---\n${f.content}`)
+        .join('\n');
+      if (fileContents) {
+        fullContent = `${content}\n\n[Attached Files]${fileContents}`;
+      }
+    }
+    
+    // Add user message (show original content, not the file dump)
     const userMsg: ChatMessage = {
       id: `msg-${Date.now()}`,
       role: "user",
-      content,
+      content: files && files.length > 0 
+        ? `${content}\n\n📎 ${files.length} file(s) attached: ${files.map(f => f.name).join(', ')}`
+        : content,
       timestamp: new Date().toISOString(),
       topic: activeTopic,
     };
     setMessages((prev) => [...prev, userMsg]);
     setInputValue("");
+    setAttachedFiles([]); // Clear files after sending
     setIsProcessing(true);
     setDisplayData(null); // Clear previous visualizations
     setTimelogDraft(null); // Clear any previous draft
@@ -541,7 +651,7 @@ export default function App() {
       // Use Agent SDK with skills (sequential: Main Agent → Viz Agent)
       // Switch to processStreamingChat for legacy CLI-based flow
       await processAgentStream({
-        message: content,
+        message: fullContent,
         topic: activeTopic,
         projectId: numericProjectId,
         projectName: activeProject?.name,
@@ -673,6 +783,11 @@ export default function App() {
           // Timelog agent returned draft entries for review
           console.log("Timelog draft received:", draft.entries.length, "entries");
           setTimelogDraft(draft);
+        },
+        onProjectDraft: (draft) => {
+          // Project agent returned draft project structure for review
+          console.log("Project draft received:", draft.summary.totalTasks, "tasks");
+          setProjectDraft(draft);
         },
         onComplete: (fullText) => {
           setThinkingStatus("");
@@ -1473,6 +1588,8 @@ export default function App() {
                 onInputChange={setInputValue}
                 projectName={activeProject?.name}
                 theme={theme}
+                attachedFiles={attachedFiles}
+                onFilesChange={setAttachedFiles}
               />
             </div>
 
@@ -1489,6 +1606,11 @@ export default function App() {
                 onDraftRemove={handleTimelogDraftRemove}
                 onDraftSubmit={handleTimelogDraftSubmit}
                 isSubmitting={isSubmittingTimelog}
+                projectDraftData={projectDraft}
+                onProjectDraftSubmit={handleProjectDraftSubmit}
+                isCreatingProject={isCreatingProject}
+                onUpdateProjectTasklist={handleProjectTasklistUpdate}
+                onUpdateProjectTask={handleProjectTaskUpdate}
               />
             </div>
           </div>

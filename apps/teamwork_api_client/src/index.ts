@@ -45,12 +45,14 @@ import { CommentsResource as Comments } from './resources/comments.ts';
 import { TimeEntriesResource as TimeEntries } from './resources/time-entries.ts';
 import { PeopleResource as People } from './resources/people.ts';
 import { ActivityResource as Activity } from './resources/activity.ts';
+import { BudgetsResource as Budgets } from './resources/budgets.ts';
+import { TagsResource as Tags } from './resources/tags.ts';
 
 export { TasksResource, type ListTasksOptions, type CreateTaskOptions, type UpdateTaskOptions } from './resources/tasks.ts';
 
 export { WorkflowsResource, type ListWorkflowsOptions, type ListStageTasksOptions } from './resources/workflows.ts';
 
-export { ProjectsResource, type ListProjectsOptions } from './resources/projects.ts';
+export { ProjectsResource, type ListProjectsOptions, type CreateProjectOptions, type CreateTasklistOptions } from './resources/projects.ts';
 
 export {
   CommentsResource,
@@ -69,6 +71,10 @@ export {
 export { PeopleResource } from './resources/people.ts';
 
 export { ActivityResource, type ListActivityOptions } from './resources/activity.ts';
+
+export { BudgetsResource, type ListProjectBudgetsOptions, type ListTasklistBudgetsOptions } from './resources/budgets.ts';
+
+export { TagsResource, type Tag, type CreateTagOptions } from './resources/tags.ts';
 
 // High-level facade
 export {
@@ -114,5 +120,7 @@ export function createTeamworkClient(config: {
     timeEntries: new TimeEntries(httpClient),
     people: new People(httpClient),
     activity: new Activity(httpClient),
+    budgets: new Budgets(httpClient),
+    tags: new Tags(httpClient),
   };
 }

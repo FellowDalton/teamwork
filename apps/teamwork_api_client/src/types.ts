@@ -749,3 +749,98 @@ export const ActivityListResponseSchema = z.object({
 });
 
 export type ActivityListResponse = z.infer<typeof ActivityListResponseSchema>;
+
+// ============================================================================
+// Budgets
+// ============================================================================
+
+/**
+ * Project budget object from API.
+ */
+export const ProjectBudgetSchema = z.object({
+  id: z.number(),
+  projectId: z.number().optional(),
+  type: z.string().optional(),
+  status: z.string().optional(),
+  capacityUsed: z.number().optional(),
+  capacity: z.number().optional(),
+  originatorBudgetId: z.number().nullable().optional(),
+  isRepeating: z.boolean().optional(),
+  repeatPeriod: z.number().nullable().optional(),
+  repeatUnit: z.string().nullable().optional(),
+  repeatsRemaining: z.number().nullable().optional(),
+  sequenceNumber: z.number().nullable().optional(),
+  startDateTime: z.string().nullable().optional(),
+  endDateTime: z.string().nullable().optional(),
+  currencyCode: z.string().nullable().optional(),
+  timelogType: z.string().optional(),
+  expenseType: z.string().optional(),
+  defaultRate: z.number().nullable().optional(),
+  notificationIds: z.array(z.number()).optional(),
+  createdByUserId: z.number().optional(),
+  dateCreated: z.string().optional(),
+  updatedUserId: z.number().nullable().optional(),
+  dateUpdated: z.string().nullable().optional(),
+  completedByUserId: z.number().nullable().optional(),
+  dateCompleted: z.string().nullable().optional(),
+  deletedByUserId: z.number().nullable().optional(),
+  dateDeleted: z.string().nullable().optional(),
+});
+
+export type ProjectBudget = z.infer<typeof ProjectBudgetSchema>;
+
+/**
+ * Tasklist budget object from API.
+ */
+export const TasklistBudgetSchema = z.object({
+  id: z.number(),
+  tasklistId: z.number().optional(),
+  projectBudgetId: z.number().optional(),
+  capacityUsed: z.number().optional(),
+  capacity: z.number().optional(),
+  dateCreated: z.string().optional(),
+  dateUpdated: z.string().nullable().optional(),
+});
+
+export type TasklistBudget = z.infer<typeof TasklistBudgetSchema>;
+
+/**
+ * Budget list response for project budgets.
+ */
+export const ProjectBudgetListResponseSchema = z.object({
+  budgets: z.array(ProjectBudgetSchema),
+  meta: PaginationMetaSchema.optional(),
+  included: z.object({
+    projects: z.record(z.string(), ProjectSchema).optional(),
+    users: z.record(z.string(), UserSchema).optional(),
+  }).optional(),
+});
+
+export type ProjectBudgetListResponse = z.infer<typeof ProjectBudgetListResponseSchema>;
+
+/**
+ * Single project budget response.
+ */
+export const ProjectBudgetResponseSchema = z.object({
+  budget: ProjectBudgetSchema,
+  included: z.object({
+    projects: z.record(z.string(), ProjectSchema).optional(),
+    users: z.record(z.string(), UserSchema).optional(),
+  }).optional(),
+});
+
+export type ProjectBudgetResponse = z.infer<typeof ProjectBudgetResponseSchema>;
+
+/**
+ * Tasklist budget list response.
+ */
+export const TasklistBudgetListResponseSchema = z.object({
+  budgets: z.array(TasklistBudgetSchema),
+  meta: PaginationMetaSchema.optional(),
+  included: z.object({
+    tasklists: z.record(z.string(), TasklistSchema).optional(),
+    projectBudgets: z.record(z.string(), ProjectBudgetSchema).optional(),
+  }).optional(),
+});
+
+export type TasklistBudgetListResponse = z.infer<typeof TasklistBudgetListResponseSchema>;
