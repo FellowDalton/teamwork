@@ -3,6 +3,8 @@ import { Bot, User, Sparkles, Command, ChevronRight, CheckCircle2, AlertCircle, 
 import ReactMarkdown from 'react-markdown';
 import { ChatMessage, ConversationTopic, FileAttachment } from '../types/conversation';
 import { FileAttachmentsBar } from './FileAttachment';
+import { ConversationSelector } from './ConversationSelector';
+import type { Conversation } from '../types/supabase';
 
 // Convert bullet characters to markdown list syntax
 const normalizeMarkdown = (text: string): string => {
@@ -56,6 +58,10 @@ interface ConversationPanelProps {
   theme?: 'light' | 'dark';
   attachedFiles?: FileAttachment[];
   onFilesChange?: (files: FileAttachment[]) => void;
+  // Conversation selector props
+  currentConversation?: Conversation | null;
+  onSelectConversation?: (conversation: Conversation | null) => void;
+  onNewConversation?: (conversation: Conversation) => void;
 }
 
 // Screw component for hardware aesthetic
@@ -77,6 +83,9 @@ export const ConversationPanel: React.FC<ConversationPanelProps> = ({
   theme = 'dark',
   attachedFiles = [],
   onFilesChange,
+  currentConversation,
+  onSelectConversation,
+  onNewConversation,
 }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -235,9 +244,19 @@ export const ConversationPanel: React.FC<ConversationPanelProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
-          <span className={`font-mono text-[9px] ${textSecondary}`}>
-            {messages.length} MSG
-          </span>
+          {onSelectConversation && onNewConversation ? (
+            <ConversationSelector
+              currentConversationId={currentConversation?.id || null}
+              onSelectConversation={onSelectConversation}
+              onNewConversation={onNewConversation}
+              filterTopic={topic}
+              isLight={isLight}
+            />
+          ) : (
+            <span className={`font-mono text-[9px] ${textSecondary}`}>
+              {messages.length} MSG
+            </span>
+          )}
           <Screw isLight={isLight} />
         </div>
       </div>

@@ -1,17 +1,18 @@
-import React, { useState } from 'react';
-import { 
-  ChevronDown, 
-  ChevronRight, 
-  FolderOpen, 
-  ListTodo, 
-  CheckSquare, 
-  Calendar, 
-  Clock, 
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  ChevronDown,
+  ChevronRight,
+  FolderOpen,
+  ListTodo,
+  CheckSquare,
+  Calendar,
+  Clock,
   Tag,
   Edit3,
   Trash2,
   Plus,
-  AlertCircle
+  AlertCircle,
+  Loader2
 } from 'lucide-react';
 import { 
   ProjectDraftData, 
@@ -385,17 +386,51 @@ export const ProjectDraftCard: React.FC<ProjectDraftCardProps> = ({
 }) => {
   const isLight = theme === 'light';
   const isEditable = !data.isCreated; // Disable editing after project is created
-  
+  const isBuilding = (data as any).isBuilding === true;
+
   const cardBg = isLight ? 'bg-white' : 'bg-zinc-900';
   const cardBorder = isLight ? 'border-zinc-200' : 'border-zinc-800';
   const textPrimary = isLight ? 'text-zinc-800' : 'text-zinc-100';
   const textSecondary = isLight ? 'text-zinc-500' : 'text-zinc-400';
   const headerBg = isLight ? 'bg-zinc-50' : 'bg-zinc-800/50';
-  
+
   const [expandedTasklists, setExpandedTasklists] = useState<Set<string>>(
     new Set(data.tasklists.map(tl => tl.id))
   );
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
+
+  // Track seen tasklist IDs to animate new ones
+  const seenTasklistIds = useRef<Set<string>>(new Set());
+  const [newTasklistIds, setNewTasklistIds] = useState<Set<string>>(new Set());
+
+  // Auto-expand new tasklists as they appear
+  useEffect(() => {
+    const currentIds = new Set(data.tasklists.map(tl => tl.id));
+    const newIds = new Set<string>();
+
+    currentIds.forEach(id => {
+      if (!seenTasklistIds.current.has(id)) {
+        newIds.add(id);
+        seenTasklistIds.current.add(id);
+      }
+    });
+
+    if (newIds.size > 0) {
+      // Mark new items for animation
+      setNewTasklistIds(prev => new Set([...prev, ...newIds]));
+      // Auto-expand new tasklists
+      setExpandedTasklists(prev => new Set([...prev, ...newIds]));
+
+      // Clear animation class after animation completes
+      setTimeout(() => {
+        setNewTasklistIds(prev => {
+          const next = new Set(prev);
+          newIds.forEach(id => next.delete(id));
+          return next;
+        });
+      }, 500);
+    }
+  }, [data.tasklists]);
   
   const toggleTasklist = (id: string) => {
     setExpandedTasklists(prev => {
@@ -499,26 +534,41 @@ export const ProjectDraftCard: React.FC<ProjectDraftCardProps> = ({
         
         {data.tasklists.length === 0 ? (
           <div className={`${cardBg} ${cardBorder} border rounded-lg p-4 text-center ${textSecondary} text-sm italic`}>
-            No task lists defined yet
+            {isBuilding ? (
+              <div className="flex items-center justify-center gap-2">
+                <Loader2 size={14} className="animate-spin text-cyan-500" />
+                <span>Building task structure...</span>
+              </div>
+            ) : (
+              'No task lists defined yet'
+            )}
           </div>
         ) : (
           data.tasklists.map(tasklist => (
-            <TasklistSection
+            <div
               key={tasklist.id}
-              tasklist={tasklist}
-              isLight={isLight}
-              textPrimary={textPrimary}
-              textSecondary={textSecondary}
-              cardBg={cardBg}
-              cardBorder={cardBorder}
-              isExpanded={expandedTasklists.has(tasklist.id)}
-              onToggle={() => toggleTasklist(tasklist.id)}
-              expandedTasks={expandedTasks}
-              onToggleTask={toggleTask}
-              onUpdateTasklist={onUpdateTasklist ? (updates) => onUpdateTasklist(tasklist.id, updates) : undefined}
-              onUpdateTask={onUpdateTask ? (taskId, updates) => onUpdateTask(tasklist.id, taskId, updates) : undefined}
-              isEditable={isEditable}
-            />
+              className={`transition-all duration-300 ease-out ${
+                newTasklistIds.has(tasklist.id)
+                  ? 'animate-pulse bg-cyan-500/5 ring-1 ring-cyan-500/30 rounded-lg'
+                  : ''
+              }`}
+            >
+              <TasklistSection
+                tasklist={tasklist}
+                isLight={isLight}
+                textPrimary={textPrimary}
+                textSecondary={textSecondary}
+                cardBg={cardBg}
+                cardBorder={cardBorder}
+                isExpanded={expandedTasklists.has(tasklist.id)}
+                onToggle={() => toggleTasklist(tasklist.id)}
+                expandedTasks={expandedTasks}
+                onToggleTask={toggleTask}
+                onUpdateTasklist={onUpdateTasklist ? (updates) => onUpdateTasklist(tasklist.id, updates) : undefined}
+                onUpdateTask={onUpdateTask ? (taskId, updates) => onUpdateTask(tasklist.id, taskId, updates) : undefined}
+                isEditable={isEditable}
+              />
+            </div>
           ))
         )}
       </div>

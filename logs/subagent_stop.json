@@ -8,5 +8,455 @@
     "stop_hook_active": false,
     "agent_id": "9b672373",
     "agent_transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/agent-9b672373.jsonl"
+  },
+  {
+    "session_id": "c649aa29-7169-4a5c-b229-cd7f614f9463",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/c649aa29-7169-4a5c-b229-cd7f614f9463.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork",
+    "permission_mode": "default",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a7551a0",
+    "agent_transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/agent-a7551a0.jsonl"
+  },
+  {
+    "session_id": "c649aa29-7169-4a5c-b229-cd7f614f9463",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/c649aa29-7169-4a5c-b229-cd7f614f9463.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork",
+    "permission_mode": "default",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a085a21",
+    "agent_transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/agent-a085a21.jsonl"
+  },
+  {
+    "session_id": "c649aa29-7169-4a5c-b229-cd7f614f9463",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/c649aa29-7169-4a5c-b229-cd7f614f9463.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork",
+    "permission_mode": "default",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a07cd08",
+    "agent_transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/agent-a07cd08.jsonl"
+  },
+  {
+    "session_id": "8ce0cfd1-ccbf-4645-8844-a85ce9002121",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/8ce0cfd1-ccbf-4645-8844-a85ce9002121.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork",
+    "permission_mode": "default",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a084e9b",
+    "agent_transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/agent-a084e9b.jsonl"
+  },
+  {
+    "session_id": "8ce0cfd1-ccbf-4645-8844-a85ce9002121",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/8ce0cfd1-ccbf-4645-8844-a85ce9002121.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork",
+    "permission_mode": "default",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a6648b9",
+    "agent_transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/agent-a6648b9.jsonl"
+  },
+  {
+    "session_id": "c2a81a55-1fd0-49dd-aed1-65c860d2d1f0",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/c2a81a55-1fd0-49dd-aed1-65c860d2d1f0.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork",
+    "permission_mode": "default",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "ad162d6",
+    "agent_transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/agent-ad162d6.jsonl"
+  },
+  {
+    "session_id": "c2a81a55-1fd0-49dd-aed1-65c860d2d1f0",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/c2a81a55-1fd0-49dd-aed1-65c860d2d1f0.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork",
+    "permission_mode": "default",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a1c7e40",
+    "agent_transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/agent-a1c7e40.jsonl"
+  },
+  {
+    "session_id": "9497674a-7bf4-40ac-82db-6a94f939c5d6",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/9497674a-7bf4-40ac-82db-6a94f939c5d6.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork",
+    "permission_mode": "default",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "aafc952",
+    "agent_transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/agent-aafc952.jsonl"
+  },
+  {
+    "session_id": "9497674a-7bf4-40ac-82db-6a94f939c5d6",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/9497674a-7bf4-40ac-82db-6a94f939c5d6.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork",
+    "permission_mode": "default",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a87730d",
+    "agent_transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/agent-a87730d.jsonl"
+  },
+  {
+    "session_id": "9497674a-7bf4-40ac-82db-6a94f939c5d6",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/9497674a-7bf4-40ac-82db-6a94f939c5d6.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a3393c0",
+    "agent_transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/agent-a3393c0.jsonl"
+  },
+  {
+    "session_id": "9497674a-7bf4-40ac-82db-6a94f939c5d6",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/9497674a-7bf4-40ac-82db-6a94f939c5d6.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "ad93139",
+    "agent_transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/agent-ad93139.jsonl"
+  },
+  {
+    "session_id": "00b6cde5-eabd-474d-bed5-ee3b80c377c5",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/00b6cde5-eabd-474d-bed5-ee3b80c377c5.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a475e48",
+    "agent_transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/agent-a475e48.jsonl"
+  },
+  {
+    "session_id": "00b6cde5-eabd-474d-bed5-ee3b80c377c5",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/00b6cde5-eabd-474d-bed5-ee3b80c377c5.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork",
+    "permission_mode": "default",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a6360bd",
+    "agent_transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/agent-a6360bd.jsonl"
+  },
+  {
+    "session_id": "00b6cde5-eabd-474d-bed5-ee3b80c377c5",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/00b6cde5-eabd-474d-bed5-ee3b80c377c5.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork",
+    "permission_mode": "default",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "acf4509",
+    "agent_transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/agent-acf4509.jsonl"
+  },
+  {
+    "session_id": "00b6cde5-eabd-474d-bed5-ee3b80c377c5",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/00b6cde5-eabd-474d-bed5-ee3b80c377c5.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a97d883",
+    "agent_transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/agent-a97d883.jsonl"
+  },
+  {
+    "session_id": "00b6cde5-eabd-474d-bed5-ee3b80c377c5",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/00b6cde5-eabd-474d-bed5-ee3b80c377c5.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a65e960",
+    "agent_transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/agent-a65e960.jsonl"
+  },
+  {
+    "session_id": "00b6cde5-eabd-474d-bed5-ee3b80c377c5",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/00b6cde5-eabd-474d-bed5-ee3b80c377c5.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "ae9c51e",
+    "agent_transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/agent-ae9c51e.jsonl"
+  },
+  {
+    "session_id": "00b6cde5-eabd-474d-bed5-ee3b80c377c5",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/00b6cde5-eabd-474d-bed5-ee3b80c377c5.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a3a0a1f",
+    "agent_transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/agent-a3a0a1f.jsonl"
+  },
+  {
+    "session_id": "00b6cde5-eabd-474d-bed5-ee3b80c377c5",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/00b6cde5-eabd-474d-bed5-ee3b80c377c5.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a22b940",
+    "agent_transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/agent-a22b940.jsonl"
+  },
+  {
+    "session_id": "00b6cde5-eabd-474d-bed5-ee3b80c377c5",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/00b6cde5-eabd-474d-bed5-ee3b80c377c5.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a375919",
+    "agent_transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/agent-a375919.jsonl"
+  },
+  {
+    "session_id": "00b6cde5-eabd-474d-bed5-ee3b80c377c5",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/00b6cde5-eabd-474d-bed5-ee3b80c377c5.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a0ef1e7",
+    "agent_transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/agent-a0ef1e7.jsonl"
+  },
+  {
+    "session_id": "00b6cde5-eabd-474d-bed5-ee3b80c377c5",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/00b6cde5-eabd-474d-bed5-ee3b80c377c5.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork",
+    "permission_mode": "plan",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a931fa7",
+    "agent_transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/agent-a931fa7.jsonl"
+  },
+  {
+    "session_id": "00b6cde5-eabd-474d-bed5-ee3b80c377c5",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/00b6cde5-eabd-474d-bed5-ee3b80c377c5.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork",
+    "permission_mode": "plan",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a363ff9",
+    "agent_transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/agent-a363ff9.jsonl"
+  },
+  {
+    "session_id": "00b6cde5-eabd-474d-bed5-ee3b80c377c5",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/00b6cde5-eabd-474d-bed5-ee3b80c377c5.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "ae1e1cd",
+    "agent_transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/agent-ae1e1cd.jsonl"
+  },
+  {
+    "session_id": "00b6cde5-eabd-474d-bed5-ee3b80c377c5",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/00b6cde5-eabd-474d-bed5-ee3b80c377c5.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a1f988a",
+    "agent_transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/agent-a1f988a.jsonl"
+  },
+  {
+    "session_id": "00b6cde5-eabd-474d-bed5-ee3b80c377c5",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/00b6cde5-eabd-474d-bed5-ee3b80c377c5.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a09424b",
+    "agent_transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/agent-a09424b.jsonl"
+  },
+  {
+    "session_id": "00b6cde5-eabd-474d-bed5-ee3b80c377c5",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/00b6cde5-eabd-474d-bed5-ee3b80c377c5.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a5cda72",
+    "agent_transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/agent-a5cda72.jsonl"
+  },
+  {
+    "session_id": "00b6cde5-eabd-474d-bed5-ee3b80c377c5",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/00b6cde5-eabd-474d-bed5-ee3b80c377c5.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a728c73",
+    "agent_transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/agent-a728c73.jsonl"
+  },
+  {
+    "session_id": "00b6cde5-eabd-474d-bed5-ee3b80c377c5",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/00b6cde5-eabd-474d-bed5-ee3b80c377c5.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a760ade",
+    "agent_transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/agent-a760ade.jsonl"
+  },
+  {
+    "session_id": "00b6cde5-eabd-474d-bed5-ee3b80c377c5",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/00b6cde5-eabd-474d-bed5-ee3b80c377c5.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "ad80a06",
+    "agent_transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/agent-ad80a06.jsonl"
+  },
+  {
+    "session_id": "00b6cde5-eabd-474d-bed5-ee3b80c377c5",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/00b6cde5-eabd-474d-bed5-ee3b80c377c5.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a55a3d8",
+    "agent_transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/agent-a55a3d8.jsonl"
+  },
+  {
+    "session_id": "00b6cde5-eabd-474d-bed5-ee3b80c377c5",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/00b6cde5-eabd-474d-bed5-ee3b80c377c5.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a2ebba0",
+    "agent_transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/agent-a2ebba0.jsonl"
+  },
+  {
+    "session_id": "00b6cde5-eabd-474d-bed5-ee3b80c377c5",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/00b6cde5-eabd-474d-bed5-ee3b80c377c5.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a143d70",
+    "agent_transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/agent-a143d70.jsonl"
+  },
+  {
+    "session_id": "00b6cde5-eabd-474d-bed5-ee3b80c377c5",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/00b6cde5-eabd-474d-bed5-ee3b80c377c5.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a6a52a2",
+    "agent_transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/agent-a6a52a2.jsonl"
+  },
+  {
+    "session_id": "00b6cde5-eabd-474d-bed5-ee3b80c377c5",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/00b6cde5-eabd-474d-bed5-ee3b80c377c5.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a607797",
+    "agent_transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/agent-a607797.jsonl"
+  },
+  {
+    "session_id": "771c0e43-13ae-41d7-b371-ca8c5e7dc2bb",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/771c0e43-13ae-41d7-b371-ca8c5e7dc2bb.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork",
+    "permission_mode": "default",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "aa9483c",
+    "agent_transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/agent-aa9483c.jsonl"
+  },
+  {
+    "session_id": "771c0e43-13ae-41d7-b371-ca8c5e7dc2bb",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/771c0e43-13ae-41d7-b371-ca8c5e7dc2bb.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork",
+    "permission_mode": "default",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a4d775b",
+    "agent_transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/agent-a4d775b.jsonl"
+  },
+  {
+    "session_id": "771c0e43-13ae-41d7-b371-ca8c5e7dc2bb",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/771c0e43-13ae-41d7-b371-ca8c5e7dc2bb.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a54548d",
+    "agent_transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/agent-a54548d.jsonl"
+  },
+  {
+    "session_id": "c7c9b22a-edbf-4aa2-9984-5c376b8f2caf",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/c7c9b22a-edbf-4aa2-9984-5c376b8f2caf.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork",
+    "permission_mode": "default",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "afc5a9c",
+    "agent_transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/agent-afc5a9c.jsonl"
+  },
+  {
+    "session_id": "c7c9b22a-edbf-4aa2-9984-5c376b8f2caf",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/c7c9b22a-edbf-4aa2-9984-5c376b8f2caf.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork",
+    "permission_mode": "default",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a9650e2",
+    "agent_transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/agent-a9650e2.jsonl"
+  },
+  {
+    "session_id": "c7c9b22a-edbf-4aa2-9984-5c376b8f2caf",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/c7c9b22a-edbf-4aa2-9984-5c376b8f2caf.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a354125",
+    "agent_transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/agent-a354125.jsonl"
+  },
+  {
+    "session_id": "c7c9b22a-edbf-4aa2-9984-5c376b8f2caf",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/c7c9b22a-edbf-4aa2-9984-5c376b8f2caf.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork",
+    "permission_mode": "plan",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a358571",
+    "agent_transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/agent-a358571.jsonl"
+  },
+  {
+    "session_id": "c7c9b22a-edbf-4aa2-9984-5c376b8f2caf",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/c7c9b22a-edbf-4aa2-9984-5c376b8f2caf.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork",
+    "permission_mode": "plan",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "ab32c9b",
+    "agent_transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/agent-ab32c9b.jsonl"
+  },
+  {
+    "session_id": "c7c9b22a-edbf-4aa2-9984-5c376b8f2caf",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/c7c9b22a-edbf-4aa2-9984-5c376b8f2caf.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork",
+    "permission_mode": "plan",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a723588",
+    "agent_transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/agent-a723588.jsonl"
+  },
+  {
+    "session_id": "c7c9b22a-edbf-4aa2-9984-5c376b8f2caf",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/c7c9b22a-edbf-4aa2-9984-5c376b8f2caf.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork",
+    "permission_mode": "plan",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a8faf87",
+    "agent_transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/agent-a8faf87.jsonl"
   }
 ]

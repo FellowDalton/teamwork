@@ -16,8 +16,14 @@ import {
 import { AnalogButton } from "./components/AnalogButton";
 import { ConversationPanel } from "./components/ConversationPanel";
 import { DataDisplayPanel } from "./components/DataDisplayPanel";
+// ConversationSelector is now rendered inside ConversationPanel
+import { LoginButton, UserMenu } from "./components/LoginButton";
+import { LoginScreen } from "./components/LoginScreen";
+import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { processChatCommand, processStreamingChat, processAgentStream, requestAdditionalChart, VisualizationSpec, TimelogDraftData, TimelogDraftEntry, submitTimelogEntries, submitProject } from "./services/claudeService";
 import { teamworkService, TeamworkTask, TeamworkTimeEntry } from "./services/teamworkService";
+import * as supabaseService from "./services/supabaseService";
+import type { Conversation } from "./types/supabase";
 import {
   Layout,
   Plus,
@@ -100,7 +106,10 @@ function transformTeamworkData(
 
 type Theme = "light" | "dark";
 
-export default function App() {
+// Main app content - separated to use auth context
+function AppContent() {
+  const { isAuthenticated, isConfigured, isLoading: isAuthLoading, profile } = useAuth();
+
   const [projects, setProjects] = useState<Project[]>([]);
   const [activeProjectId, setActiveProjectId] = useState<string>("");
   const [theme, setTheme] = useState<Theme>("dark");
@@ -117,14 +126,17 @@ export default function App() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [thinkingStatus, setThinkingStatus] = useState<string>("");
 
+  // Supabase conversation persistence
+  const [currentConversation, setCurrentConversation] = useState<Conversation | null>(null);
+
   // Data display state
   const [displayData, setDisplayData] = useState<DisplayData | null>(null);
   const [isChartLoading, setIsChartLoading] = useState(false);
-  
+
   // Timelog draft state
   const [timelogDraft, setTimelogDraft] = useState<TimelogDraftData | null>(null);
   const [isSubmittingTimelog, setIsSubmittingTimelog] = useState(false);
-  
+
   // Project draft state
   const [projectDraft, setProjectDraft] = useState<ProjectDraftData | null>(null);
   const [isCreatingProject, setIsCreatingProject] = useState(false);
@@ -204,6 +216,9 @@ export default function App() {
 
   // Reset conversation when topic changes
   useEffect(() => {
+    // Clear current conversation so a new one is created for this topic
+    setCurrentConversation(null);
+
     // Add welcome message for topic
     const welcomeMessages: Record<ConversationTopic, string> = {
       project:
@@ -252,6 +267,71 @@ export default function App() {
 
   // File attachment state for create project
   const [attachedFiles, setAttachedFiles] = useState<import('./types/conversation').FileAttachment[]>([]);
+
+  // --- Conversation Persistence Handlers ---
+
+  // Handle selecting an existing conversation from the dropdown
+  const handleSelectConversation = useCallback(async (conversation: Conversation | null) => {
+    if (!conversation) {
+      // Starting fresh - clear current conversation
+      setCurrentConversation(null);
+      setMessages([]);
+      setDisplayData(null);
+      return;
+    }
+
+    setCurrentConversation(conversation);
+    setActiveTopic(conversation.topic);
+
+    // Load messages from Supabase
+    const convWithMessages = await supabaseService.getConversationWithMessages(conversation.id);
+    if (convWithMessages?.messages) {
+      const loadedMessages: ChatMessage[] = convWithMessages.messages.map((msg) => ({
+        id: msg.id,
+        role: msg.role,
+        content: msg.content || '',
+        timestamp: msg.created_at,
+        topic: conversation.topic,
+        displayData: msg.display_data as DisplayData | undefined,
+      }));
+      setMessages(loadedMessages);
+    }
+  }, []);
+
+  // Handle creating a new conversation
+  const handleNewConversation = useCallback((conversation: Conversation) => {
+    setCurrentConversation(conversation);
+    setActiveTopic(conversation.topic);
+    setMessages([]);
+    setDisplayData(null);
+    setTimelogDraft(null);
+    setProjectDraft(null);
+  }, []);
+
+  // Save message to Supabase (called after each message exchange)
+  const persistMessage = useCallback(async (
+    role: 'user' | 'assistant',
+    content: string,
+    displayData?: DisplayData
+  ) => {
+    if (!isAuthenticated || !currentConversation) return;
+
+    try {
+      await supabaseService.addMessage(
+        currentConversation.id,
+        role,
+        content,
+        displayData as Record<string, unknown>
+      );
+
+      // Generate title from first user message
+      if (role === 'user' && !currentConversation.title) {
+        await supabaseService.generateConversationTitle(currentConversation.id, content);
+      }
+    } catch (error) {
+      console.error('Failed to persist message:', error);
+    }
+  }, [isAuthenticated, currentConversation]);
 
   // --- Handlers ---
 
@@ -619,12 +699,25 @@ export default function App() {
         fullContent = `${content}\n\n[Attached Files]${fileContents}`;
       }
     }
-    
+
+    // Auto-create conversation on first message if authenticated and none exists
+    let activeConversation = currentConversation;
+    if (isAuthenticated && !activeConversation) {
+      const newConv = await supabaseService.createConversation(
+        activeTopic,
+        activeProjectId ? activeProjectId.replace('proj-', '') : undefined
+      );
+      if (newConv) {
+        activeConversation = newConv;
+        setCurrentConversation(newConv);
+      }
+    }
+
     // Add user message (show original content, not the file dump)
     const userMsg: ChatMessage = {
       id: `msg-${Date.now()}`,
       role: "user",
-      content: files && files.length > 0 
+      content: files && files.length > 0
         ? `${content}\n\n📎 ${files.length} file(s) attached: ${files.map(f => f.name).join(', ')}`
         : content,
       timestamp: new Date().toISOString(),
@@ -636,6 +729,15 @@ export default function App() {
     setIsProcessing(true);
     setDisplayData(null); // Clear previous visualizations
     setTimelogDraft(null); // Clear any previous draft
+
+    // Persist user message to Supabase
+    if (isAuthenticated && activeConversation) {
+      await supabaseService.addMessage(activeConversation.id, 'user', fullContent);
+      // Generate title from first message if no title yet
+      if (!activeConversation.title) {
+        supabaseService.generateConversationTitle(activeConversation.id, content);
+      }
+    }
 
     try {
       // Use streaming chat - show status while processing
@@ -789,18 +891,103 @@ export default function App() {
           console.log("Project draft received:", draft.summary.totalTasks, "tasks");
           setProjectDraft(draft);
         },
-        onComplete: (fullText) => {
+        onProjectDraftUpdate: (update) => {
+          // Progressive update - accumulate into existing draft
+          console.log("Project draft update:", update.action);
+          setProjectDraft((prev) => {
+            if (!prev) return prev;
+
+            switch (update.action) {
+              case 'add_tasklist':
+                if (update.tasklist) {
+                  return {
+                    ...prev,
+                    tasklists: [...prev.tasklists, { ...update.tasklist, tasks: [] }],
+                    summary: {
+                      ...prev.summary,
+                      totalTasklists: prev.summary.totalTasklists + 1,
+                    },
+                  };
+                }
+                break;
+              case 'add_task':
+                if (update.tasklistId && update.task) {
+                  return {
+                    ...prev,
+                    tasklists: prev.tasklists.map(tl =>
+                      tl.id === update.tasklistId
+                        ? { ...tl, tasks: [...tl.tasks, { ...update.task!, subtasks: [], tags: update.task!.tags || [] }] }
+                        : tl
+                    ),
+                    summary: {
+                      ...prev.summary,
+                      totalTasks: prev.summary.totalTasks + 1,
+                    },
+                  };
+                }
+                break;
+              case 'add_subtasks':
+                if (update.taskId && update.subtasks) {
+                  return {
+                    ...prev,
+                    tasklists: prev.tasklists.map(tl => ({
+                      ...tl,
+                      tasks: tl.tasks.map(t =>
+                        t.id === update.taskId
+                          ? { ...t, subtasks: [...t.subtasks, ...update.subtasks!] }
+                          : t
+                      ),
+                    })),
+                    summary: {
+                      ...prev.summary,
+                      totalSubtasks: prev.summary.totalSubtasks + update.subtasks.length,
+                    },
+                  };
+                }
+                break;
+              case 'set_budget':
+                if (update.budget) {
+                  return {
+                    ...prev,
+                    budget: update.budget,
+                  };
+                }
+                break;
+            }
+            return prev;
+          });
+        },
+        onProjectDraftComplete: (message) => {
+          // Mark draft as complete (no longer building)
+          console.log("Project draft complete:", message);
+          setProjectDraft((prev) => {
+            if (!prev) return prev;
+            return {
+              ...prev,
+              message: message || prev.message,
+              isBuilding: false,
+            } as ProjectDraftData;
+          });
+        },
+        onComplete: async (fullText) => {
           setThinkingStatus("");
+          const responseContent = fullText || receivedText || "Done.";
+
           // Add the final assistant message when complete
           const aiMsg: ChatMessage = {
             id: `msg-${Date.now()}`,
             role: "assistant",
-            content: fullText || receivedText || "Done.",
+            content: responseContent,
             timestamp: new Date().toISOString(),
             topic: activeTopic,
           };
           setMessages((prev) => [...prev, aiMsg]);
-          
+
+          // Persist assistant message to Supabase
+          if (isAuthenticated && activeConversation) {
+            await supabaseService.addMessage(activeConversation.id, 'assistant', responseContent);
+          }
+
           // Cards are now populated via onCards callback when Opus includes [[DISPLAY:cards]]
           // The CardAgent (Haiku) formats the data intelligently
           setIsProcessing(false);
@@ -1346,6 +1533,23 @@ export default function App() {
     return labels[activeTopic];
   };
 
+  // Show loading state while auth is being restored
+  if (isConfigured && isAuthLoading) {
+    return (
+      <div className="h-screen bg-[#121214] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="w-8 h-8 text-cyan-500 animate-spin" />
+          <p className="text-zinc-500 font-mono text-sm">AUTHENTICATING...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show login screen if Supabase is configured but user is not authenticated
+  if (isConfigured && !isAuthenticated) {
+    return <LoginScreen />;
+  }
+
   return (
     <div
       className={`h-screen ${appBg} bg-noise ${appText} font-sans overflow-hidden flex flex-col transition-colors duration-300`}
@@ -1507,6 +1711,13 @@ export default function App() {
               />
             </div>
           </div>
+
+          {/* User Menu (when authenticated) */}
+          {isAuthenticated ? (
+            <UserMenu />
+          ) : isConfigured ? (
+            <LoginButton variant="outline" className="ml-2" />
+          ) : null}
         </div>
       </div>
 
@@ -1551,11 +1762,21 @@ export default function App() {
                     : "bg-zinc-800 border-zinc-700"
                 }`}
               >
-                <span className="font-bold">JS</span>
+                <span className="font-bold">
+                  {isAuthenticated && profile?.display_name
+                    ? profile.display_name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+                    : 'JS'}
+                </span>
               </div>
               <div>
-                <div className="font-bold">John Smith</div>
-                <div className="opacity-70">Admin Access</div>
+                <div className="font-bold">
+                  {isAuthenticated && profile?.display_name
+                    ? profile.display_name
+                    : 'Guest User'}
+                </div>
+                <div className="opacity-70">
+                  {isAuthenticated ? 'Signed In' : 'Not Signed In'}
+                </div>
               </div>
             </div>
           </div>
@@ -1590,6 +1811,9 @@ export default function App() {
                 theme={theme}
                 attachedFiles={attachedFiles}
                 onFilesChange={setAttachedFiles}
+                currentConversation={currentConversation}
+                onSelectConversation={handleSelectConversation}
+                onNewConversation={handleNewConversation}
               />
             </div>
 
@@ -1617,5 +1841,14 @@ export default function App() {
         </div>
       </div>
     </div>
+  );
+}
+
+// App wrapper with AuthProvider
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 }

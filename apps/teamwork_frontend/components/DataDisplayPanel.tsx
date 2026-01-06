@@ -164,6 +164,13 @@ export const DataDisplayPanel: React.FC<DataDisplayPanelProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Building indicator for project draft */}
+          {isProjectDraftMode && (projectDraftData as any)?.isBuilding && (
+            <div className="flex items-center gap-1.5 mr-2">
+              <Loader2 size={12} className="text-cyan-500 animate-spin" />
+              <span className="text-[10px] font-mono text-cyan-500 animate-pulse">BUILDING...</span>
+            </div>
+          )}
           <Screw isLight={isLight} />
         </div>
       </div>
@@ -267,53 +274,55 @@ export const DataDisplayPanel: React.FC<DataDisplayPanelProps> = ({
               onUpdateTask={onUpdateProjectTask}
             />
             
-            {/* Create Project Button */}
-            <div className="mt-4 flex justify-end gap-3">
-              {projectDraftData!.isCreated && projectDraftData!.createdProjectUrl && (
-                <a
-                  href={projectDraftData!.createdProjectUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
+            {/* Create Project Button - only show when not building */}
+            {!(projectDraftData as any)?.isBuilding && (
+              <div className="mt-4 flex justify-end gap-3">
+                {projectDraftData!.isCreated && projectDraftData!.createdProjectUrl && (
+                  <a
+                    href={projectDraftData!.createdProjectUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`
+                      flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm
+                      transition-all duration-200
+                      bg-cyan-600 text-white hover:bg-cyan-500 cursor-pointer shadow-lg hover:shadow-cyan-500/25
+                    `}
+                  >
+                    <FolderOpen size={16} />
+                    <span>Open in Teamwork</span>
+                  </a>
+                )}
+                <button
+                  onClick={onProjectDraftSubmit}
+                  disabled={isCreatingProject || projectDraftData!.isCreated}
                   className={`
                     flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm
                     transition-all duration-200
-                    bg-cyan-600 text-white hover:bg-cyan-500 cursor-pointer shadow-lg hover:shadow-cyan-500/25
+                    ${isCreatingProject || projectDraftData!.isCreated
+                      ? 'opacity-50 cursor-not-allowed bg-zinc-600 text-zinc-400'
+                      : 'bg-purple-600 text-white hover:bg-purple-500 cursor-pointer shadow-lg hover:shadow-purple-500/25'
+                    }
                   `}
                 >
-                  <FolderOpen size={16} />
-                  <span>Open in Teamwork</span>
-                </a>
-              )}
-              <button
-                onClick={onProjectDraftSubmit}
-                disabled={isCreatingProject || projectDraftData!.isCreated}
-                className={`
-                  flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm
-                  transition-all duration-200
-                  ${isCreatingProject || projectDraftData!.isCreated
-                    ? 'opacity-50 cursor-not-allowed bg-zinc-600 text-zinc-400'
-                    : 'bg-purple-600 text-white hover:bg-purple-500 cursor-pointer shadow-lg hover:shadow-purple-500/25'
-                  }
-                `}
-              >
-                {isCreatingProject ? (
-                  <>
-                    <Loader2 size={16} className="animate-spin" />
-                    <span>Creating Project...</span>
-                  </>
-                ) : projectDraftData!.isCreated ? (
-                  <>
-                    <CheckCircle2 size={16} />
-                    <span>Project Created</span>
-                  </>
-                ) : (
-                  <>
-                    <Rocket size={16} />
-                    <span>Create Project</span>
-                  </>
-                )}
-              </button>
-            </div>
+                  {isCreatingProject ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" />
+                      <span>Creating Project...</span>
+                    </>
+                  ) : projectDraftData!.isCreated ? (
+                    <>
+                      <CheckCircle2 size={16} />
+                      <span>Project Created</span>
+                    </>
+                  ) : (
+                    <>
+                      <Rocket size={16} />
+                      <span>Create Project</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
           </div>
         )}
         

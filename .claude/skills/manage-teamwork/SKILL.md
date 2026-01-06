@@ -86,6 +86,7 @@ What would you like to do with Teamwork?
 | 5, "comment" | `workflows/comment-on-task.md` |
 | 6, "time", "log", "track" | `workflows/log-time.md` |
 | 7, "project" | `workflows/manage-projects.md` |
+| 8, "activity", "status", "report" | `workflows/get-activity-status.md` |
 
 **After reading the workflow, follow it exactly.**
 </routing>
@@ -108,6 +109,7 @@ All domain knowledge in `references/`:
 | comment-on-task.md | Add comments to tasks |
 | log-time.md | Log time entries on tasks |
 | manage-projects.md | List, get, or create projects |
+| get-activity-status.md | Report on work activity and status |
 </workflows_index>
 
 <quick_reference>

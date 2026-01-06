@@ -80,22 +80,22 @@ export class CommentsResource {
 
   /**
    * Create a comment on a task.
+   * Note: Uses v1 API which returns {commentId, STATUS, id} instead of full comment
    */
-  async createForTask(taskId: number, options: CreateCommentOptions): Promise<Comment> {
-    const body: CreateCommentRequest = {
+  async createForTask(taskId: number, options: CreateCommentOptions): Promise<{ id: number }> {
+    const body = {
       comment: {
         body: options.body,
-        contentType: options.contentType ?? 'MARKDOWN',
-        isPrivate: options.isPrivate ?? false,
+        // v1 API doesn't support contentType - markdown works by default
+        ...(options.isPrivate && { isPrivate: options.isPrivate }),
       },
     };
 
-    const response = await this.client.post<CommentResponse>(
-      `/projects/api/v3/tasks/${taskId}/comments.json`,
+    const response = await this.client.post<{ commentId: string; STATUS: string; id: string }>(
+      `/projects/api/v1/tasks/${taskId}/comments.json`,
       body
     );
-    const parsed = CommentResponseSchema.parse(response);
-    return parsed.comment;
+    return { id: parseInt(response.id || response.commentId) };
   }
 
   /**

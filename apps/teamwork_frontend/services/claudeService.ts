@@ -1,5 +1,5 @@
 import { Project, Task } from "../types";
-import { DisplayData, DisplayItem, ConversationTopic, ProjectDraftData } from "../types/conversation";
+import { DisplayData, DisplayItem, ConversationTopic, ProjectDraftData, ProjectDraftUpdateEvent } from "../types/conversation";
 
 // Helper to call Claude API via backend proxy
 async function callClaude(
@@ -419,6 +419,8 @@ export interface StreamingChatOptions {
   onVisualization?: (spec: VisualizationSpec) => void;
   onTimelogDraft?: (draft: TimelogDraftData) => void;
   onProjectDraft?: (draft: ProjectDraftData) => void;
+  onProjectDraftUpdate?: (update: ProjectDraftUpdateEvent) => void;
+  onProjectDraftComplete?: (message?: string) => void;
   onComplete: (fullText: string) => void;
   onError: (error: Error) => void;
 }
@@ -519,7 +521,7 @@ export const processStreamingChat = async (options: StreamingChatOptions): Promi
 // Agent SDK streaming - uses skills for intelligent Teamwork interactions
 // No hard-coded date parsing - Claude handles everything via skills
 export const processAgentStream = async (options: StreamingChatOptions): Promise<void> => {
-  const { message, topic, projectId, projectName, onChunk, onThinking, onVisualization, onTimelogDraft, onProjectDraft, onComplete, onError } = options;
+  const { message, topic, projectId, projectName, onChunk, onThinking, onVisualization, onTimelogDraft, onProjectDraft, onProjectDraftUpdate, onProjectDraftComplete, onComplete, onError } = options;
   
   const modeMap: Record<ConversationTopic, string> = {
     project: 'project',
@@ -561,10 +563,12 @@ export const processAgentStream = async (options: StreamingChatOptions): Promise
       const chunk = decoder.decode(value);
       const lines = chunk.split("\n").filter(line => line.startsWith("data: "));
 
+      let streamDone = false;
       for (const line of lines) {
         const data = line.slice(6); // Remove "data: " prefix
-        
+
         if (data === "[DONE]") {
+          streamDone = true;
           break;
         }
 
@@ -596,7 +600,7 @@ export const processAgentStream = async (options: StreamingChatOptions): Promise
             };
             onTimelogDraft(draft);
           } else if (parsed.type === 'project_draft' && parsed.draft && onProjectDraft) {
-            // Handle project draft for review/editing
+            // Handle project draft for review/editing (final or legacy)
             const draft: ProjectDraftData = {
               project: parsed.draft.project,
               tasklists: parsed.draft.tasklists,
@@ -606,6 +610,33 @@ export const processAgentStream = async (options: StreamingChatOptions): Promise
               isDraft: true,
             };
             onProjectDraft(draft);
+          } else if (parsed.type === 'project_draft_init' && parsed.draft && onProjectDraft) {
+            // Handle progressive project draft initialization
+            const draft: ProjectDraftData = {
+              project: parsed.draft.project,
+              tasklists: parsed.draft.tasklists || [],
+              summary: parsed.draft.summary,
+              message: '',
+              isDraft: true,
+            };
+            // Mark as building so UI knows more content is coming
+            (draft as any).isBuilding = true;
+            onProjectDraft(draft);
+          } else if (parsed.type === 'project_draft_update' && onProjectDraftUpdate) {
+            // Handle progressive updates (add_tasklist, add_task, add_subtasks, set_budget)
+            onProjectDraftUpdate({
+              type: 'project_draft_update',
+              action: parsed.action,
+              tasklist: parsed.tasklist,
+              tasklistId: parsed.tasklistId,
+              task: parsed.task,
+              taskId: parsed.taskId,
+              subtasks: parsed.subtasks,
+              budget: parsed.budget,
+            });
+          } else if (parsed.type === 'project_draft_complete' && onProjectDraftComplete) {
+            // Handle project draft completion
+            onProjectDraftComplete(parsed.message);
           } else if (parsed.type === 'error') {
             throw new Error(parsed.error);
           }
@@ -614,6 +645,8 @@ export const processAgentStream = async (options: StreamingChatOptions): Promise
           throw e;
         }
       }
+
+      if (streamDone) break;
     }
 
     onComplete(fullText);

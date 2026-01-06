@@ -6,5 +6,29 @@
     "hook_event_name": "PreCompact",
     "trigger": "auto",
     "custom_instructions": null
+  },
+  {
+    "session_id": "00b6cde5-eabd-474d-bed5-ee3b80c377c5",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/00b6cde5-eabd-474d-bed5-ee3b80c377c5.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork",
+    "hook_event_name": "PreCompact",
+    "trigger": "auto",
+    "custom_instructions": null
+  },
+  {
+    "session_id": "00b6cde5-eabd-474d-bed5-ee3b80c377c5",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/00b6cde5-eabd-474d-bed5-ee3b80c377c5.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork",
+    "hook_event_name": "PreCompact",
+    "trigger": "auto",
+    "custom_instructions": null
+  },
+  {
+    "session_id": "c7c9b22a-edbf-4aa2-9984-5c376b8f2caf",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/c7c9b22a-edbf-4aa2-9984-5c376b8f2caf.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork",
+    "hook_event_name": "PreCompact",
+    "trigger": "auto",
+    "custom_instructions": null
   }
 ]

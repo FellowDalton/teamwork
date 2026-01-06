@@ -203,3 +203,60 @@ export interface FileAttachment {
   type: string;
   content?: string;
 }
+
+// Progressive project draft SSE event types
+export type ProjectDraftUpdateAction =
+  | 'add_tasklist'
+  | 'add_task'
+  | 'add_subtasks'
+  | 'update_project'
+  | 'set_budget';
+
+export interface ProjectDraftInitEvent {
+  type: 'project_draft_init';
+  draft: {
+    project: {
+      name: string;
+      description?: string;
+      startDate?: string;
+      endDate?: string;
+      tags: ProjectDraftTag[];
+    };
+    tasklists: TasklistDraft[];
+    summary: {
+      totalTasklists: number;
+      totalTasks: number;
+      totalSubtasks: number;
+    };
+    isBuilding: true;
+    isDraft: true;
+  };
+}
+
+export interface ProjectDraftUpdateEvent {
+  type: 'project_draft_update';
+  action: ProjectDraftUpdateAction;
+  tasklist?: TasklistDraft;
+  tasklistId?: string;
+  task?: TaskDraft;
+  taskId?: string;
+  subtasks?: SubtaskDraft[];
+  budget?: ProjectBudgetDraft;
+}
+
+export interface ProjectDraftCompleteEvent {
+  type: 'project_draft_complete';
+  message?: string;
+}
+
+// Union type for all progressive draft events
+export type ProjectDraftStreamEvent =
+  | ProjectDraftInitEvent
+  | ProjectDraftUpdateEvent
+  | ProjectDraftCompleteEvent;
+
+// Extended ProjectDraftData with building state
+export interface ProjectDraftDataWithBuilding extends Omit<ProjectDraftData, 'isDraft'> {
+  isDraft: true;
+  isBuilding?: boolean;
+}

@@ -47,6 +47,7 @@ import { PeopleResource as People } from './resources/people.ts';
 import { ActivityResource as Activity } from './resources/activity.ts';
 import { BudgetsResource as Budgets } from './resources/budgets.ts';
 import { TagsResource as Tags } from './resources/tags.ts';
+import { WebhooksResource as Webhooks } from './resources/webhooks.ts';
 
 export { TasksResource, type ListTasksOptions, type CreateTaskOptions, type UpdateTaskOptions } from './resources/tasks.ts';
 
@@ -75,6 +76,15 @@ export { ActivityResource, type ListActivityOptions } from './resources/activity
 export { BudgetsResource, type ListProjectBudgetsOptions, type ListTasklistBudgetsOptions } from './resources/budgets.ts';
 
 export { TagsResource, type Tag, type CreateTagOptions } from './resources/tags.ts';
+
+export { 
+  WebhooksResource, 
+  type Webhook,
+  type WebhookEventType,
+  type WebhookEventAction,
+  type CreateWebhookOptions,
+  type ListWebhooksOptions,
+} from './resources/webhooks.ts';
 
 // High-level facade
 export {
@@ -122,5 +132,6 @@ export function createTeamworkClient(config: {
     activity: new Activity(httpClient),
     budgets: new Budgets(httpClient),
     tags: new Tags(httpClient),
+    webhooks: new Webhooks(httpClient),
   };
 }
