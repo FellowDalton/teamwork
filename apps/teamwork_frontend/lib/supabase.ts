@@ -17,18 +17,18 @@ if (!supabaseAnonKey) {
 /**
  * Supabase client for browser/client-side use
  * Uses anon key with RLS policies enforced
+ * Only created if environment variables are set
  */
-export const supabase: SupabaseClient<Database> = createClient<Database>(
-  supabaseUrl,
-  supabaseAnonKey,
-  {
-    auth: {
-      autoRefreshToken: true,
-      persistSession: true,
-      detectSessionInUrl: true,
-    },
-  }
-);
+export const supabase: SupabaseClient<Database> | null =
+  supabaseUrl && supabaseAnonKey
+    ? createClient<Database>(supabaseUrl, supabaseAnonKey, {
+        auth: {
+          autoRefreshToken: true,
+          persistSession: true,
+          detectSessionInUrl: true,
+        },
+      })
+    : null;
 
 /**
  * Check if Supabase is properly configured
@@ -41,6 +41,7 @@ export function isSupabaseConfigured(): boolean {
  * Get the current authenticated user
  */
 export async function getCurrentUser() {
+  if (!supabase) return null;
   const { data: { user }, error } = await supabase.auth.getUser();
   if (error) {
     console.error('Error getting current user:', error);
@@ -53,6 +54,7 @@ export async function getCurrentUser() {
  * Get the current user's profile with workspace info
  */
 export async function getCurrentProfile() {
+  if (!supabase) return null;
   const user = await getCurrentUser();
   if (!user) return null;
 
@@ -74,6 +76,7 @@ export async function getCurrentProfile() {
  * Sign in with Microsoft Azure
  */
 export async function signInWithMicrosoft() {
+  if (!supabase) throw new Error('Supabase is not configured');
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'azure',
     options: {
@@ -94,6 +97,7 @@ export async function signInWithMicrosoft() {
  * Sign out the current user
  */
 export async function signOut() {
+  if (!supabase) return;
   const { error } = await supabase.auth.signOut();
   if (error) {
     console.error('Error signing out:', error);
