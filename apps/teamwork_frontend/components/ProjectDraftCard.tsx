@@ -25,6 +25,7 @@ import {
 interface ProjectDraftCardProps {
   data: ProjectDraftData;
   theme?: 'light' | 'dark';
+  hourlyRate?: number;
   onUpdateProject?: (updates: Partial<ProjectDraftData['project']>) => void;
   onUpdateTasklist?: (tasklistId: string, updates: Partial<TasklistDraft>) => void;
   onUpdateTask?: (tasklistId: string, taskId: string, updates: Partial<TaskDraft>) => void;
@@ -116,6 +117,15 @@ const SubtaskItem: React.FC<{
             />
           )}
         </>
+      )}
+      {subtask.estimatedMinutes && !isEditing && (
+        <span className={`flex items-center gap-0.5 text-cyan-500 text-[10px]`}>
+          <Clock size={10} />
+          {subtask.estimatedMinutes >= 60
+            ? `${Math.round(subtask.estimatedMinutes / 60)}h`
+            : `${subtask.estimatedMinutes}m`
+          }
+        </span>
       )}
       {subtask.dueDate && !isEditing && (
         <span className={`flex items-center gap-0.5 ${textSecondary} text-[10px]`}>
@@ -378,6 +388,7 @@ const TasklistSection: React.FC<{
 export const ProjectDraftCard: React.FC<ProjectDraftCardProps> = ({
   data,
   theme = 'dark',
+  hourlyRate = 1200,
   onUpdateProject,
   onUpdateTasklist,
   onUpdateTask,
@@ -431,6 +442,14 @@ export const ProjectDraftCard: React.FC<ProjectDraftCardProps> = ({
       }, 500);
     }
   }, [data.tasklists]);
+
+  // Ensure all tasklists stay expanded when building completes
+  useEffect(() => {
+    if (!isBuilding) {
+      const allIds = new Set(data.tasklists.map(tl => tl.id));
+      setExpandedTasklists(allIds);
+    }
+  }, [isBuilding, data.tasklists]);
   
   const toggleTasklist = (id: string) => {
     setExpandedTasklists(prev => {
@@ -492,7 +511,7 @@ export const ProjectDraftCard: React.FC<ProjectDraftCardProps> = ({
       </div>
       
       {/* Summary Stats */}
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-4 gap-2">
         <div className={`${cardBg} ${cardBorder} border rounded-lg p-3 text-center`}>
           <div className={`text-2xl font-bold ${textPrimary}`}>{data.summary.totalTasklists}</div>
           <div className={`text-[10px] uppercase tracking-wider ${textSecondary}`}>Lists</div>
@@ -505,23 +524,41 @@ export const ProjectDraftCard: React.FC<ProjectDraftCardProps> = ({
           <div className={`text-2xl font-bold ${textPrimary}`}>{data.summary.totalSubtasks}</div>
           <div className={`text-[10px] uppercase tracking-wider ${textSecondary}`}>Subtasks</div>
         </div>
-      </div>
-      
-      {/* Budget */}
-      {data.budget && (
-        <div className={`${cardBg} ${cardBorder} border rounded-lg p-3`}>
-          <div className="flex items-center justify-between">
-            <div className={`flex items-center gap-2 ${textSecondary} text-sm`}>
-              <AlertCircle size={14} className="text-amber-500" />
-              <span>Budget:</span>
-            </div>
-            <div className={`font-mono font-medium ${textPrimary}`}>
-              {data.budget.type === 'time' 
-                ? `${data.budget.capacity}h ${data.budget.timelogType === 'billable' ? '(billable)' : '(all time)'}`
-                : `${data.budget.capacity.toLocaleString()} DKK`
-              }
-            </div>
+        <div className={`${cardBg} ${cardBorder} border rounded-lg p-3 text-center`}>
+          <div className={`text-2xl font-bold text-cyan-500`}>
+            {data.summary.totalMinutes ? Math.round(data.summary.totalMinutes / 60) : 0}h
           </div>
+          <div className={`text-[10px] uppercase tracking-wider ${textSecondary}`}>Est. Hours</div>
+        </div>
+      </div>
+
+      {/* Budget & Cost Estimate */}
+      {(data.budget || data.summary.totalMinutes) && (
+        <div className={`${cardBg} ${cardBorder} border rounded-lg p-3 space-y-2`}>
+          {data.budget && (
+            <div className="flex items-center justify-between">
+              <div className={`flex items-center gap-2 ${textSecondary} text-sm`}>
+                <AlertCircle size={14} className="text-amber-500" />
+                <span>Budget:</span>
+              </div>
+              <div className={`font-mono font-medium ${textPrimary}`}>
+                {data.budget.type === 'time'
+                  ? `${data.budget.capacity}h`
+                  : `${data.budget.capacity.toLocaleString()} DKK`
+                }
+              </div>
+            </div>
+          )}
+          {data.summary.totalMinutes && data.summary.totalMinutes > 0 && (
+            <div className="flex items-center justify-between">
+              <div className={`flex items-center gap-2 ${textSecondary} text-sm`}>
+                <span>Est. Cost ({hourlyRate.toLocaleString('da-DK')} DKK/h):</span>
+              </div>
+              <div className={`font-mono font-medium text-cyan-500`}>
+                {Math.round((data.summary.totalMinutes / 60) * hourlyRate).toLocaleString('da-DK')} DKK
+              </div>
+            </div>
+          )}
         </div>
       )}
       
@@ -560,7 +597,7 @@ export const ProjectDraftCard: React.FC<ProjectDraftCardProps> = ({
                 textSecondary={textSecondary}
                 cardBg={cardBg}
                 cardBorder={cardBorder}
-                isExpanded={expandedTasklists.has(tasklist.id)}
+                isExpanded={isBuilding || expandedTasklists.has(tasklist.id)}
                 onToggle={() => toggleTasklist(tasklist.id)}
                 expandedTasks={expandedTasks}
                 onToggleTask={toggleTask}

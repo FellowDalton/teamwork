@@ -1,18 +1,15 @@
 {
-  "name": "teamwork-ai-flow",
+  "name": "teamwork-frontend",
   "private": true,
   "version": "0.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "server": "bun run server-sdk.ts",
-    "dev:all": "bun run server-sdk.ts & vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "start": "bunx serve dist -s -l ${PORT:-3000}"
   },
   "dependencies": {
-    "@anthropic-ai/claude-agent-sdk": "^0.1.60",
-    "@anthropic-ai/sdk": "^0.71.2",
     "@supabase/supabase-js": "^2.89.0",
     "lucide-react": "^0.555.0",
     "react": "^19.2.0",

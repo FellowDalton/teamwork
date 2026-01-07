@@ -1,5 +1,7 @@
 import { Project, Task } from "../types";
 import { DisplayData, DisplayItem, ConversationTopic, ProjectDraftData, ProjectDraftUpdateEvent } from "../types/conversation";
+import { createProjectJsonLineProcessor } from "./projectJsonParser";
+import { apiUrl } from "./apiConfig";
 
 // Helper to call Claude API via backend proxy
 async function callClaude(
@@ -7,7 +9,7 @@ async function callClaude(
   userMessage: string,
   tools?: any[]
 ): Promise<any> {
-  const response = await fetch("/api/chat", {
+  const response = await fetch(apiUrl("/api/chat"), {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -439,7 +441,7 @@ export const processStreamingChat = async (options: StreamingChatOptions): Promi
   };
 
   try {
-    const response = await fetch("/api/claude/stream", {
+    const response = await fetch(apiUrl("/api/claude/stream"), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -522,7 +524,7 @@ export const processStreamingChat = async (options: StreamingChatOptions): Promi
 // No hard-coded date parsing - Claude handles everything via skills
 export const processAgentStream = async (options: StreamingChatOptions): Promise<void> => {
   const { message, topic, projectId, projectName, onChunk, onThinking, onVisualization, onTimelogDraft, onProjectDraft, onProjectDraftUpdate, onProjectDraftComplete, onComplete, onError } = options;
-  
+
   const modeMap: Record<ConversationTopic, string> = {
     project: 'project',
     status: 'status',
@@ -531,7 +533,7 @@ export const processAgentStream = async (options: StreamingChatOptions): Promise
   };
 
   try {
-    const response = await fetch("/api/agent/stream", {
+    const response = await fetch(apiUrl("/api/agent/stream"), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -556,6 +558,26 @@ export const processAgentStream = async (options: StreamingChatOptions): Promise
     const decoder = new TextDecoder();
     let fullText = "";
 
+    // === JSON Lines Parser for Project Mode ===
+    // Detects JSON Lines format and parses progressively
+    let jsonLinesDetected = false;
+    let jsonLineBuffer = '';
+    const isProjectMode = topic === 'project';
+
+    // Create JSON Lines processor for project mode
+    const jsonLineProcessor = isProjectMode && onProjectDraft ? createProjectJsonLineProcessor(
+      (draft) => {
+        // Progressive update - emit for each new element
+        onProjectDraft(draft);
+      },
+      (draft) => {
+        // Complete - mark as done
+        if (onProjectDraftComplete) {
+          onProjectDraftComplete(draft.message);
+        }
+      }
+    ) : null;
+
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
@@ -568,24 +590,100 @@ export const processAgentStream = async (options: StreamingChatOptions): Promise
         const data = line.slice(6); // Remove "data: " prefix
 
         if (data === "[DONE]") {
+          // Flush any remaining buffer in JSON Lines parser
+          if (jsonLineProcessor && jsonLinesDetected) {
+            jsonLineProcessor.flush();
+          }
           streamDone = true;
           break;
         }
 
         try {
           const parsed = JSON.parse(data);
-          
+
           if (parsed.type === 'init') {
             console.log('Agent initialized:', parsed.model, parsed.tools);
           } else if (parsed.type === 'text' && parsed.text) {
+            // === JSON Lines Detection & Processing for Project Mode ===
+            if (isProjectMode && jsonLineProcessor) {
+              const textChunk = parsed.text;
+
+              // Detect JSON Lines format: look for lines starting with {"type":
+              if (!jsonLinesDetected) {
+                jsonLineBuffer += textChunk;
+                // Check if we have a JSON Lines pattern (line starting with {"type":"project" or similar)
+                if (/\{"type"\s*:\s*"(project|tasklist|task|subtask|complete)"/.test(jsonLineBuffer)) {
+                  jsonLinesDetected = true;
+                  console.log('JSON Lines format detected for project creation');
+                  // Feed the accumulated buffer to the parser
+                  jsonLineProcessor.feed(jsonLineBuffer);
+                  jsonLineBuffer = '';
+                } else if (jsonLineBuffer.length > 500) {
+                  // After 500 chars without JSON Lines pattern, fall back to SSE events
+                  // This handles legacy tool-based responses
+                  jsonLineBuffer = '';
+                }
+              } else {
+                // Already in JSON Lines mode - feed directly to parser
+                jsonLineProcessor.feed(textChunk);
+              }
+
+              // If JSON Lines detected, don't pass text to fullText (it's being handled by parser)
+              if (jsonLinesDetected) {
+                continue;
+              }
+            }
+
             fullText += parsed.text;
             onChunk(parsed.text);
           } else if (parsed.type === 'thinking' && parsed.thinking) {
+            // === JSON Lines Detection in Thinking for Project Mode ===
+            // Backend sends project output as 'thinking' events
+            if (isProjectMode && jsonLineProcessor) {
+              const thinkingText = parsed.thinking;
+
+              if (!jsonLinesDetected) {
+                jsonLineBuffer += thinkingText;
+                // Check for JSON Lines pattern
+                if (/\{"type"\s*:\s*"(project|tasklist|task|subtask|complete)"/.test(jsonLineBuffer)) {
+                  jsonLinesDetected = true;
+                  console.log('JSON Lines format detected in thinking stream');
+                  jsonLineProcessor.feed(jsonLineBuffer);
+                  jsonLineBuffer = '';
+                } else if (jsonLineBuffer.length > 500) {
+                  // No JSON Lines pattern - fall back to tool-based
+                  jsonLineBuffer = '';
+                }
+              } else {
+                // Already in JSON Lines mode - feed to parser
+                jsonLineProcessor.feed(thinkingText);
+              }
+
+              // If JSON Lines detected, still show thinking but don't add to fullText
+              if (jsonLinesDetected) {
+                onThinking(parsed.thinking, parsed.fullText);
+                continue;
+              }
+            }
+
             onThinking(parsed.thinking, parsed.fullText);
           } else if (parsed.type === 'tool_use') {
             // Don't show tool usage in chat - user only wants to see thoughts
             console.log('Agent using tool:', parsed.tool);
           } else if (parsed.type === 'result' && parsed.text) {
+            // === Handle final result text ===
+            // For project mode with JSON Lines, parse the result
+            if (isProjectMode && jsonLineProcessor && !jsonLinesDetected) {
+              // Check if result contains JSON Lines format
+              if (/\{"type"\s*:\s*"(project|tasklist|task|subtask|complete)"/.test(parsed.text)) {
+                jsonLinesDetected = true;
+                console.log('JSON Lines format detected in result');
+                jsonLineProcessor.feed(parsed.text);
+                jsonLineProcessor.flush();
+                continue;
+              }
+            }
+
             fullText = parsed.text;
             onChunk(parsed.text);
           } else if (parsed.type === 'visualization' && parsed.spec && onVisualization) {
@@ -601,6 +699,7 @@ export const processAgentStream = async (options: StreamingChatOptions): Promise
             onTimelogDraft(draft);
           } else if (parsed.type === 'project_draft' && parsed.draft && onProjectDraft) {
             // Handle project draft for review/editing (final or legacy)
+            // This is the legacy tool-based format - still supported
             const draft: ProjectDraftData = {
               project: parsed.draft.project,
               tasklists: parsed.draft.tasklists,
@@ -611,7 +710,7 @@ export const processAgentStream = async (options: StreamingChatOptions): Promise
             };
             onProjectDraft(draft);
           } else if (parsed.type === 'project_draft_init' && parsed.draft && onProjectDraft) {
-            // Handle progressive project draft initialization
+            // Handle progressive project draft initialization (legacy tool-based)
             const draft: ProjectDraftData = {
               project: parsed.draft.project,
               tasklists: parsed.draft.tasklists || [],
@@ -623,7 +722,7 @@ export const processAgentStream = async (options: StreamingChatOptions): Promise
             (draft as any).isBuilding = true;
             onProjectDraft(draft);
           } else if (parsed.type === 'project_draft_update' && onProjectDraftUpdate) {
-            // Handle progressive updates (add_tasklist, add_task, add_subtasks, set_budget)
+            // Handle progressive updates (add_tasklist, add_task, add_subtasks, set_budget) - legacy
             onProjectDraftUpdate({
               type: 'project_draft_update',
               action: parsed.action,
@@ -635,7 +734,7 @@ export const processAgentStream = async (options: StreamingChatOptions): Promise
               budget: parsed.budget,
             });
           } else if (parsed.type === 'project_draft_complete' && onProjectDraftComplete) {
-            // Handle project draft completion
+            // Handle project draft completion (legacy tool-based)
             onProjectDraftComplete(parsed.message);
           } else if (parsed.type === 'error') {
             throw new Error(parsed.error);
@@ -714,7 +813,7 @@ BEHAVIOR:
     };
 
     // Use Claude CLI endpoint (uses subscription auth, no API credits needed)
-    const response = await fetch("/api/claude", {
+    const response = await fetch(apiUrl("/api/claude"), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -780,7 +879,7 @@ export const requestAdditionalChart = async (options: ChartRequestOptions): Prom
   const { chartType, projectId, onVisualization, onError, onComplete } = options;
 
   try {
-    const response = await fetch("/api/agent/chart", {
+    const response = await fetch(apiUrl("/api/agent/chart"), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -855,7 +954,7 @@ export const submitTimelogEntries = async (
     comment: string;
   }>
 ): Promise<TimelogSubmitResult> => {
-  const response = await fetch("/api/agent/timelog/submit", {
+  const response = await fetch(apiUrl("/api/agent/timelog/submit"), {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -912,7 +1011,7 @@ export const submitProject = async (
     };
   }
 ): Promise<ProjectSubmitResult> => {
-  const response = await fetch("/api/agent/project/submit", {
+  const response = await fetch(apiUrl("/api/agent/project/submit"), {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

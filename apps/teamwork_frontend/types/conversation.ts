@@ -187,6 +187,7 @@ export interface ProjectDraftData {
     totalTasklists: number;
     totalTasks: number;
     totalSubtasks: number;
+    totalMinutes?: number;
   };
   message: string;
   isDraft: true;
@@ -260,3 +261,12 @@ export interface ProjectDraftDataWithBuilding extends Omit<ProjectDraftData, 'is
   isDraft: true;
   isBuilding?: boolean;
 }
+
+// JSON Lines streaming format for project creation
+// Each line is a complete JSON object - enables progressive rendering while preserving holistic planning
+export type ProjectLine =
+  | { type: 'project'; name: string; description?: string; startDate?: string; endDate?: string; budgetHours?: number }
+  | { type: 'tasklist'; id: string; name: string; description?: string }
+  | { type: 'task'; id: string; tasklistId: string; name: string; description?: string; priority?: string; estimatedMinutes?: number }
+  | { type: 'subtask'; taskId: string; name: string; description?: string; estimatedMinutes?: number }
+  | { type: 'complete'; message?: string };

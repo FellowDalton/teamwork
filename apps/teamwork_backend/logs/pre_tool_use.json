@@ -1,0 +1,16 @@
+[
+  {
+    "session_id": "c7a16cc9-065e-49ba-a9f8-c8b3ec7fcf40",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/c7a16cc9-065e-49ba-a9f8-c8b3ec7fcf40.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork/apps/teamwork_backend",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Bash",
+    "tool_input": {
+      "command": "cd /Users/dalton/projects/teamwork/apps/teamwork_frontend && bun install 2>&1",
+      "description": "Install frontend dependencies"
+    },
+    "tool_use_id": "toolu_01T2iuX8svy6zVQLUKVKv3ce",
+    "agent_id": "unknown"
+  }
+]

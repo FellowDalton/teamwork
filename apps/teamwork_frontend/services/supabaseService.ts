@@ -1,4 +1,5 @@
 import { supabase, getCurrentProfile, isSupabaseConfigured } from '../lib/supabase';
+import { apiUrl } from './apiConfig';
 import type {
   Conversation,
   ConversationInsert,
@@ -288,7 +289,7 @@ export async function generateConversationTitle(
 ): Promise<string | null> {
   try {
     // Call a backend endpoint to generate title using Claude
-    const response = await fetch('/api/generate-title', {
+    const response = await fetch(apiUrl('/api/generate-title'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ message: firstMessage }),

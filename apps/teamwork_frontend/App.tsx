@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Project, Stage, Task } from "./types";
+import { apiUrl } from "./services/apiConfig";
 import {
   ChatMessage,
   ConversationTopic,
@@ -19,6 +20,7 @@ import { DataDisplayPanel } from "./components/DataDisplayPanel";
 // ConversationSelector is now rendered inside ConversationPanel
 import { LoginButton, UserMenu } from "./components/LoginButton";
 import { LoginScreen } from "./components/LoginScreen";
+import SettingsModal from "./components/SettingsModal";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { processChatCommand, processStreamingChat, processAgentStream, requestAdditionalChart, VisualizationSpec, TimelogDraftData, TimelogDraftEntry, submitTimelogEntries, submitProject } from "./services/claudeService";
 import { teamworkService, TeamworkTask, TeamworkTimeEntry } from "./services/teamworkService";
@@ -140,6 +142,18 @@ function AppContent() {
   // Project draft state
   const [projectDraft, setProjectDraft] = useState<ProjectDraftData | null>(null);
   const [isCreatingProject, setIsCreatingProject] = useState(false);
+
+  // Settings state
+  const [showSettings, setShowSettings] = useState(false);
+  const [hourlyRate, setHourlyRate] = useState(() => {
+    const saved = localStorage.getItem('hourlyRate');
+    return saved ? parseInt(saved, 10) : 1200;
+  });
+
+  // Persist hourly rate to localStorage
+  useEffect(() => {
+    localStorage.setItem('hourlyRate', hourlyRate.toString());
+  }, [hourlyRate]);
 
   const activeProject = projects.find((p) => p.id === activeProjectId) || null;
   const isLight = theme === "light";
@@ -584,7 +598,7 @@ function AppContent() {
       : undefined;
 
     try {
-      const response = await fetch("/api/agent/visualize", {
+      const response = await fetch(apiUrl("/api/agent/visualize"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -1462,7 +1476,7 @@ function AppContent() {
         : undefined;
       const params = new URLSearchParams({ period });
       if (numericProjectId) params.set('projectId', String(numericProjectId));
-      const response = await fetch(`/api/activity-status?${params}`);
+      const response = await fetch(apiUrl(`/api/activity-status?${params}`));
       if (!response.ok) {
         throw new Error("Failed to fetch activity status");
       }
@@ -1687,7 +1701,7 @@ function AppContent() {
             </div>
             <div className="w-[29px] h-[29px]">
               <AnalogButton
-                onClick={() => {}}
+                onClick={() => setShowSettings(true)}
                 icon={<Settings size={12} />}
                 variant="dark"
                 theme={theme}
@@ -1835,11 +1849,21 @@ function AppContent() {
                 isCreatingProject={isCreatingProject}
                 onUpdateProjectTasklist={handleProjectTasklistUpdate}
                 onUpdateProjectTask={handleProjectTaskUpdate}
+                hourlyRate={hourlyRate}
               />
             </div>
           </div>
         </div>
       </div>
+
+      {/* Settings Modal */}
+      <SettingsModal
+        isOpen={showSettings}
+        onClose={() => setShowSettings(false)}
+        hourlyRate={hourlyRate}
+        onHourlyRateChange={setHourlyRate}
+        theme={theme}
+      />
     </div>
   );
 }

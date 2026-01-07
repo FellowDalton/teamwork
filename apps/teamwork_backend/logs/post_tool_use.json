@@ -1,0 +1,21 @@
+[
+  {
+    "session_id": "c7a16cc9-065e-49ba-a9f8-c8b3ec7fcf40",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/c7a16cc9-065e-49ba-a9f8-c8b3ec7fcf40.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork/apps/teamwork_backend",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PostToolUse",
+    "tool_name": "Bash",
+    "tool_input": {
+      "command": "cd /Users/dalton/projects/teamwork/apps/teamwork_backend && bun install 2>&1",
+      "description": "Install backend dependencies"
+    },
+    "tool_response": {
+      "stdout": "bun install v1.3.5 (1e86cebd)\nResolving dependencies\nResolved, downloaded and extracted [50]\nSaved lockfile\n\n+ @types/node@22.19.3 (v25.0.3 available)\n+ typescript@5.8.3 (v5.9.3 available)\n+ @anthropic-ai/claude-agent-sdk@0.1.76\n+ @anthropic-ai/sdk@0.71.2\n+ zod@3.25.76 (v4.3.5 available)\n\n11 packages installed [2.91s]",
+      "stderr": "",
+      "interrupted": false,
+      "isImage": false
+    },
+    "tool_use_id": "toolu_01939WgGNC5pDFYdQWCBNtHX"
+  }
+]

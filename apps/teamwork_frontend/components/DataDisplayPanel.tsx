@@ -40,6 +40,7 @@ interface DataDisplayPanelProps {
   isCreatingProject?: boolean;
   onUpdateProjectTasklist?: (tasklistId: string, updates: Partial<TasklistDraft>) => void;
   onUpdateProjectTask?: (tasklistId: string, taskId: string, updates: Partial<TaskDraft>) => void;
+  hourlyRate?: number;
 }
 
 // Screw component for hardware aesthetic
@@ -66,6 +67,7 @@ export const DataDisplayPanel: React.FC<DataDisplayPanelProps> = ({
   isCreatingProject = false,
   onUpdateProjectTasklist,
   onUpdateProjectTask,
+  hourlyRate = 1200,
 }) => {
   const isLight = theme === 'light';
   const [selectedVizType, setSelectedVizType] = useState('bar');
@@ -270,6 +272,7 @@ export const DataDisplayPanel: React.FC<DataDisplayPanelProps> = ({
             <ProjectDraftCard
               data={projectDraftData!}
               theme={theme}
+              hourlyRate={hourlyRate}
               onUpdateTasklist={onUpdateProjectTasklist}
               onUpdateTask={onUpdateProjectTask}
             />
