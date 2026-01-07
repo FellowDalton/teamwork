@@ -49,7 +49,7 @@ const { query, tool, createSdkMcpServer } = await import(
 );
 type Options = import("@anthropic-ai/claude-agent-sdk").Options;
 const { createTeamworkClient } = await import(
-  "../teamwork_api_client/src/index.ts"
+  "./teamwork_api_client/index.ts"
 );
 const { z } = await import("zod");
 
