@@ -3,7 +3,7 @@
  * for Teamwork operations.
  */
 
-const API_BASE = '/api';
+import { apiUrl } from './apiConfig';
 
 // Types matching the API client schemas
 export interface TeamworkProject {
@@ -71,8 +71,8 @@ export interface ProjectWithDetails {
 
 class TeamworkService {
   private async request<T>(endpoint: string, options?: RequestInit): Promise<T> {
-    const url = `${API_BASE}${endpoint}`;
-    
+    const url = apiUrl(`/api${endpoint}`);
+
     const response = await fetch(url, {
       ...options,
       headers: {
