@@ -26,6 +26,48 @@ Deploy the Teamwork AI Flow application to Railway as two separate services from
 - GitHub repository connected to Railway
 - Environment variables ready (see below)
 
+## Local Development
+
+Run both services locally before deploying:
+
+```bash
+# Terminal 1: Start backend
+cd apps/teamwork_backend
+bun run dev
+# → http://localhost:3051
+
+# Terminal 2: Start frontend
+cd apps/teamwork_frontend
+bun run dev
+# → http://localhost:3050
+```
+
+**Verify services:**
+```bash
+# Backend health check
+curl http://localhost:3051/health
+# → {"status":"ok","sdk":true}
+
+# Frontend (via Vite proxy to backend)
+curl http://localhost:3050/api/projects
+# → {"projects":[...]}
+```
+
+The frontend's Vite dev server proxies `/api/*` requests to the backend automatically.
+
+**Required `.env` file** (at monorepo root):
+```env
+# Teamwork API
+TEAMWORK_API_URL=https://yourcompany.teamwork.com
+TEAMWORK_BEARER_TOKEN=your-api-token
+TEAMWORK_PROJECT_ID=12345
+
+# Claude AI (one of these)
+ANTHROPIC_API_KEY=sk-ant-...
+# OR
+CLAUDE_CODE_OAUTH_TOKEN=...
+```
+
 ## Step 1: Create Railway Project
 
 1. Go to https://railway.app/dashboard
@@ -62,12 +104,12 @@ Go to **Variables** tab and add:
 | `TEAMWORK_API_URL` | `https://yourcompany.teamwork.com` | Yes |
 | `TEAMWORK_BEARER_TOKEN` | Your Teamwork API token | Yes |
 | `TEAMWORK_PROJECT_ID` | Default project ID (e.g., `12345`) | Yes |
-| `TEAMWORK_FRONTEND_PORT` | `3051` | Optional (defaults to 3051) |
 
 ### 2.5 Generate Domain
 1. Go to **Settings** → **Networking**
 2. Click **Generate Domain**
-3. Note the URL (e.g., `backend-production-xxxx.up.railway.app`)
+3. Leave target port blank (Railway auto-injects `PORT`)
+4. Note the URL (e.g., `backend-production-xxxx.up.railway.app`)
 
 ## Step 3: Configure Frontend Service
 
@@ -101,7 +143,8 @@ Go to **Variables** tab and add:
 ### 3.5 Generate Domain
 1. Go to **Settings** → **Networking**
 2. Click **Generate Domain**
-3. This is your public application URL
+3. Enter target port: `3000` (or leave blank - Railway auto-detects from `$PORT`)
+4. This is your public application URL
 
 ## Step 4: Configure CORS (Backend)
 
@@ -132,8 +175,7 @@ TEAMWORK_API_URL=https://yourcompany.teamwork.com
 TEAMWORK_BEARER_TOKEN=your-token
 TEAMWORK_PROJECT_ID=12345
 
-# Optional
-TEAMWORK_FRONTEND_PORT=3051
+# Optional - for CORS
 FRONTEND_URL=https://frontend-production-xxxx.up.railway.app
 ```
 
@@ -210,7 +252,6 @@ apps/
 │   ├── package.json
 │   ├── railway.json
 │   ├── server-sdk.ts
-│   ├── server.ts
 │   ├── tsconfig.json
 │   └── types.ts
 └── teamwork_frontend/      # Frontend service (React + Vite)

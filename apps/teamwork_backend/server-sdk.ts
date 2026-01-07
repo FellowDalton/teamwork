@@ -405,7 +405,7 @@ function extractDataFromResponse(response: string): any | null {
 }
 
 // Configuration (env already loaded at top of file)
-const PORT = parseInt(process.env.TEAMWORK_FRONTEND_PORT || "3051");
+const PORT = parseInt(process.env.PORT || "3051");
 const TEAMWORK_API_URL = process.env.TEAMWORK_API_URL;
 const TEAMWORK_BEARER_TOKEN = process.env.TEAMWORK_BEARER_TOKEN;
 const DEFAULT_PROJECT_ID = parseInt(process.env.TEAMWORK_PROJECT_ID || "0");
