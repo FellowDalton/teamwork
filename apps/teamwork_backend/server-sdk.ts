@@ -44,10 +44,23 @@ if (process.env.CLAUDE_CODE_OAUTH_TOKEN) {
 }
 
 // Dynamic imports AFTER env is loaded
-const { query, tool, createSdkMcpServer } = await import(
-  "@anthropic-ai/claude-agent-sdk"
-);
+// Make Agent SDK optional - server can still serve basic endpoints without Claude
+let query: any, tool: any, createSdkMcpServer: any;
+let agentSdkAvailable = false;
 type Options = import("@anthropic-ai/claude-agent-sdk").Options;
+
+try {
+  const sdk = await import("@anthropic-ai/claude-agent-sdk");
+  query = sdk.query;
+  tool = sdk.tool;
+  createSdkMcpServer = sdk.createSdkMcpServer;
+  agentSdkAvailable = true;
+  console.log("Claude Agent SDK loaded successfully");
+} catch (err) {
+  console.warn("Claude Agent SDK not available - AI features disabled:", err);
+  console.warn("Set ANTHROPIC_API_KEY or CLAUDE_CODE_OAUTH_TOKEN to enable AI");
+}
+
 const { createTeamworkClient } = await import(
   "./teamwork_api_client/index.ts"
 );
@@ -1354,8 +1367,26 @@ async function handleProjectChat(body: {
   mode?: string;
   projectId?: number;
   projectName?: string;
+  conversationHistory?: Array<{ role: string; content: string }>;
+  projectDraft?: {
+    project: { name: string; description?: string };
+    tasklists: Array<{
+      id: string;
+      name: string;
+      tasks: Array<{
+        id: string;
+        name: string;
+        description?: string;
+        startDate?: string;
+        dueDate?: string;
+        estimatedMinutes?: number;
+        subtasks: Array<{ name: string }>;
+      }>;
+    }>;
+    summary: { totalTasklists: number; totalTasks: number; totalSubtasks: number };
+  };
 }) {
-  const { message } = body;
+  const { message, conversationHistory, projectDraft } = body;
 
   // System prompt for project creation assistant - uses JSON Lines streaming format
   const systemPrompt = `You are a project creation assistant for Teamwork.com. Your role is to help users set up new projects with well-organized task structures.
@@ -1439,8 +1470,45 @@ After the complete marker, write a brief summary including total hours and estim
 
 ## CURRENT CONTEXT
 - Today's date: ${new Date().toISOString().split("T")[0]}
+${
+  projectDraft
+    ? `
+## EXISTING PROJECT DRAFT
+The user has already created a project draft that you should modify based on their request:
+
+**Project:** ${projectDraft.project.name}
+${projectDraft.project.description ? `**Description:** ${projectDraft.project.description}` : ""}
+
+**Current Structure (${projectDraft.summary.totalTasklists} tasklists, ${projectDraft.summary.totalTasks} tasks, ${projectDraft.summary.totalSubtasks} subtasks):**
+${projectDraft.tasklists
+  .map(
+    (tl) => `
+### ${tl.name}
+${tl.tasks
+  .map(
+    (t) =>
+      `- ${t.name}${t.estimatedMinutes ? ` (${Math.round(t.estimatedMinutes / 60)}h)` : ""}${t.startDate || t.dueDate ? ` [${t.startDate || ""} → ${t.dueDate || ""}]` : ""}${t.subtasks.length > 0 ? `\n  Subtasks: ${t.subtasks.map((s) => s.name).join(", ")}` : ""}`
+  )
+  .join("\n")}`
+  )
+  .join("\n")}
+
+When the user asks for changes, output the COMPLETE updated project structure in JSON Lines format (not just the changes).
+`
+    : ""
+}
 
 If the user provides a PRD or detailed requirements, analyze them and output the complete project structure. For vague requests, ask clarifying questions first.`;
+
+  // Build the prompt with conversation history if available
+  let fullPrompt = message;
+  if (conversationHistory && conversationHistory.length > 0) {
+    const historyContext = conversationHistory
+      .slice(-10) // Keep last 10 messages for context
+      .map((m) => `${m.role === "user" ? "User" : "Assistant"}: ${m.content}`)
+      .join("\n\n");
+    fullPrompt = `## Previous Conversation:\n${historyContext}\n\n## Current Request:\n${message}`;
+  }
 
   const stream = new ReadableStream({
     async start(controller) {
@@ -1940,11 +2008,12 @@ If the user provides a PRD or detailed requirements, analyze them and output the
           `data: ${JSON.stringify({
             type: "init",
             model: "project-agent",
-            info: "Analyzing your project requirements...",
+            info: projectDraft ? "Updating your project draft..." : "Analyzing your project requirements...",
           })}\n\n`
         );
 
-        for await (const event of query({ prompt: message, options })) {
+        // Use fullPrompt which includes conversation history context
+        for await (const event of query({ prompt: fullPrompt, options })) {
           if (event.type === "stream_event") {
             const streamEvent = event.event;
             if (streamEvent.type === "content_block_delta") {
@@ -2293,6 +2362,7 @@ async function handleProjectSubmit(body: {
       name: string;
       description?: string;
       priority?: string;
+      startDate?: string;
       dueDate?: string;
       tags?: Array<{ name: string }>;
       subtasks?: Array<{ name: string; description?: string }>;
@@ -2436,14 +2506,21 @@ Message: "${message.slice(0, 500)}"
 
 Title:`;
 
-    const response = await query(prompt, {
+    const options: Options = {
       maxTokens: 30,
       system:
         "You are a title generator. Generate concise, descriptive titles for conversations.",
-    });
+    };
+
+    let resultText = "";
+    for await (const event of query({ prompt, options })) {
+      if (event.type === "result" && event.subtype === "success") {
+        resultText = event.result || "";
+      }
+    }
 
     // Extract the title from the response
-    const title = response
+    const title = resultText
       .trim()
       .replace(/^["']|["']$/g, "")
       .slice(0, 100);
@@ -2911,18 +2988,27 @@ const server = Bun.serve({
     try {
       // Agent SDK streaming endpoint
       if (path === "/api/agent/stream" && req.method === "POST") {
+        if (!agentSdkAvailable) {
+          return errorResponse("AI features disabled - ANTHROPIC_API_KEY not configured", 503);
+        }
         const body = await req.json();
         return handleAgentChat(body);
       }
 
       // Chart request endpoint
       if (path === "/api/agent/chart" && req.method === "POST") {
+        if (!agentSdkAvailable) {
+          return errorResponse("AI features disabled - ANTHROPIC_API_KEY not configured", 503);
+        }
         const body = await req.json();
         return handleChartRequest(body);
       }
 
       // AI Visualization request endpoint (custom prompts)
       if (path === "/api/agent/visualize" && req.method === "POST") {
+        if (!agentSdkAvailable) {
+          return errorResponse("AI features disabled - ANTHROPIC_API_KEY not configured", 503);
+        }
         const body = await req.json();
         return handleVisualizeRequest(body);
       }
