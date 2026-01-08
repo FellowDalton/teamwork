@@ -241,7 +241,7 @@ Only output valid JSON, no markdown or explanation.`;
     ],
     systemPrompt: vizSystemPrompt,
     maxTurns: 1,
-    env: cleanEnv, // Pass clean env without ANTHROPIC_API_KEY to force OAuth
+    env: process.env, // Use current environment with API key
     pathToClaudeCodeExecutable:
       "/Users/dalton/.nvm/versions/node/v20.19.5/bin/claude", // Use installed CLI
   };
@@ -324,7 +324,7 @@ Keep responses concise (2-4 paragraphs max). Data is being visualized separately
     systemPrompt: chatSystemPrompt,
     maxTurns: 1,
     includePartialMessages: true,
-    env: cleanEnv, // Pass clean env without ANTHROPIC_API_KEY to force OAuth
+    env: process.env, // Use current environment with API key
     pathToClaudeCodeExecutable:
       "/Users/dalton/.nvm/versions/node/v20.19.5/bin/claude", // Use installed CLI (works with OAuth)
     stderr: (data: string) => console.log("Chat Agent STDERR:", data),
@@ -1991,7 +1991,7 @@ If the user provides a PRD or detailed requirements, analyze them and output the
         permissionMode: "bypassPermissions",
         allowDangerouslySkipPermissions: true,
         maxTurns: 500, // High limit to allow for many progressive tool calls
-        env: cleanEnv,
+        env: process.env,
         pathToClaudeCodeExecutable:
           "/Users/dalton/.nvm/versions/node/v20.19.5/bin/claude",
       };
@@ -2160,7 +2160,7 @@ ${
     permissionMode: "bypassPermissions",
     allowDangerouslySkipPermissions: true,
     maxTurns: 8,
-    env: cleanEnv,
+    env: process.env,
     pathToClaudeCodeExecutable:
       "/Users/dalton/.nvm/versions/node/v20.19.5/bin/claude",
   };
@@ -3226,7 +3226,7 @@ async function handleWebhook(req: Request): Promise<Response> {
               const options: Options = {
                 model: "claude-sonnet-4-20250514",
                 cwd: process.cwd(),
-                env: cleanEnv,
+                env: process.env,
                 pathToClaudeCodeExecutable:
                   "/Users/dalton/.nvm/versions/node/v20.19.5/bin/claude",
               };
