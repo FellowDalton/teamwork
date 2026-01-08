@@ -27,20 +27,16 @@ if (await envFile.exists()) {
   }
 }
 
-// Force SDK to use OAuth token by unsetting API key
-// (SDK prefers API key over OAuth when both are set)
-// Create a clean env object without ANTHROPIC_API_KEY
-const cleanEnv: Record<string, string> = {};
-for (const [key, value] of Object.entries(process.env)) {
-  if (key !== "ANTHROPIC_API_KEY" && value !== undefined) {
-    cleanEnv[key] = value;
-  }
-}
-if (process.env.CLAUDE_CODE_OAUTH_TOKEN) {
-  console.log("Using OAuth token for Claude Max subscription");
-  console.log("Clean env has ANTHROPIC_API_KEY:", !!cleanEnv.ANTHROPIC_API_KEY);
+// Auth priority: API key first (production), OAuth token second (local dev)
+// This ensures deployed servers use the reliable API key
+if (process.env.ANTHROPIC_API_KEY) {
+  console.log("Using Anthropic API key (production mode)");
+  // Clear OAuth token so SDK uses API key
+  delete process.env.CLAUDE_CODE_OAUTH_TOKEN;
+} else if (process.env.CLAUDE_CODE_OAUTH_TOKEN) {
+  console.log("Using OAuth token for Claude Max subscription (local dev mode)");
 } else {
-  console.log("No OAuth token found, using API key");
+  console.log("No Claude credentials found - AI features will be disabled");
 }
 
 // Dynamic imports AFTER env is loaded
@@ -2364,6 +2360,7 @@ async function handleProjectSubmit(body: {
       priority?: string;
       startDate?: string;
       dueDate?: string;
+      estimatedMinutes?: number;
       tags?: Array<{ name: string }>;
       subtasks?: Array<{ name: string; description?: string }>;
     }>;
@@ -2421,7 +2418,7 @@ async function handleProjectSubmit(body: {
       for (const task of tasklist.tasks || []) {
         try {
           console.log(
-            `Creating task: ${task.name} with dueDate: ${task.dueDate}, priority: ${task.priority}`
+            `Creating task: ${task.name} with dueDate: ${task.dueDate}, priority: ${task.priority}, estimatedMinutes: ${task.estimatedMinutes}`
           );
 
           const createdTask = await teamwork.tasks.create(tasklistId, {
@@ -2432,6 +2429,7 @@ async function handleProjectSubmit(body: {
               : task.priority) as any,
             dueDate: task.dueDate,
             startDate: task.startDate,
+            estimatedMinutes: task.estimatedMinutes,
           });
 
           totalTasksCreated++;
@@ -2480,6 +2478,183 @@ async function handleProjectSubmit(body: {
     return jsonResponse(
       {
         error: err instanceof Error ? err.message : "Failed to create project",
+        success: false,
+      },
+      500
+    );
+  }
+}
+
+// Update an existing project (edit mode)
+async function handleProjectUpdate(body: {
+  projectId: number;
+  project: {
+    name: string;
+    description?: string;
+    startDate?: string;
+    endDate?: string;
+    tags?: Array<{ name: string; color?: string }>;
+  };
+  tasklists: Array<{
+    id: string; // "tl-123" for existing, "tl-new-1" for new
+    name: string;
+    description?: string;
+    tasks: Array<{
+      id: string; // "t-123" for existing, "t-new-1" for new
+      name: string;
+      description?: string;
+      priority?: string;
+      startDate?: string;
+      dueDate?: string;
+      estimatedMinutes?: number;
+      tags?: Array<{ name: string }>;
+      subtasks?: Array<{
+        id: string; // "st-123" for existing, "st-new-1" for new
+        name: string;
+        description?: string;
+      }>;
+    }>;
+  }>;
+}) {
+  const { projectId, project, tasklists } = body;
+
+  if (!projectId) {
+    return jsonResponse({ error: "Project ID is required" }, 400);
+  }
+
+  try {
+    // 1. Update project basic info
+    console.log("Updating project:", projectId, project.name);
+    await teamwork.projects.update(projectId, {
+      name: project.name,
+      description: project.description,
+      startDate: project.startDate?.replace(/-/g, ""),
+      endDate: project.endDate?.replace(/-/g, ""),
+    });
+
+    let tasklistsCreated = 0;
+    let tasklistsUpdated = 0;
+    let tasksCreated = 0;
+    let tasksUpdated = 0;
+    let subtasksCreated = 0;
+    let subtasksUpdated = 0;
+
+    // Helper to extract Teamwork ID from our ID format
+    const extractId = (id: string): number | null => {
+      const match = id.match(/^(?:tl|t|st)-(\d+)$/);
+      return match ? parseInt(match[1], 10) : null;
+    };
+
+    const isNewId = (id: string): boolean => {
+      return id.includes("-new-");
+    };
+
+    // 2. Process tasklists
+    for (const tasklist of tasklists || []) {
+      let tasklistId: number;
+
+      if (isNewId(tasklist.id)) {
+        // Create new tasklist
+        console.log(`Creating new tasklist: ${tasklist.name}`);
+        const result = await teamwork.projects.createTasklist(projectId, {
+          name: tasklist.name,
+          description: tasklist.description,
+        });
+        tasklistId = parseInt(result.id, 10);
+        tasklistsCreated++;
+      } else {
+        // Update existing tasklist
+        tasklistId = extractId(tasklist.id)!;
+        console.log(`Updating tasklist ${tasklistId}: ${tasklist.name}`);
+        await teamwork.http.put(`/projects/api/v3/tasklists/${tasklistId}.json`, {
+          tasklist: {
+            name: tasklist.name,
+            description: tasklist.description,
+          },
+        });
+        tasklistsUpdated++;
+      }
+
+      // 3. Process tasks in this tasklist
+      for (const task of tasklist.tasks || []) {
+        let taskId: number;
+
+        if (isNewId(task.id)) {
+          // Create new task
+          console.log(`Creating new task: ${task.name} in tasklist ${tasklistId}`);
+          const createdTask = await teamwork.tasks.create(tasklistId, {
+            name: task.name,
+            description: task.description,
+            priority: (task.priority === "none" ? undefined : task.priority) as any,
+            dueDate: task.dueDate,
+            startDate: task.startDate,
+            estimatedMinutes: task.estimatedMinutes,
+          });
+          taskId = createdTask.id;
+          tasksCreated++;
+        } else {
+          // Update existing task
+          taskId = extractId(task.id)!;
+          console.log(`Updating task ${taskId}: ${task.name}`);
+          await teamwork.tasks.update(taskId, {
+            name: task.name,
+            description: task.description,
+            priority: (task.priority === "none" ? undefined : task.priority) as any,
+            dueDate: task.dueDate,
+            startDate: task.startDate,
+            estimatedMinutes: task.estimatedMinutes,
+          });
+          tasksUpdated++;
+        }
+
+        // 4. Process subtasks
+        for (const subtask of task.subtasks || []) {
+          if (isNewId(subtask.id)) {
+            // Create new subtask
+            console.log(`Creating new subtask: ${subtask.name} for task ${taskId}`);
+            await teamwork.http.post(`/projects/api/v3/tasks/${taskId}/subtasks.json`, {
+              task: {
+                name: subtask.name,
+                description: subtask.description,
+              },
+            });
+            subtasksCreated++;
+          } else {
+            // Update existing subtask
+            const subtaskId = extractId(subtask.id)!;
+            console.log(`Updating subtask ${subtaskId}: ${subtask.name}`);
+            await teamwork.http.put(`/projects/api/v3/tasks/${subtaskId}.json`, {
+              task: {
+                name: subtask.name,
+                description: subtask.description,
+              },
+            });
+            subtasksUpdated++;
+          }
+        }
+      }
+    }
+
+    return jsonResponse({
+      success: true,
+      projectId,
+      projectName: project.name,
+      projectUrl: `${TEAMWORK_API_URL}/app/projects/${projectId}`,
+      summary: {
+        tasklistsCreated,
+        tasklistsUpdated,
+        tasksCreated,
+        tasksUpdated,
+        subtasksCreated,
+        subtasksUpdated,
+      },
+      message: `Successfully updated project "${project.name}". Created: ${tasksCreated} tasks, ${subtasksCreated} subtasks. Updated: ${tasksUpdated} tasks, ${subtasksUpdated} subtasks.`,
+    });
+  } catch (err) {
+    console.error("Project update error:", err);
+    return jsonResponse(
+      {
+        error: err instanceof Error ? err.message : "Failed to update project",
         success: false,
       },
       500
@@ -2775,9 +2950,12 @@ async function handleProjectStructure(projectId: number) {
       includeCompletedTasks: true,
     });
 
-    // Group tasks by tasklist
+    // Group tasks by tasklist (exclude subtasks - they have parentTaskId)
     const tasksByTasklist: Record<number, typeof tasksResponse.tasks> = {};
     for (const task of tasksResponse.tasks) {
+      // Skip subtasks - they have a parentTaskId
+      if (task.parentTaskId) continue;
+
       const tasklistId = task.tasklistId;
       if (tasklistId) {
         if (!tasksByTasklist[tasklistId]) {
@@ -2787,14 +2965,17 @@ async function handleProjectStructure(projectId: number) {
       }
     }
 
-    // Fetch subtasks for each task (in parallel batches)
+    // Fetch subtasks for each parent task (in parallel batches)
     const taskSubtasks: Record<number, Array<{ id: number; name: string; description?: string }>> = {};
-    const taskIds = tasksResponse.tasks.map((t) => t.id);
+    // Only get subtasks for parent tasks (not subtasks themselves)
+    const parentTaskIds = tasksResponse.tasks
+      .filter((t) => !t.parentTaskId)
+      .map((t) => t.id);
 
     // Fetch subtasks in batches of 10
     const batchSize = 10;
-    for (let i = 0; i < taskIds.length; i += batchSize) {
-      const batch = taskIds.slice(i, i + batchSize);
+    for (let i = 0; i < parentTaskIds.length; i += batchSize) {
+      const batch = parentTaskIds.slice(i, i + batchSize);
       const subtaskPromises = batch.map(async (taskId) => {
         try {
           const response = await teamwork.http.get(
@@ -3157,6 +3338,12 @@ const server = Bun.serve({
       if (path === "/api/agent/project/submit" && req.method === "POST") {
         const body = await req.json();
         return handleProjectSubmit(body);
+      }
+
+      // Project update endpoint (edit existing project)
+      if (path === "/api/agent/project/update" && req.method === "POST") {
+        const body = await req.json();
+        return handleProjectUpdate(body);
       }
 
       // Generate conversation title from first message

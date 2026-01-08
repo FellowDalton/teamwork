@@ -503,6 +503,43 @@
           "chart.*?(data|entries|metrics)"
         ]
       }
+    },
+    "railway-cli": {
+      "type": "domain",
+      "enforcement": "suggest",
+      "priority": "critical",
+      "description": "Diagnose, debug, and manage Railway deployments using the CLI. Use when troubleshooting deployment failures, checking logs, managing environment variables, or investigating service issues.",
+      "promptTriggers": {
+        "keywords": [
+          "railway",
+          "Railway",
+          "deploy",
+          "deployment",
+          "deploy logs",
+          "502",
+          "503",
+          "application failed",
+          "failed to respond",
+          "deployment failed",
+          "railway logs",
+          "railway variables",
+          "environment variables",
+          "CORS error",
+          "backend down",
+          "service crashed",
+          "redeploy"
+        ],
+        "intentPatterns": [
+          "(railway|Railway).*?(deploy|logs|variables|status|service)",
+          "(deployment|deploy).*?(failed|error|issue|logs)",
+          "(502|503|500).*?(error|gateway|response)",
+          "application.*?(failed|crashed|not responding)",
+          "(check|view|see).*?(deploy|deployment).*?logs",
+          "(environment|env).*?(variables|vars|config)",
+          "(backend|server).*?(down|crashed|failing|502)",
+          "CORS.*?(error|issue|failing)"
+        ]
+      }
     }
   },
   "notes": {
@@ -538,7 +575,8 @@
       "idea-to-product": "Product workflow - triggers on SaaS ideas, competitor analysis, GTM strategy",
       "infra-ops": "Infrastructure - triggers on VPS, SSH, Docker, deployments, server management",
       "manage-teamwork": "Teamwork.com - triggers on tasks, projects, time logging, board stages, comments",
-      "data-visualization": "Charts/graphs - triggers on visualize data, charts, dashboards, metrics, trends"
+      "data-visualization": "Charts/graphs - triggers on visualize data, charts, dashboards, metrics, trends",
+      "railway-cli": "Railway deployment ops - triggers on deployment issues, 502 errors, logs, env vars, CORS errors"
     }
   }
 }
