@@ -2724,8 +2724,27 @@ async function handleVisualizeRequest(body: {
 
 // Simple API endpoints for direct Teamwork access
 async function handleProjectsList() {
-  // Wrap in { projects: [...] } to match teamworkService expectations
-  return jsonResponse({ projects: ALLOWED_PROJECTS });
+  try {
+    // Fetch all active projects from Teamwork API
+    const response = await teamwork.projects.list({
+      status: "active",
+      pageSize: 100,
+      orderBy: "name",
+      orderMode: "asc",
+    });
+
+    // Map to simplified format
+    const projects = response.projects.map((p) => ({
+      id: p.id,
+      name: p.name,
+      description: p.description,
+    }));
+
+    return jsonResponse({ projects });
+  } catch (err) {
+    console.error("Failed to fetch projects:", err);
+    return errorResponse("Failed to fetch projects");
+  }
 }
 
 async function handleTasksList(projectId: number) {
@@ -2737,6 +2756,120 @@ async function handleTasksList(projectId: number) {
     return jsonResponse(tasks);
   } catch (err) {
     return errorResponse("Failed to fetch tasks");
+  }
+}
+
+// Get full project structure for editing (tasklists + tasks + subtasks)
+async function handleProjectStructure(projectId: number) {
+  try {
+    // Fetch project details
+    const project = await teamwork.projects.get(projectId);
+
+    // Fetch tasklists for the project
+    const tasklistsResponse = await teamwork.projects.getTasklists(projectId);
+
+    // Fetch all tasks for the project
+    const tasksResponse = await teamwork.tasks.listByProject(projectId, {
+      include: ["tags"],
+      pageSize: 500,
+      includeCompletedTasks: true,
+    });
+
+    // Group tasks by tasklist
+    const tasksByTasklist: Record<number, typeof tasksResponse.tasks> = {};
+    for (const task of tasksResponse.tasks) {
+      const tasklistId = task.tasklistId;
+      if (tasklistId) {
+        if (!tasksByTasklist[tasklistId]) {
+          tasksByTasklist[tasklistId] = [];
+        }
+        tasksByTasklist[tasklistId].push(task);
+      }
+    }
+
+    // Fetch subtasks for each task (in parallel batches)
+    const taskSubtasks: Record<number, Array<{ id: number; name: string; description?: string }>> = {};
+    const taskIds = tasksResponse.tasks.map((t) => t.id);
+
+    // Fetch subtasks in batches of 10
+    const batchSize = 10;
+    for (let i = 0; i < taskIds.length; i += batchSize) {
+      const batch = taskIds.slice(i, i + batchSize);
+      const subtaskPromises = batch.map(async (taskId) => {
+        try {
+          const response = await teamwork.http.get(
+            `/projects/api/v3/tasks/${taskId}/subtasks.json`
+          ) as { tasks?: Array<{ id: number; name: string; description?: string }> };
+          return { taskId, subtasks: response.tasks || [] };
+        } catch {
+          return { taskId, subtasks: [] };
+        }
+      });
+      const results = await Promise.all(subtaskPromises);
+      for (const { taskId, subtasks } of results) {
+        taskSubtasks[taskId] = subtasks;
+      }
+    }
+
+    // Build the structure matching ProjectDraftData format
+    const tasklists = tasklistsResponse.tasklists.map((tl) => ({
+      id: `tl-${tl.id}`,
+      name: tl.name,
+      description: tl.description || "",
+      tasks: (tasksByTasklist[tl.id] || []).map((task) => ({
+        id: `t-${task.id}`,
+        name: task.name,
+        description: task.description || "",
+        priority: (task.priority || "none") as "none" | "low" | "medium" | "high",
+        startDate: task.startDate || undefined,
+        dueDate: task.dueDate || undefined,
+        estimatedMinutes: task.estimatedMinutes || 0,
+        tags: (task.tags || []).map((tag: any) => ({
+          name: tag.name || tag,
+          color: tag.color,
+        })),
+        subtasks: (taskSubtasks[task.id] || []).map((st) => ({
+          id: `st-${st.id}`,
+          name: st.name,
+          description: st.description || "",
+        })),
+      })),
+    }));
+
+    // Calculate summary
+    const totalTasks = tasklists.reduce((sum, tl) => sum + tl.tasks.length, 0);
+    const totalSubtasks = tasklists.reduce(
+      (sum, tl) => sum + tl.tasks.reduce((s, t) => s + t.subtasks.length, 0),
+      0
+    );
+    const totalMinutes = tasklists.reduce(
+      (sum, tl) => sum + tl.tasks.reduce((s, t) => s + (t.estimatedMinutes || 0), 0),
+      0
+    );
+
+    return jsonResponse({
+      project: {
+        name: project.name,
+        description: project.description || "",
+        startDate: project.startDate || undefined,
+        endDate: project.endDate || undefined,
+        tags: [],
+      },
+      tasklists,
+      summary: {
+        totalTasklists: tasklists.length,
+        totalTasks,
+        totalSubtasks,
+        totalMinutes,
+      },
+      message: `Loaded project "${project.name}" with ${tasklists.length} tasklists, ${totalTasks} tasks, and ${totalSubtasks} subtasks.`,
+      isDraft: true,
+      isExisting: true, // Flag to indicate this is an existing project being edited
+      existingProjectId: projectId,
+    });
+  } catch (err) {
+    console.error("Failed to fetch project structure:", err);
+    return errorResponse("Failed to fetch project structure");
   }
 }
 
@@ -2975,6 +3108,7 @@ function handleWebhookEvents(): Response {
 // Main request handler
 const server = Bun.serve({
   port: PORT,
+  hostname: "0.0.0.0", // Listen on all interfaces (required for Railway/Docker)
   idleTimeout: 255, // Max allowed - SDK with skills can take a while
   async fetch(req) {
     const url = new URL(req.url);
@@ -3039,12 +3173,11 @@ const server = Bun.serve({
       // Get single project details with tasks and stages
       if (path.match(/^\/api\/projects\/\d+$/) && req.method === "GET") {
         const projectId = parseInt(path.split("/")[3]);
-        const project = ALLOWED_PROJECTS.find((p) => p.id === projectId);
-        if (!project) {
-          return errorResponse("Project not found", 404);
-        }
 
         try {
+          // Fetch project details from API
+          const project = await teamwork.projects.get(projectId);
+
           // Fetch tasks for the project
           const tasksResponse = await teamwork.tasks.listByProject(projectId, {
             include: ["tags", "assignees"],
@@ -3054,12 +3187,7 @@ const server = Bun.serve({
           // Try to get workflow stages if the project has a workflow
           let stages: Array<{ id: number; name: string; color?: string }> = [];
           try {
-            // Get project details to find workflow
-            const projectDetails = await teamwork.http.get(
-              `/projects/api/v3/projects/${projectId}.json`
-            );
-            const workflowId = (projectDetails as any)?.project?.activeWorkflow
-              ?.id;
+            const workflowId = project.activeWorkflow?.id;
             if (workflowId) {
               const stagesResponse = await teamwork.workflows.listStages(
                 workflowId
@@ -3083,7 +3211,7 @@ const server = Bun.serve({
             project: {
               id: project.id,
               name: project.name,
-              description: "",
+              description: project.description || "",
             },
             tasklists: [],
             tasks: tasksResponse.tasks.map((t: any) => ({
@@ -3102,14 +3230,17 @@ const server = Bun.serve({
           });
         } catch (err) {
           console.error("Error fetching project details:", err);
-          // Return minimal project info on error
-          return jsonResponse({
-            project: { id: project.id, name: project.name, description: "" },
-            tasklists: [],
-            tasks: [],
-            stages: [],
-          });
+          return errorResponse("Project not found", 404);
         }
+      }
+
+      // Get project structure for editing (tasklists + tasks + subtasks)
+      if (
+        path.match(/^\/api\/projects\/\d+\/structure$/) &&
+        req.method === "GET"
+      ) {
+        const projectId = parseInt(path.split("/")[3]);
+        return handleProjectStructure(projectId);
       }
 
       if (
