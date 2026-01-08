@@ -57,6 +57,47 @@ try {
   console.warn("Set ANTHROPIC_API_KEY or CLAUDE_CODE_OAUTH_TOKEN to enable AI");
 }
 
+// Get Claude Code executable path - checks env var, then common locations
+function getClaudeCodePath(): string | undefined {
+  // Environment variable takes priority
+  if (process.env.CLAUDE_CODE_PATH) {
+    console.log(`Using CLAUDE_CODE_PATH: ${process.env.CLAUDE_CODE_PATH}`);
+    return process.env.CLAUDE_CODE_PATH;
+  }
+
+  // Common locations to check (in order of priority)
+  const { existsSync } = require("fs");
+  const possiblePaths = [
+    // Railway/Docker container - installed via npm dependency
+    "/app/node_modules/.bin/claude",
+    "./node_modules/.bin/claude",
+    // Global npm install
+    "/usr/local/bin/claude",
+    "/usr/bin/claude",
+    // User-local installs
+    `${process.env.HOME}/.local/bin/claude`,
+    // Local dev (nvm)
+    `${process.env.HOME}/.nvm/versions/node/v20.19.5/bin/claude`,
+  ];
+
+  for (const p of possiblePaths) {
+    try {
+      if (existsSync(p)) {
+        console.log(`Found Claude Code at: ${p}`);
+        return p;
+      }
+    } catch {
+      // Skip paths that can't be checked
+    }
+  }
+
+  // Let SDK try to find it in PATH
+  console.log("Claude Code path not found in common locations - SDK will try PATH");
+  return undefined;
+}
+
+const claudeCodePath = getClaudeCodePath();
+
 const { createTeamworkClient } = await import(
   "./teamwork_api_client/index.ts"
 );
@@ -242,8 +283,7 @@ Only output valid JSON, no markdown or explanation.`;
     systemPrompt: vizSystemPrompt,
     maxTurns: 1,
     env: process.env, // Use current environment with API key
-    pathToClaudeCodeExecutable:
-      "/Users/dalton/.nvm/versions/node/v20.19.5/bin/claude", // Use installed CLI
+    ...(claudeCodePath && { pathToClaudeCodeExecutable: claudeCodePath }), // Use installed CLI
   };
 
   try {
@@ -325,8 +365,7 @@ Keep responses concise (2-4 paragraphs max). Data is being visualized separately
     maxTurns: 1,
     includePartialMessages: true,
     env: process.env, // Use current environment with API key
-    pathToClaudeCodeExecutable:
-      "/Users/dalton/.nvm/versions/node/v20.19.5/bin/claude", // Use installed CLI (works with OAuth)
+    ...(claudeCodePath && { pathToClaudeCodeExecutable: claudeCodePath }), // Use installed CLI (works with OAuth)
     stderr: (data: string) => console.log("Chat Agent STDERR:", data),
   };
 
@@ -1992,8 +2031,7 @@ If the user provides a PRD or detailed requirements, analyze them and output the
         allowDangerouslySkipPermissions: true,
         maxTurns: 500, // High limit to allow for many progressive tool calls
         env: process.env,
-        pathToClaudeCodeExecutable:
-          "/Users/dalton/.nvm/versions/node/v20.19.5/bin/claude",
+        ...(claudeCodePath && { pathToClaudeCodeExecutable: claudeCodePath }),
       };
 
       try {
@@ -2161,8 +2199,7 @@ ${
     allowDangerouslySkipPermissions: true,
     maxTurns: 8,
     env: process.env,
-    pathToClaudeCodeExecutable:
-      "/Users/dalton/.nvm/versions/node/v20.19.5/bin/claude",
+    ...(claudeCodePath && { pathToClaudeCodeExecutable: claudeCodePath }),
   };
 
   const stream = new ReadableStream({
@@ -3227,8 +3264,7 @@ async function handleWebhook(req: Request): Promise<Response> {
                 model: "claude-sonnet-4-20250514",
                 cwd: process.cwd(),
                 env: process.env,
-                pathToClaudeCodeExecutable:
-                  "/Users/dalton/.nvm/versions/node/v20.19.5/bin/claude",
+                ...(claudeCodePath && { pathToClaudeCodeExecutable: claudeCodePath }),
               };
 
               let resultText = "";
