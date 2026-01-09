@@ -876,8 +876,9 @@ async function handleAgentChat(body: {
   mode?: "status" | "timelog" | "project" | "general";
   projectId?: number;
   projectName?: string;
+  conversationHistory?: Array<{ role: string; content: string }>;
 }) {
-  const { message, mode = "general", projectId, projectName } = body;
+  const { message, mode = "general", projectId, projectName, conversationHistory } = body;
 
   if (!message) {
     return new Response("Message is required", {
@@ -888,7 +889,7 @@ async function handleAgentChat(body: {
 
   // Route to specialized handlers based on mode
   if (mode === "timelog") {
-    return handleTimelogChat(body);
+    return handleTimelogChat({ ...body, conversationHistory });
   }
 
   if (mode === "project") {
@@ -2147,8 +2148,9 @@ async function handleTimelogChat(body: {
   mode?: string;
   projectId?: number;
   projectName?: string;
+  conversationHistory?: Array<{ role: string; content: string }>;
 }) {
-  const { message, projectId, projectName } = body;
+  const { message, projectId, projectName, conversationHistory } = body;
 
   // Load the timelog agent prompt
   const promptPath = `${process.cwd()}/../../prompts/agents/timelog-agent.txt`;
@@ -2233,6 +2235,16 @@ ${
         console.log("=== TIMELOG AGENT ===");
         console.log("Message:", message.slice(0, 100));
         console.log("Project:", projectId, projectName);
+        console.log("Conversation history:", conversationHistory?.length || 0, "messages");
+
+        // Build prompt with conversation history for context
+        let fullPrompt = message;
+        if (conversationHistory && conversationHistory.length > 0) {
+          const historyContext = conversationHistory
+            .map((m) => `${m.role === "user" ? "User" : "Assistant"}: ${m.content}`)
+            .join("\n\n");
+          fullPrompt = `## Previous Conversation:\n${historyContext}\n\n## Current Request:\n${message}`;
+        }
 
         safeEnqueue(
           `data: ${JSON.stringify({
@@ -2242,7 +2254,7 @@ ${
           })}\n\n`
         );
 
-        for await (const event of query({ prompt: message, options })) {
+        for await (const event of query({ prompt: fullPrompt, options })) {
           if (event.type === "stream_event") {
             const streamEvent = event.event;
             if (streamEvent.type === "content_block_delta") {

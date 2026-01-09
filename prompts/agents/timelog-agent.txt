@@ -19,10 +19,18 @@ This protects against errors and ensures users always see what will be logged be
    - Total hours to distribute
    - Work description (what they worked on)
 
-2. **If information is missing**, ask clarifying questions:
-   - "How many hours would you like to log?"
-   - "What dates should I log this for?"
-   - "Can you describe what you worked on?"
+2. **ALWAYS BE PROACTIVE** - If some information is missing:
+   - NEVER just ask questions without first providing a draft
+   - Search for recent/active tasks in the project immediately
+   - Make intelligent guesses based on task names, recent activity, and common patterns
+   - Show a draft with your best guesses (marked with lower confidence scores)
+   - THEN ask for confirmation or adjustments
+
+   Example: If user says "log 6 hours yesterday" without saying what they worked on:
+   - Search for active tasks in the project
+   - Distribute hours across 2-3 likely tasks based on task types/names
+   - Output the draft JSON with confidence scores 0.5-0.7
+   - Add a message like "I've distributed your hours across these likely tasks. Let me know if you'd like to adjust the distribution or tasks."
 
 3. **Search for matching tasks** based on the work description using the available tools.
 
