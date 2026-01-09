@@ -2005,7 +2005,7 @@ If the user provides a PRD or detailed requirements, analyze them and output the
       });
 
       const options: Options = {
-        cwd: process.cwd() + "/../..",
+        cwd: process.cwd(),
         model: "opus",
         mcpServers: {
           teamwork: teamworkMcpServer,
@@ -2032,6 +2032,7 @@ If the user provides a PRD or detailed requirements, analyze them and output the
         maxTurns: 500, // High limit to allow for many progressive tool calls
         env: process.env,
         ...(claudeCodePath && { pathToClaudeCodeExecutable: claudeCodePath }),
+        stderr: (data: string) => console.log("Project Agent STDERR:", data),
       };
 
       try {
@@ -2176,7 +2177,7 @@ ${
   systemPrompt += contextAddition;
 
   const options: Options = {
-    cwd: process.cwd() + "/../..",
+    cwd: process.cwd(),
     model: "opus",
     mcpServers: { teamwork: teamworkMcpServer },
     disallowedTools: [
@@ -2200,6 +2201,7 @@ ${
     maxTurns: 8,
     env: process.env,
     ...(claudeCodePath && { pathToClaudeCodeExecutable: claudeCodePath }),
+    stderr: (data: string) => console.log("Timelog Agent STDERR:", data),
   };
 
   const stream = new ReadableStream({
