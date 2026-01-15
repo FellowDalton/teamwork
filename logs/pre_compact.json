@@ -30,5 +30,13 @@
     "hook_event_name": "PreCompact",
     "trigger": "auto",
     "custom_instructions": null
+  },
+  {
+    "session_id": "0d9ed8f7-7b3b-43fb-be92-da62235c88e4",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/0d9ed8f7-7b3b-43fb-be92-da62235c88e4.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork",
+    "hook_event_name": "PreCompact",
+    "trigger": "auto",
+    "custom_instructions": null
   }
 ]

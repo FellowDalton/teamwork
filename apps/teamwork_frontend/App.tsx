@@ -744,9 +744,11 @@ function AppContent() {
     setDisplayData(null); // Clear previous visualizations
     setTimelogDraft(null); // Clear any previous draft
 
-    // Persist user message to Supabase
+    // Persist user message to Supabase (non-blocking to prevent UI freeze)
+    // Don't await - let stream start immediately while message saves in background
     if (isAuthenticated && activeConversation) {
-      await supabaseService.addMessage(activeConversation.id, 'user', fullContent);
+      supabaseService.addMessage(activeConversation.id, 'user', fullContent)
+        .catch(err => console.error('Failed to persist user message:', err));
       // Generate title from first message if no title yet
       if (!activeConversation.title) {
         supabaseService.generateConversationTitle(activeConversation.id, content);
@@ -766,11 +768,18 @@ function AppContent() {
       
       // Use Agent SDK with skills (sequential: Main Agent → Viz Agent)
       // Switch to processStreamingChat for legacy CLI-based flow
+      // Build conversation history from previous messages (limit to last 10 for context)
+      const historyForAgent = messages
+        .slice(-10)
+        .filter(m => m.content && m.content.trim())
+        .map(m => ({ role: m.role, content: m.content }));
+
       await processAgentStream({
         message: fullContent,
         topic: activeTopic,
         projectId: numericProjectId,
         projectName: activeProject?.name,
+        conversationHistory: historyForAgent.length > 0 ? historyForAgent : undefined,
         onChunk: (text) => {
           receivedText = text;
           // For streaming chunks, accumulate and update the message

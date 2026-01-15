@@ -68,16 +68,16 @@ function getClaudeCodePath(): string | undefined {
   // Common locations to check (in order of priority)
   const { existsSync } = require("fs");
   const possiblePaths = [
-    // Railway/Docker container - installed via npm dependency
-    "/app/node_modules/.bin/claude",
-    "./node_modules/.bin/claude",
+    // Local dev (nvm) - prefer system CLI for local development
+    `${process.env.HOME}/.nvm/versions/node/v20.19.5/bin/claude`,
+    // User-local installs
+    `${process.env.HOME}/.local/bin/claude`,
     // Global npm install
     "/usr/local/bin/claude",
     "/usr/bin/claude",
-    // User-local installs
-    `${process.env.HOME}/.local/bin/claude`,
-    // Local dev (nvm)
-    `${process.env.HOME}/.nvm/versions/node/v20.19.5/bin/claude`,
+    // Railway/Docker container - installed via npm dependency (fallback for production)
+    "/app/node_modules/.bin/claude",
+    "./node_modules/.bin/claude",
   ];
 
   for (const p of possiblePaths) {

@@ -1,0 +1,18 @@
+[
+  {
+    "session_id": "19810979-ecb0-4c75-ab36-8fc915e3509b",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/19810979-ecb0-4c75-ab36-8fc915e3509b.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork/apps/teamwork_backend",
+    "hook_event_name": "PreCompact",
+    "trigger": "auto",
+    "custom_instructions": null
+  },
+  {
+    "session_id": "258ad042-828c-4264-b83f-1704a8094512",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/258ad042-828c-4264-b83f-1704a8094512.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork/apps/teamwork_backend",
+    "hook_event_name": "PreCompact",
+    "trigger": "auto",
+    "custom_instructions": null
+  }
+]
