@@ -19,23 +19,23 @@ const MODES: Array<{
 }> = [
   {
     id: 'create',
-    label: 'CREATE',
+    label: 'OUTLINE',
     icon: <Plus size={14} />,
     color: 'bg-purple-600 hover:bg-purple-500',
-    welcomeMessage: 'Create mode active. Describe what you want to create and I\'ll generate the structure progressively.',
+    welcomeMessage: 'Outline mode active. Describe what you want to outline and I\'ll build the structure progressively.\n\nTry: "Create an outline for a blog post about learning to code"',
   },
   {
     id: 'query',
-    label: 'QUERY',
+    label: 'HELP',
     icon: <HelpCircle size={14} />,
     color: 'bg-cyan-600 hover:bg-cyan-500',
-    welcomeMessage: 'Query mode active. Ask me anything about your data.',
+    welcomeMessage: 'Help mode active. Ask me about outlining, organization, or structure.',
   },
   {
     id: 'general',
     label: 'CHAT',
     icon: <MessageSquare size={14} />,
-    color: 'bg-blue-600 hover:bg-blue-500',
+    color: 'bg-zinc-600 hover:bg-zinc-500',
     welcomeMessage: 'How can I help you today?',
   },
 ];
@@ -101,8 +101,8 @@ function App() {
             <Layout className="text-zinc-400" size={20} />
           </div>
           <div>
-            <h1 className="font-bold text-lg text-zinc-200">Chat Builder</h1>
-            <p className="text-xs text-zinc-500">Template</p>
+            <h1 className="font-bold text-lg text-zinc-200">Outline Builder</h1>
+            <p className="text-xs text-zinc-500">Chat + Progressive Display Template</p>
           </div>
         </div>
 

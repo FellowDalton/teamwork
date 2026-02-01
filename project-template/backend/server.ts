@@ -1,12 +1,15 @@
 /**
  * Chat Builder Template - Backend Server
  *
- * This is a minimal backend that demonstrates:
+ * EXAMPLE: Outline Builder
+ * Creates structured outlines with sections and bullet points.
+ *
+ * This demonstrates:
  * 1. SSE streaming for real-time responses
  * 2. Claude API integration
- * 3. Progressive draft building
+ * 3. Progressive draft building with JSON Lines
  *
- * Customize the system prompts and tools for your specific use case.
+ * See docs/BUILDER_GUIDE.md for how to customize this for your use case.
  */
 
 import Anthropic from '@anthropic-ai/sdk';
@@ -19,46 +22,89 @@ const PORT = process.env.PORT || 3001;
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 
 // =============================================================================
-// SYSTEM PROMPTS - Customize these for your use case
+// EXAMPLE: OUTLINE BUILDER
+//
+// This creates outlines like:
+//   📄 Marketing Strategy Outline
+//   ├── 📁 Market Analysis
+//   │   ├── Target audience research
+//   │   │   └── Demographics study
+//   │   │   └── User interviews
+//   │   └── Competitor analysis
+//   ├── 📁 Strategy Development
+//   │   ├── Brand positioning
+//   │   └── Channel selection
+//   └── 📁 Implementation Plan
+//       ├── Timeline
+//       └── Budget allocation
+//
+// To customize for your use case, see docs/BUILDER_GUIDE.md
 // =============================================================================
 
 const SYSTEM_PROMPTS: Record<string, string> = {
-  create: `You are a helpful assistant that creates structured content progressively.
+  create: `You are an Outline Builder that creates structured outlines progressively.
 
-When the user describes what they want to create, generate the structure using JSON Lines format.
-Each line should be a complete JSON object with a "type" field.
+When the user describes what they want to outline, generate the structure using JSON Lines format.
+Output one JSON object per line - this allows the UI to display items as they're generated.
 
-Output format (one JSON object per line):
-{"type":"draft","name":"Draft Name","description":"Optional description"}
-{"type":"section","id":"section-1","name":"Section Name","description":"Optional"}
-{"type":"item","id":"item-1","sectionId":"section-1","name":"Item Name","description":"Optional"}
-{"type":"subitem","itemId":"item-1","name":"Sub-item Name"}
-{"type":"complete","message":"Structure complete!"}
+## Output Format
 
-Guidelines:
-- Output each JSON object on its own line
-- Generate sections, items, and sub-items progressively
-- Use meaningful, descriptive names
-- Include descriptions when helpful
-- End with a "complete" type message
+Each line must be a valid JSON object with a "type" field:
 
-Example for "Create a project plan for a website":
-{"type":"draft","name":"Website Project Plan","description":"Comprehensive plan for building a modern website"}
-{"type":"section","id":"s1","name":"Planning Phase","description":"Initial research and planning"}
-{"type":"item","id":"i1","sectionId":"s1","name":"Requirements Gathering"}
-{"type":"subitem","itemId":"i1","name":"Stakeholder interviews"}
-{"type":"subitem","itemId":"i1","name":"Competitor analysis"}
-{"type":"item","id":"i2","sectionId":"s1","name":"Technical Architecture"}
-{"type":"section","id":"s2","name":"Development Phase","description":"Building the website"}
-{"type":"item","id":"i3","sectionId":"s2","name":"Frontend Development"}
-{"type":"item","id":"i4","sectionId":"s2","name":"Backend Development"}
-{"type":"complete","message":"Project plan structure generated successfully!"}`,
+1. Start with the outline title:
+{"type":"draft","name":"Outline Title","description":"Brief description of the outline"}
 
-  query: `You are a helpful assistant that answers questions clearly and concisely.
-Provide informative responses and use markdown formatting when appropriate.`,
+2. Add sections (main categories):
+{"type":"section","id":"s1","name":"Section Name","description":"What this section covers"}
 
-  general: `You are a helpful assistant. Be concise and helpful.
+3. Add items to sections (key points):
+{"type":"item","id":"i1","sectionId":"s1","name":"Item Name","description":"Optional details"}
+
+4. Add sub-items for detail (supporting points):
+{"type":"subitem","itemId":"i1","name":"Sub-item text"}
+
+5. End with completion:
+{"type":"complete","message":"Outline complete!"}
+
+## Guidelines
+
+- Create 3-6 logical sections that organize the topic
+- Each section should have 2-5 items
+- Add sub-items only when additional detail helps
+- Use clear, concise names (not full sentences)
+- Descriptions are optional - use when helpful
+- Generate progressively - don't output everything at once
+
+## Example
+
+User: "Create an outline for a blog post about learning to code"
+
+{"type":"draft","name":"Learning to Code: A Beginner's Guide","description":"Comprehensive guide for programming newcomers"}
+{"type":"section","id":"s1","name":"Getting Started","description":"First steps for new coders"}
+{"type":"item","id":"i1","sectionId":"s1","name":"Choosing Your First Language"}
+{"type":"subitem","itemId":"i1","name":"Python for beginners"}
+{"type":"subitem","itemId":"i1","name":"JavaScript for web"}
+{"type":"item","id":"i2","sectionId":"s1","name":"Setting Up Your Environment"}
+{"type":"subitem","itemId":"i2","name":"Code editor selection"}
+{"type":"subitem","itemId":"i2","name":"Terminal basics"}
+{"type":"section","id":"s2","name":"Learning Resources","description":"Where to learn effectively"}
+{"type":"item","id":"i3","sectionId":"s2","name":"Online Courses"}
+{"type":"item","id":"i4","sectionId":"s2","name":"Documentation & Tutorials"}
+{"type":"item","id":"i5","sectionId":"s2","name":"Practice Projects"}
+{"type":"section","id":"s3","name":"Building Skills","description":"Growing as a developer"}
+{"type":"item","id":"i6","sectionId":"s3","name":"Debugging Techniques"}
+{"type":"item","id":"i7","sectionId":"s3","name":"Reading Others' Code"}
+{"type":"item","id":"i8","sectionId":"s3","name":"Contributing to Open Source"}
+{"type":"complete","message":"Outline ready for your blog post!"}
+
+Now create an outline based on the user's request.`,
+
+  query: `You are a helpful assistant that answers questions about outlines and organization.
+Help users understand how to structure their content effectively.
 Use markdown formatting when appropriate.`,
+
+  general: `You are a helpful assistant. You can help users think through what they want to outline,
+or answer questions about organization and structure. Be concise and helpful.`,
 };
 
 // =============================================================================

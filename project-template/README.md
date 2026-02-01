@@ -2,6 +2,47 @@
 
 A reusable template for building AI-powered chat applications with progressive data display. Features a split-panel interface with a chat conversation on the left and a dynamic data display on the right that builds in real-time as the AI generates content.
 
+## What It Does
+
+**Default Example: Outline Builder**
+
+```
+You: "Create an outline for a blog post about learning to code"
+
+AI progressively builds:
+📄 Learning to Code: A Beginner's Guide
+├── 📁 Getting Started
+│   ├── Choosing Your First Language
+│   │   ├── Python for beginners
+│   │   └── JavaScript for web
+│   └── Setting Up Your Environment
+├── 📁 Learning Resources
+│   ├── Online Courses
+│   ├── Documentation & Tutorials
+│   └── Practice Projects
+└── 📁 Building Skills
+    ├── Debugging Techniques
+    └── Reading Others' Code
+```
+
+Items appear one-by-one in real-time as Claude generates them. You can edit any item before submitting.
+
+## Customize It
+
+This template is designed to be adapted for your use case:
+
+| Example Use Case | What Gets Built |
+|------------------|-----------------|
+| **Project Planner** | Phases → Tasks → Subtasks (with estimates, priorities) |
+| **Recipe Builder** | Sections → Steps → Tips (with times, ingredients) |
+| **Course Creator** | Modules → Lessons → Topics (with duration) |
+| **Meeting Agenda** | Topics → Discussion Points → Action Items |
+
+**Two ways to customize:**
+
+1. **Read the guide**: [docs/BUILDER_GUIDE.md](docs/BUILDER_GUIDE.md) - Step-by-step instructions
+2. **Use the Builder Agent**: [docs/BUILDER_AGENT.md](docs/BUILDER_AGENT.md) - An interactive Claude prompt that asks questions and generates your customization code
+
 ## Features
 
 - **Split-panel layout**: Chat interface on the left, data display on the right
@@ -119,25 +160,24 @@ The template includes three modes (customize in `App.tsx`):
 | QUERY | Answer questions | Standard chat responses |
 | GENERAL | General chat | Basic conversation |
 
-## Customization
+## Documentation
 
-See [docs/CUSTOMIZATION.md](docs/CUSTOMIZATION.md) for detailed instructions on:
+| Document | Purpose |
+|----------|---------|
+| [BUILDER_GUIDE.md](docs/BUILDER_GUIDE.md) | Step-by-step customization walkthrough |
+| [BUILDER_AGENT.md](docs/BUILDER_AGENT.md) | Interactive Claude prompt to generate your config |
+| [ARCHITECTURE.md](docs/ARCHITECTURE.md) | System design and data flow details |
+| [CUSTOMIZATION.md](docs/CUSTOMIZATION.md) | Quick reference for common changes |
 
-- Adding new modes
-- Modifying the draft structure
-- Changing the UI styling
-- Integrating with external services
-- Adding authentication
+## How Customization Works
 
-## Example Use Cases
+1. **Define your schema** - What are you building? (project, recipe, course...)
+2. **Update the system prompt** - Teach Claude your JSON Lines format
+3. **Update the backend parser** - Handle your custom types
+4. **Update the frontend types** - Add your custom fields
+5. **Update the display** - Show your fields in the DraftCard
 
-This template can be adapted for:
-
-- **Project Planning**: Generate project structures with phases/tasks
-- **Content Creation**: Build outlines with sections/paragraphs
-- **API Design**: Create endpoints with parameters
-- **Recipe Builder**: Generate ingredients and steps
-- **Meeting Notes**: Capture topics with action items
+The **Builder Agent** can generate all of this for you through an interactive conversation.
 
 ## License
 
