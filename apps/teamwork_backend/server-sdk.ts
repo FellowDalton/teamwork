@@ -503,7 +503,6 @@ if (!TEAMWORK_API_URL || !TEAMWORK_BEARER_TOKEN) {
 const teamwork = createTeamworkClient({
   apiUrl: TEAMWORK_API_URL,
   bearerToken: TEAMWORK_BEARER_TOKEN,
-  debug: true,
 });
 
 // ============================================================================
@@ -2996,15 +2995,9 @@ async function handleProjectsList() {
     }));
 
     return jsonResponse({ projects });
-  } catch (err: any) {
-    const detail = err instanceof Error ? err.message : String(err);
-    console.error("Failed to fetch projects:", detail, err);
-    return jsonResponse({
-      error: `Failed to fetch projects: ${detail}`,
-      status: err?.status,
-      statusText: err?.statusText,
-      body: err?.body,
-    }, 500);
+  } catch (err) {
+    console.error("Failed to fetch projects:", err);
+    return errorResponse("Failed to fetch projects");
   }
 }
 
@@ -3447,45 +3440,6 @@ const server = Bun.serve({
       if (path === "/api/generate-title" && req.method === "POST") {
         const body = await req.json();
         return handleGenerateTitle(body);
-      }
-
-      // Debug endpoint for Teamwork API connection
-      if (path === "/api/debug/teamwork" && req.method === "GET") {
-        // Capture console.log output from debug mode
-        const logs: string[] = [];
-        const origLog = console.log;
-        console.log = (...args: any[]) => {
-          const msg = args.map(a => typeof a === 'string' ? a : JSON.stringify(a)).join(' ');
-          if (msg.includes('[TeamworkClient]')) logs.push(msg);
-          origLog(...args);
-        };
-
-        let clientResult: any;
-        try {
-          const raw = await teamwork.http.get('/projects/api/v3/projects.json', { status: 'active', pageSize: 1 });
-          clientResult = { success: true };
-        } catch (err: any) {
-          clientResult = { success: false, error: err?.message, status: err?.status };
-        }
-
-        // Restore console.log
-        console.log = origLog;
-
-        return jsonResponse({ clientResult, debugLogs: logs });
-      }
-
-      // Placeholder to keep remaining catch block matching
-      if (false) {
-        try {} catch (err: any) {
-          return jsonResponse({
-            success: false,
-            error: err instanceof Error ? err.message : String(err),
-            status: err?.status,
-            statusText: err?.statusText,
-            body: JSON.stringify(err?.body)?.substring(0, 500),
-            stack: err instanceof Error ? err.stack?.split('\n').slice(0, 5) : undefined,
-          }, 500);
-        }
       }
 
       // Teamwork API endpoints
