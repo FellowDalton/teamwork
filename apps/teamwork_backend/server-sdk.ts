@@ -503,6 +503,7 @@ if (!TEAMWORK_API_URL || !TEAMWORK_BEARER_TOKEN) {
 const teamwork = createTeamworkClient({
   apiUrl: TEAMWORK_API_URL,
   bearerToken: TEAMWORK_BEARER_TOKEN,
+  debug: true,
 });
 
 // ============================================================================
@@ -3450,18 +3451,33 @@ const server = Bun.serve({
 
       // Debug endpoint for Teamwork API connection
       if (path === "/api/debug/teamwork" && req.method === "GET") {
+        // Test 1: Direct raw http.get through the client
+        let rawResult: any;
         try {
-          // Test using the actual Teamwork client (same code path as /api/projects)
+          const raw = await teamwork.http.get('/projects/api/v3/projects.json', { status: 'active', pageSize: 1 });
+          rawResult = { success: true, firstProject: (raw as any).projects?.[0]?.name };
+        } catch (err: any) {
+          rawResult = { success: false, error: err?.message, status: err?.status, body: err?.body };
+        }
+
+        // Test 2: Through projects.list()
+        let clientResult: any;
+        try {
           const response = await teamwork.projects.list({
             status: "active",
             pageSize: 1,
           });
-          return jsonResponse({
-            success: true,
-            projectCount: response.projects.length,
-            firstProject: response.projects[0]?.name,
-          });
+          clientResult = { success: true, projectCount: response.projects.length };
         } catch (err: any) {
+          clientResult = { success: false, error: err?.message, status: err?.status, body: err?.body };
+        }
+
+        return jsonResponse({ rawHttpGet: rawResult, projectsList: clientResult });
+      }
+
+      // Placeholder to keep remaining catch block matching
+      if (false) {
+        try {} catch (err: any) {
           return jsonResponse({
             success: false,
             error: err instanceof Error ? err.message : String(err),
