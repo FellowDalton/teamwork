@@ -3446,35 +3446,24 @@ const server = Bun.serve({
       // Debug endpoint for Teamwork API connection
       if (path === "/api/debug/teamwork" && req.method === "GET") {
         try {
-          const tokenPreview = TEAMWORK_BEARER_TOKEN ?
-            `${TEAMWORK_BEARER_TOKEN.substring(0, 8)}...${TEAMWORK_BEARER_TOKEN.substring(TEAMWORK_BEARER_TOKEN.length - 4)}` :
-            'NOT SET';
-          const testUrl = `${TEAMWORK_API_URL}/projects/api/v3/projects.json?status=active&pageSize=1`;
-          const authHeader = `Basic ${Buffer.from(`${TEAMWORK_BEARER_TOKEN}:X`).toString('base64')}`;
-
-          const testResponse = await fetch(testUrl, {
-            headers: {
-              Authorization: authHeader,
-              'Content-Type': 'application/json',
-              Accept: 'application/json'
-            }
+          // Test using the actual Teamwork client (same code path as /api/projects)
+          const response = await teamwork.projects.list({
+            status: "active",
+            pageSize: 1,
           });
-
-          const body = await testResponse.text();
           return jsonResponse({
-            teamworkApiUrl: TEAMWORK_API_URL,
-            tokenPreview,
-            tokenLength: TEAMWORK_BEARER_TOKEN?.length,
-            testEndpoint: testUrl,
-            testStatus: testResponse.status,
-            testStatusText: testResponse.statusText,
-            testBody: body.substring(0, 500),
+            success: true,
+            projectCount: response.projects.length,
+            firstProject: response.projects[0]?.name,
           });
-        } catch (err) {
+        } catch (err: any) {
           return jsonResponse({
+            success: false,
             error: err instanceof Error ? err.message : String(err),
-            teamworkApiUrl: TEAMWORK_API_URL,
-            tokenLength: TEAMWORK_BEARER_TOKEN?.length,
+            status: err?.status,
+            statusText: err?.statusText,
+            body: JSON.stringify(err?.body)?.substring(0, 500),
+            stack: err instanceof Error ? err.stack?.split('\n').slice(0, 5) : undefined,
           }, 500);
         }
       }
