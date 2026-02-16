@@ -2995,10 +2995,15 @@ async function handleProjectsList() {
     }));
 
     return jsonResponse({ projects });
-  } catch (err) {
+  } catch (err: any) {
     const detail = err instanceof Error ? err.message : String(err);
     console.error("Failed to fetch projects:", detail, err);
-    return errorResponse(`Failed to fetch projects: ${detail}`);
+    return jsonResponse({
+      error: `Failed to fetch projects: ${detail}`,
+      status: err?.status,
+      statusText: err?.statusText,
+      body: err?.body,
+    }, 500);
   }
 }
 
