@@ -104,6 +104,34 @@ const { createTeamworkClient } = await import(
 const { z } = await import("zod");
 
 // ============================================================================
+// PROJECT AGENT CONFIGURATION - Maps project IDs to working directories
+// ============================================================================
+
+interface ProjectAgentConfig {
+  projectId: number;
+  projectName: string;
+  cwd: string;
+  model?: string;
+  enabled: boolean;
+}
+
+const PROJECT_AGENT_CONFIGS: ProjectAgentConfig[] = [
+  {
+    projectId: 806824,
+    projectName: "EXHAUSTO - AI Development",
+    cwd: "/Users/dalton/projects/exhausto-website-2026",
+    model: "claude-sonnet-4-20250514",
+    enabled: true,
+  },
+  // Add more projects here as needed
+];
+
+function getProjectAgentConfig(projectId: number | undefined): ProjectAgentConfig | null {
+  if (!projectId) return null;
+  return PROJECT_AGENT_CONFIGS.find(c => c.projectId === projectId && c.enabled) || null;
+}
+
+// ============================================================================
 // DATE PARSING - Extract date ranges from natural language
 // ============================================================================
 
@@ -2968,8 +2996,9 @@ async function handleProjectsList() {
 
     return jsonResponse({ projects });
   } catch (err) {
-    console.error("Failed to fetch projects:", err);
-    return errorResponse("Failed to fetch projects");
+    const detail = err instanceof Error ? err.message : String(err);
+    console.error("Failed to fetch projects:", detail, err);
+    return errorResponse(`Failed to fetch projects: ${detail}`);
   }
 }
 
@@ -3239,12 +3268,16 @@ async function handleWebhook(req: Request): Promise<Response> {
     // Handle specific events (TASK.UPDATED is sent when tasks are moved between stages)
     if (eventType === "TASK.MOVED" || eventType === "TASK.UPDATED") {
       const task = payload.task;
-      console.log(`[Webhook] Task moved: ${task?.name} (ID: ${task?.id})`);
+      const projectId = payload.project?.id || task?.projectId;
+      console.log(`[Webhook] Task moved: ${task?.name} (ID: ${task?.id}, Project: ${projectId})`);
 
       // Check for FellowAI tag
       const hasFellowAITag = task?.tags?.some(
         (t) => t.name.toLowerCase() === "fellowai"
       );
+
+      // Check if project has agent config
+      const projectConfig = getProjectAgentConfig(projectId);
 
       if (hasFellowAITag && task?.workflowsStages?.[0]) {
         const { stageId, workflowId } = task.workflowsStages[0];
@@ -3260,23 +3293,31 @@ async function handleWebhook(req: Request): Promise<Response> {
 
             // Check if moved to "In progress"
             if (stage.name.toLowerCase() === "in progress") {
+              // Determine working directory based on project config
+              const agentCwd = projectConfig?.cwd || process.cwd();
+              const agentModel = projectConfig?.model || "claude-sonnet-4-20250514";
+
               console.log(
-                `[Webhook] FellowAI task moved to In Progress - executing AI...`
+                `[Webhook] FellowAI task moved to In Progress - executing AI in ${agentCwd}...`
               );
 
               // Execute AI with task description
               const prompt = task.description || task.name;
 
-              // Post "starting" comment
+              // Post "starting" comment with project info
+              const projectInfo = projectConfig
+                ? `\n\n📁 **Project:** ${projectConfig.projectName}\n📂 **Working Directory:** \`${projectConfig.cwd}\``
+                : "";
+
               await teamwork.comments.createForTask(task.id, {
-                body: `🤖 **AI Execution Started**\n\nProcessing task description as prompt...`,
+                body: `🤖 **AI Execution Started**\n\nProcessing task description as prompt...${projectInfo}`,
                 contentType: "MARKDOWN",
               });
 
-              // Run AI agent
+              // Run AI agent with project-specific cwd
               const options: Options = {
-                model: "claude-sonnet-4-20250514",
-                cwd: process.cwd(),
+                model: agentModel,
+                cwd: agentCwd,
                 env: process.env,
                 ...(claudeCodePath && { pathToClaudeCodeExecutable: claudeCodePath }),
               };
@@ -3400,6 +3441,42 @@ const server = Bun.serve({
       if (path === "/api/generate-title" && req.method === "POST") {
         const body = await req.json();
         return handleGenerateTitle(body);
+      }
+
+      // Debug endpoint for Teamwork API connection
+      if (path === "/api/debug/teamwork" && req.method === "GET") {
+        try {
+          const tokenPreview = TEAMWORK_BEARER_TOKEN ?
+            `${TEAMWORK_BEARER_TOKEN.substring(0, 8)}...${TEAMWORK_BEARER_TOKEN.substring(TEAMWORK_BEARER_TOKEN.length - 4)}` :
+            'NOT SET';
+          const testUrl = `${TEAMWORK_API_URL}/projects/api/v3/me.json`;
+          const authHeader = `Basic ${Buffer.from(`${TEAMWORK_BEARER_TOKEN}:X`).toString('base64')}`;
+
+          const testResponse = await fetch(testUrl, {
+            headers: {
+              Authorization: authHeader,
+              'Content-Type': 'application/json',
+              Accept: 'application/json'
+            }
+          });
+
+          const body = await testResponse.text();
+          return jsonResponse({
+            teamworkApiUrl: TEAMWORK_API_URL,
+            tokenPreview,
+            tokenLength: TEAMWORK_BEARER_TOKEN?.length,
+            testEndpoint: testUrl,
+            testStatus: testResponse.status,
+            testStatusText: testResponse.statusText,
+            testBody: body.substring(0, 500),
+          });
+        } catch (err) {
+          return jsonResponse({
+            error: err instanceof Error ? err.message : String(err),
+            teamworkApiUrl: TEAMWORK_API_URL,
+            tokenLength: TEAMWORK_BEARER_TOKEN?.length,
+          }, 500);
+        }
       }
 
       // Teamwork API endpoints
