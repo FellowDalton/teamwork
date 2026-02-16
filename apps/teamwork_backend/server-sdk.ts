@@ -3451,36 +3451,27 @@ const server = Bun.serve({
 
       // Debug endpoint for Teamwork API connection
       if (path === "/api/debug/teamwork" && req.method === "GET") {
-        // Compare auth headers
-        const directAuth = `Basic ${Buffer.from(`${TEAMWORK_BEARER_TOKEN}:X`).toString('base64')}`;
-        const clientAuth = `Basic ${Buffer.from(`${teamwork.http['bearerToken']}:X`).toString('base64')}`;
-        const directUrl = `${TEAMWORK_API_URL}/projects/api/v3/projects.json?status=active&pageSize=1`;
-        const clientUrl = new URL(`${teamwork.http['apiUrl']}/projects/api/v3/projects.json`);
-        clientUrl.searchParams.set('status', 'active');
-        clientUrl.searchParams.set('pageSize', '1');
+        // Capture console.log output from debug mode
+        const logs: string[] = [];
+        const origLog = console.log;
+        console.log = (...args: any[]) => {
+          const msg = args.map(a => typeof a === 'string' ? a : JSON.stringify(a)).join(' ');
+          if (msg.includes('[TeamworkClient]')) logs.push(msg);
+          origLog(...args);
+        };
 
-        // Direct fetch
-        const directResp = await fetch(directUrl, {
-          headers: { Authorization: directAuth, 'Content-Type': 'application/json', Accept: 'application/json' }
-        });
+        let clientResult: any;
+        try {
+          const raw = await teamwork.http.get('/projects/api/v3/projects.json', { status: 'active', pageSize: 1 });
+          clientResult = { success: true };
+        } catch (err: any) {
+          clientResult = { success: false, error: err?.message, status: err?.status };
+        }
 
-        // Same URL but through the client's auth
-        const clientResp = await fetch(clientUrl.toString(), {
-          headers: { Authorization: clientAuth, 'Content-Type': 'application/json', Accept: 'application/json' }
-        });
+        // Restore console.log
+        console.log = origLog;
 
-        return jsonResponse({
-          authMatch: directAuth === clientAuth,
-          urlMatch: directUrl === clientUrl.toString(),
-          directUrl,
-          clientUrl: clientUrl.toString(),
-          directAuthPreview: directAuth.substring(0, 20) + '...',
-          clientAuthPreview: clientAuth.substring(0, 20) + '...',
-          envToken: TEAMWORK_BEARER_TOKEN?.substring(0, 8),
-          clientToken: (teamwork.http as any)['bearerToken']?.substring(0, 8),
-          directStatus: directResp.status,
-          clientStatus: clientResp.status,
-        });
+        return jsonResponse({ clientResult, debugLogs: logs });
       }
 
       // Placeholder to keep remaining catch block matching

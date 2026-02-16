@@ -119,7 +119,7 @@ export class TeamworkHttpClient {
     const url = this.buildUrl(path, options?.params);
 
     const headers: Record<string, string> = {
-      Authorization: `Bearer ${this.bearerToken}`,
+      Authorization: `Basic ${Buffer.from(`${this.bearerToken}:X`).toString('base64')}`,
       'Content-Type': 'application/json',
       Accept: 'application/json',
       ...options?.headers,
@@ -139,8 +139,13 @@ export class TeamworkHttpClient {
     for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
       try {
         this.log(`${method} ${url}`, attempt > 0 ? `(attempt ${attempt + 1})` : '');
+        this.log('Headers:', JSON.stringify(headers));
+        this.log('FetchOptions keys:', Object.keys(fetchOptions));
 
         const response = await fetch(url, fetchOptions);
+
+        this.log('Response status:', response.status, response.statusText);
+        this.log('Response headers:', JSON.stringify(Object.fromEntries(response.headers.entries())));
 
         // Handle rate limiting
         if (response.status === 429) {
