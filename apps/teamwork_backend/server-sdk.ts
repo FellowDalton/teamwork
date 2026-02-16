@@ -3451,30 +3451,36 @@ const server = Bun.serve({
 
       // Debug endpoint for Teamwork API connection
       if (path === "/api/debug/teamwork" && req.method === "GET") {
-        // Test 1: Direct fetch (bypasses client completely)
-        let directResult: any;
-        try {
-          const authHeader = `Basic ${Buffer.from(`${TEAMWORK_BEARER_TOKEN}:X`).toString('base64')}`;
-          const directUrl = `${TEAMWORK_API_URL}/projects/api/v3/projects.json?status=active&pageSize=1`;
-          const directResp = await fetch(directUrl, {
-            headers: { Authorization: authHeader, 'Content-Type': 'application/json', Accept: 'application/json' }
-          });
-          const directBody = await directResp.json();
-          directResult = { success: directResp.ok, status: directResp.status, firstProject: directBody?.projects?.[0]?.name };
-        } catch (err: any) {
-          directResult = { success: false, error: err?.message };
-        }
+        // Compare auth headers
+        const directAuth = `Basic ${Buffer.from(`${TEAMWORK_BEARER_TOKEN}:X`).toString('base64')}`;
+        const clientAuth = `Basic ${Buffer.from(`${teamwork.http['bearerToken']}:X`).toString('base64')}`;
+        const directUrl = `${TEAMWORK_API_URL}/projects/api/v3/projects.json?status=active&pageSize=1`;
+        const clientUrl = new URL(`${teamwork.http['apiUrl']}/projects/api/v3/projects.json`);
+        clientUrl.searchParams.set('status', 'active');
+        clientUrl.searchParams.set('pageSize', '1');
 
-        // Test 2: Through the client's http.get
-        let clientResult: any;
-        try {
-          const raw = await teamwork.http.get('/projects/api/v3/projects.json', { status: 'active', pageSize: 1 });
-          clientResult = { success: true, firstProject: (raw as any).projects?.[0]?.name };
-        } catch (err: any) {
-          clientResult = { success: false, error: err?.message, status: err?.status, body: err?.body };
-        }
+        // Direct fetch
+        const directResp = await fetch(directUrl, {
+          headers: { Authorization: directAuth, 'Content-Type': 'application/json', Accept: 'application/json' }
+        });
 
-        return jsonResponse({ directFetch: directResult, clientHttpGet: clientResult });
+        // Same URL but through the client's auth
+        const clientResp = await fetch(clientUrl.toString(), {
+          headers: { Authorization: clientAuth, 'Content-Type': 'application/json', Accept: 'application/json' }
+        });
+
+        return jsonResponse({
+          authMatch: directAuth === clientAuth,
+          urlMatch: directUrl === clientUrl.toString(),
+          directUrl,
+          clientUrl: clientUrl.toString(),
+          directAuthPreview: directAuth.substring(0, 20) + '...',
+          clientAuthPreview: clientAuth.substring(0, 20) + '...',
+          envToken: TEAMWORK_BEARER_TOKEN?.substring(0, 8),
+          clientToken: (teamwork.http as any)['bearerToken']?.substring(0, 8),
+          directStatus: directResp.status,
+          clientStatus: clientResp.status,
+        });
       }
 
       // Placeholder to keep remaining catch block matching
