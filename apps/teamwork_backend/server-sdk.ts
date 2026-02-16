@@ -3451,28 +3451,30 @@ const server = Bun.serve({
 
       // Debug endpoint for Teamwork API connection
       if (path === "/api/debug/teamwork" && req.method === "GET") {
-        // Test 1: Direct raw http.get through the client
-        let rawResult: any;
+        // Test 1: Direct fetch (bypasses client completely)
+        let directResult: any;
         try {
-          const raw = await teamwork.http.get('/projects/api/v3/projects.json', { status: 'active', pageSize: 1 });
-          rawResult = { success: true, firstProject: (raw as any).projects?.[0]?.name };
+          const authHeader = `Basic ${Buffer.from(`${TEAMWORK_BEARER_TOKEN}:X`).toString('base64')}`;
+          const directUrl = `${TEAMWORK_API_URL}/projects/api/v3/projects.json?status=active&pageSize=1`;
+          const directResp = await fetch(directUrl, {
+            headers: { Authorization: authHeader, 'Content-Type': 'application/json', Accept: 'application/json' }
+          });
+          const directBody = await directResp.json();
+          directResult = { success: directResp.ok, status: directResp.status, firstProject: directBody?.projects?.[0]?.name };
         } catch (err: any) {
-          rawResult = { success: false, error: err?.message, status: err?.status, body: err?.body };
+          directResult = { success: false, error: err?.message };
         }
 
-        // Test 2: Through projects.list()
+        // Test 2: Through the client's http.get
         let clientResult: any;
         try {
-          const response = await teamwork.projects.list({
-            status: "active",
-            pageSize: 1,
-          });
-          clientResult = { success: true, projectCount: response.projects.length };
+          const raw = await teamwork.http.get('/projects/api/v3/projects.json', { status: 'active', pageSize: 1 });
+          clientResult = { success: true, firstProject: (raw as any).projects?.[0]?.name };
         } catch (err: any) {
           clientResult = { success: false, error: err?.message, status: err?.status, body: err?.body };
         }
 
-        return jsonResponse({ rawHttpGet: rawResult, projectsList: clientResult });
+        return jsonResponse({ directFetch: directResult, clientHttpGet: clientResult });
       }
 
       // Placeholder to keep remaining catch block matching
