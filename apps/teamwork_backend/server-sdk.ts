@@ -3449,7 +3449,7 @@ const server = Bun.serve({
           const tokenPreview = TEAMWORK_BEARER_TOKEN ?
             `${TEAMWORK_BEARER_TOKEN.substring(0, 8)}...${TEAMWORK_BEARER_TOKEN.substring(TEAMWORK_BEARER_TOKEN.length - 4)}` :
             'NOT SET';
-          const testUrl = `${TEAMWORK_API_URL}/projects/api/v3/me.json`;
+          const testUrl = `${TEAMWORK_API_URL}/projects/api/v3/projects.json?status=active&pageSize=1`;
           const authHeader = `Basic ${Buffer.from(`${TEAMWORK_BEARER_TOKEN}:X`).toString('base64')}`;
 
           const testResponse = await fetch(testUrl, {
