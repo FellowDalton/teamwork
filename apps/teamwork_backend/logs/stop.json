@@ -262,5 +262,29 @@
     "permission_mode": "bypassPermissions",
     "hook_event_name": "Stop",
     "stop_hook_active": false
+  },
+  {
+    "session_id": "3afa26d2-bf3b-4644-8c79-19523118553f",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/3afa26d2-bf3b-4644-8c79-19523118553f.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork/apps/teamwork_backend",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "Stop",
+    "stop_hook_active": false
+  },
+  {
+    "session_id": "3afa26d2-bf3b-4644-8c79-19523118553f",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/3afa26d2-bf3b-4644-8c79-19523118553f.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork/apps/teamwork_backend",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "Stop",
+    "stop_hook_active": false
+  },
+  {
+    "session_id": "3afa26d2-bf3b-4644-8c79-19523118553f",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/3afa26d2-bf3b-4644-8c79-19523118553f.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork/apps/teamwork_backend",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "Stop",
+    "stop_hook_active": false
   }
 ]

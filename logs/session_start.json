@@ -2078,5 +2078,41 @@
     "cwd": "/Users/dalton/projects/teamwork",
     "hook_event_name": "SessionStart",
     "source": "startup"
+  },
+  {
+    "session_id": "db779e40-5bd7-44ad-b63a-5a11f994026d",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/db779e40-5bd7-44ad-b63a-5a11f994026d.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork",
+    "hook_event_name": "SessionStart",
+    "source": "startup"
+  },
+  {
+    "session_id": "32b55f1b-636c-4516-bded-d707f41602ce",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/32b55f1b-636c-4516-bded-d707f41602ce.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork",
+    "hook_event_name": "SessionStart",
+    "source": "clear"
+  },
+  {
+    "session_id": "32b55f1b-636c-4516-bded-d707f41602ce",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/32b55f1b-636c-4516-bded-d707f41602ce.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork",
+    "hook_event_name": "SessionStart",
+    "source": "resume"
+  },
+  {
+    "session_id": "c022691c-2d6b-452e-9cc3-d2c7fa4ab161",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/c022691c-2d6b-452e-9cc3-d2c7fa4ab161.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork",
+    "hook_event_name": "SessionStart",
+    "source": "clear"
+  },
+  {
+    "session_id": "3afa26d2-bf3b-4644-8c79-19523118553f",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/3afa26d2-bf3b-4644-8c79-19523118553f.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork",
+    "hook_event_name": "SessionStart",
+    "source": "startup",
+    "model": "claude-opus-4-5-20251101"
   }
 ]

@@ -1,55 +1,145 @@
 ---
 name: manage-teamwork
-description: Manage Teamwork.com projects, tasks, and workflows using the TypeScript API client. Use when creating projects, tasks, subtasks, comments, logging time, moving tasks between board stages, or querying tasks.
+description: Manage Teamwork.com projects, tasks, and workflows using the CLI tool. Use when creating projects, tasks, subtasks, comments, logging time, moving tasks between board stages, or querying tasks.
 ---
 
 <essential_principles>
 ## How This Skill Works
 
-This skill uses the Teamwork API client at `apps/teamwork_api_client/` to interact with Teamwork.com. All operations use TypeScript with Bun runtime.
+This skill uses the Teamwork CLI at `/Users/dalton/projects/teamwork/apps/teamwork_backend/teamwork_api_client/cli.ts`.
 
-### 1. Client Initialization
-
-Always import from the client index and create a client instance:
-
-```typescript
-import { createTeamworkClient, createTaskMonitor } from './apps/teamwork_api_client/src/index.ts';
-
-// Low-level client for direct API access
-const client = createTeamworkClient({
-  apiUrl: process.env.TEAMWORK_API_URL!,
-  bearerToken: process.env.TEAMWORK_BEARER_TOKEN!,
-});
-
-// High-level facade for task operations
-const monitor = createTaskMonitor();
-```
-
-### 2. Environment Variables Required
+**From any project on this machine**, run commands like:
 
 ```bash
-TEAMWORK_API_URL=https://yoursite.teamwork.com
-TEAMWORK_BEARER_TOKEN=your-api-token
-TEAMWORK_PROJECT_ID=123456  # optional default
+cd /Users/dalton/projects/teamwork && bun apps/teamwork_backend/teamwork_api_client/cli.ts <command> [args]
 ```
 
-### 3. Error Handling Pattern
+The `cd` is required so Bun loads the `.env` file with the API credentials.
+</essential_principles>
 
-All API calls should be wrapped in try-catch:
+<available_commands>
+## Available Commands
+
+| Command | Description |
+|---------|-------------|
+| `list-projects [status]` | List projects (status: active, archived, all) |
+| `list-tasks <project_id> [status]` | List tasks (status: new, active, completed) |
+| `get-task <task_id>` | Get a specific task by ID |
+| `list-workflows` | List all workflows |
+| `list-stages <workflow_id>` | List stages for a workflow |
+| `stage-tasks <workflow_id> <stage_id>` | List tasks in a stage |
+| `move-task <task_id> <workflow_id> <stage_id>` | Move task to stage |
+| `update-status <task_id> <status>` | Update task status |
+| `eligible-tasks <project_id>` | Get tasks eligible for automated processing |
+| `help` | Show help message |
+
+## Examples
+
+```bash
+# List all active projects
+cd /Users/dalton/projects/teamwork && bun apps/teamwork_backend/teamwork_api_client/cli.ts list-projects
+
+# List tasks for a project
+cd /Users/dalton/projects/teamwork && bun apps/teamwork_backend/teamwork_api_client/cli.ts list-tasks 806515
+
+# Get task details
+cd /Users/dalton/projects/teamwork && bun apps/teamwork_backend/teamwork_api_client/cli.ts get-task 26781919
+
+# Move task to a stage
+cd /Users/dalton/projects/teamwork && bun apps/teamwork_backend/teamwork_api_client/cli.ts move-task 26781919 12345 67890
+```
+</available_commands>
+
+<adding_commands>
+## Adding New Commands
+
+If a command you need doesn't exist, add it to the CLI:
+
+**File:** `/Users/dalton/projects/teamwork/apps/teamwork_backend/teamwork_api_client/cli.ts`
+
+### Step 1: Add to COMMANDS object
 
 ```typescript
-try {
-  const result = await client.tasks.create(tasklistId, { name: 'Task' });
-  console.log('Created:', result.id);
-} catch (error) {
-  if (error instanceof Error) {
-    console.error('Failed:', error.message);
+const COMMANDS = {
+  // ... existing commands ...
+  'your-command': 'Description of your command',
+};
+```
+
+### Step 2: Add case in the switch statement
+
+```typescript
+case 'your-command': {
+  const arg1 = cmdArgs[0];
+  if (!arg1) {
+    console.error('Error: arg1 is required');
+    process.exit(1);
   }
-  throw error;
+
+  // Use existing resources:
+  // - tasks (TasksResource)
+  // - workflows (WorkflowsResource)
+  // - projects (ProjectsResource)
+
+  // Or use client.http for direct API calls:
+  const response = await client.http.get('/projects/api/v3/some-endpoint.json');
+  console.log(formatJson(response));
+  break;
 }
 ```
 
-### 4. Resource Hierarchy
+### Available Resources
+
+The CLI has access to:
+
+| Resource | Methods |
+|----------|---------|
+| `tasks` | `list()`, `listByProject()`, `listByTasklist()`, `get()`, `create()`, `update()`, `complete()`, `delete()` |
+| `workflows` | `list()`, `getStages()`, `moveTaskToStage()`, `getStageTasks()`, `getBacklogTasks()` |
+| `projects` | `list()`, `get()`, `getTasklists()`, `getActiveWorkflow()`, `searchByName()`, `create()`, `createTasklist()` |
+| `client.http` | `get()`, `post()`, `patch()`, `delete()` - for direct API calls |
+
+### Example: Add "list-tasklists" command
+
+```typescript
+// In COMMANDS object:
+'list-tasklists': 'List tasklists for a project',
+
+// In switch statement:
+case 'list-tasklists': {
+  const projectIdArg = cmdArgs[0];
+  if (!projectIdArg) {
+    console.error('Error: project_id is required');
+    process.exit(1);
+  }
+  const projectId = parseInt(projectIdArg);
+  console.log(`Listing tasklists for project ${projectId}...`);
+  const response = await projects.getTasklists(projectId);
+  console.log(`\nFound ${response.tasklists.length} tasklists:\n`);
+  for (const tl of response.tasklists) {
+    console.log(`  [${tl.id}] ${tl.name}`);
+  }
+  break;
+}
+```
+
+### API Authentication
+
+The API uses Basic Auth with format `token:X`. The client handles this automatically.
+If you need raw fetch, use:
+
+```typescript
+const response = await fetch(url, {
+  headers: {
+    'Authorization': `Basic ${Buffer.from(`${token}:X`).toString('base64')}`,
+    'Content-Type': 'application/json',
+  },
+});
+```
+</adding_commands>
+
+<resource_hierarchy>
+## Teamwork Resource Hierarchy
 
 ```
 Project
@@ -57,97 +147,16 @@ Project
         └── Task
               ├── Subtask (task with parentTaskId)
               └── Comment
+  └── Workflow (board)
+        └── Stage (column)
 ```
 
-Tasks belong to tasklists, not directly to projects. To create a task, you need a tasklist ID.
-</essential_principles>
-
-<intake>
-What would you like to do with Teamwork?
-
-1. **Get tasks** - Query tasks for a project or tasklist
-2. **Create task** - Create a new task or subtask
-3. **Create tasklist** - Create a new tasklist in a project
-4. **Move task** - Move a task between board stages
-5. **Comment on task** - Add a comment to a task
-6. **Log time** - Log time on a task
-7. **Manage projects** - List, create, or get project details
-
-**Wait for response before proceeding.**
-</intake>
-
-<routing>
-| Response | Next Action |
-|----------|-------------|
-| 1, "get", "query", "list", "fetch" | `workflows/get-tasks.md` |
-| 2, "create task", "new task", "subtask" | `workflows/create-task.md` |
-| 3, "tasklist", "task list" | `workflows/create-tasklist.md` |
-| 4, "move", "stage", "board", "kanban" | `workflows/move-task.md` |
-| 5, "comment" | `workflows/comment-on-task.md` |
-| 6, "time", "log", "track" | `workflows/log-time.md` |
-| 7, "project" | `workflows/manage-projects.md` |
-| 8, "activity", "status", "report" | `workflows/get-activity-status.md` |
-
-**After reading the workflow, follow it exactly.**
-</routing>
-
-<reference_index>
-All domain knowledge in `references/`:
-
-**API Client:** api-client.md (client setup, resources, response types)
-**Task Operations:** task-operations.md (CRUD, filtering, status updates)
-**Workflow/Board:** workflow-operations.md (stages, moving tasks)
-</reference_index>
-
-<workflows_index>
-| Workflow | Purpose |
-|----------|---------|
-| get-tasks.md | Query and filter tasks by project, status, or tasklist |
-| create-task.md | Create tasks and subtasks with assignments |
-| create-tasklist.md | Create tasklists within projects |
-| move-task.md | Move tasks between workflow/board stages |
-| comment-on-task.md | Add comments to tasks |
-| log-time.md | Log time entries on tasks |
-| manage-projects.md | List, get, or create projects |
-| get-activity-status.md | Report on work activity and status |
-</workflows_index>
-
-<quick_reference>
-## Common Operations
-
-**Get tasks for a project:**
-```typescript
-const tasks = await client.tasks.listByProject(projectId, {
-  statuses: ['new', 'active'],
-  include: ['tags', 'assignees']
-});
-```
-
-**Create a task:**
-```typescript
-const task = await client.tasks.create(tasklistId, {
-  name: 'Task name',
-  description: 'Details here',
-  priority: 'high',
-  dueDate: '2024-12-31',
-});
-```
-
-**Move task to board stage:**
-```typescript
-await client.workflows.moveTaskToStage(taskId, workflowId, stageId);
-```
-
-**Add comment:**
-```typescript
-await client.comments.postMarkdown(taskId, '**Update:** Work completed.');
-```
-</quick_reference>
+Tasks belong to tasklists, not directly to projects.
+</resource_hierarchy>
 
 <success_criteria>
 Skill workflow is complete when:
-- [ ] Correct API method identified for the operation
-- [ ] Required IDs gathered (project, tasklist, task, workflow, stage)
-- [ ] TypeScript code executed successfully
-- [ ] Result confirmed in Teamwork or via API response
+- [ ] Correct CLI command identified
+- [ ] Command executed successfully
+- [ ] Output confirms the operation
 </success_criteria>

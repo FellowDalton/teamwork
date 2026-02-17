@@ -192,18 +192,17 @@ export class WorkflowsResource {
 
   /**
    * Add tasks to a stage.
+   * Uses the correct V3 API format with taskIds array.
+   * @see https://apidocs.teamwork.com/guides/teamwork/workflows-api-getting-started-guide
    */
   async addTasksToStage(
     workflowId: number,
     stageId: number,
     taskIds: number[],
-    positionAfterCard?: number | null
+    _positionAfterCard?: number | null  // Not supported by V3 API
   ): Promise<void> {
-    const body: AddTaskToStageRequest = {
-      cards: taskIds.map((taskId) => ({
-        taskId,
-        positionAfterCard: positionAfterCard ?? null,
-      })),
+    const body = {
+      taskIds: taskIds,
     };
 
     await this.client.post(
@@ -225,22 +224,18 @@ export class WorkflowsResource {
   }
 
   /**
-   * Move a task to a different stage (update position in workflow).
+   * Move a task to a different stage.
+   * Uses the same POST endpoint as addTasksToStage - the API handles both add and move.
+   * @see https://apidocs.teamwork.com/guides/teamwork/workflows-api-getting-started-guide
    */
   async moveTaskToStage(
     taskId: number,
     workflowId: number,
     stageId: number,
-    positionAfterCard?: number | null
+    _positionAfterCard?: number | null  // Not supported by V3 API
   ): Promise<void> {
-    const body: UpdateTaskPositionRequest = {
-      card: {
-        columnId: stageId,
-        positionAfterCard: positionAfterCard ?? null,
-      },
-    };
-
-    await this.client.patch(`/projects/api/v3/tasks/${taskId}/workflows/${workflowId}.json`, body);
+    // Moving is the same as adding - POST to target stage with taskIds
+    await this.addTasksToStage(workflowId, stageId, [taskId]);
   }
 
   /**

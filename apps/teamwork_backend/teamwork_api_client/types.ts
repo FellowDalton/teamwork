@@ -123,7 +123,7 @@ export type TaskPriority = z.infer<typeof TaskPrioritySchema>;
 export const ApiTaskSchema = z.object({
   id: z.number(),
   name: z.string(),
-  description: z.string().optional().default(''),
+  description: z.string().nullable().optional().transform(v => v ?? ''),
   status: z.string().optional(),
   priority: z.string().nullable().optional(),
   progress: z.number().optional(),
@@ -353,7 +353,7 @@ export type ProjectResponse = z.infer<typeof ProjectResponseSchema>;
  */
 export const StageSchema = z.object({
   id: z.number(),
-  name: z.string(),
+  name: z.string().optional(),
   color: z.string().optional(),
   position: z.number().optional(),
   isCollapsed: z.boolean().optional(),
@@ -443,14 +443,11 @@ export type UpdateTaskPositionRequest = z.infer<typeof UpdateTaskPositionRequest
 
 /**
  * Add task to stage request.
+ * V3 API uses taskIds array format.
+ * @see https://apidocs.teamwork.com/guides/teamwork/workflows-api-getting-started-guide
  */
 export const AddTaskToStageRequestSchema = z.object({
-  cards: z.array(
-    z.object({
-      taskId: z.number(),
-      positionAfterCard: z.number().nullable().optional(),
-    })
-  ),
+  taskIds: z.array(z.number()),
 });
 
 export type AddTaskToStageRequest = z.infer<typeof AddTaskToStageRequestSchema>;

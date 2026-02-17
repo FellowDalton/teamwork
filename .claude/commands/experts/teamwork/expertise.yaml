@@ -1,0 +1,178 @@
+# Teamwork Expertise
+# Teamwork.com project management API and CLI operations
+# Last validated: 2026-02-06
+# Auto-updated by self-improvement workflow
+
+domain: teamwork
+purpose: Teamwork.com project management, task tracking, workflow boards, and time logging
+
+scope:
+  - Task CRUD and status management
+  - Workflow board stage operations
+  - Project and tasklist management
+  - Time logging
+  - Comment management
+  - User assignment
+  - Sprint orchestrator integration
+
+# ============================================================
+# CLI TOOL
+# ============================================================
+
+cli_tool:
+  location: /Users/dalton/projects/teamwork/apps/teamwork_backend/teamwork_api_client/cli.ts
+  runtime: bun
+  invocation: cd /Users/dalton/projects/teamwork && bun apps/teamwork_backend/teamwork_api_client/cli.ts <command> [args]
+  auth: env vars TEAMWORK_API_URL and TEAMWORK_BEARER_TOKEN loaded from .env in teamwork project root
+  api_base_url: https://deliver.fellow.dk
+
+  commands:
+    list-projects: "list-projects [status]  # status: active, archived, all"
+    list-tasks: "list-tasks <project_id> [status]  # status: new, active, completed"
+    get-task: "get-task <task_id>"
+    create-task: "create-task <tasklist_id> <name> [--description=...] [--priority=...]"
+    update-task: "update-task <task_id> [--name=...] [--description=...]"
+    update-status: "update-status <task_id> <status>"
+    update-task-dates: "update-task-dates <task_id> <start_date> <due_date>"
+    complete-task: "complete-task <task_id>"
+    comment-task: 'comment-task <task_id> "Comment text"'
+    assign-task: "assign-task <task_id> <user_id>"
+    bulk-assign: "bulk-assign <project_id> <user_id>"
+    list-tasklists: "list-tasklists <project_id>"
+    get-tasklist: "get-tasklist <tasklist_id>"
+    create-tasklist: "create-tasklist <project_id> <name>"
+    rename-tasklist: "rename-tasklist <tasklist_id> <new_name>"
+    delete-tasklist: "delete-tasklist <tasklist_id>"
+    update-tasklist: "update-tasklist <tasklist_id> [--start=...] [--due=...]"
+    move-task-to-tasklist: "move-task-to-tasklist <task_id> <tasklist_id>"
+    export-project: "export-project <project_id>"
+    list-workflows: "list-workflows  # BROKEN: schema validation error on stage names"
+    list-stages: "list-stages <workflow_id>"
+    stage-tasks: "stage-tasks <workflow_id> <stage_id>"
+    add-task-to-stage: "add-task-to-stage <task_id> <workflow_id> <stage_id>"
+    move-task: "move-task <task_id> <workflow_id> <stage_id>"
+    eligible-tasks: "eligible-tasks <project_id>"
+    list-users: "list-users [project_id]"
+    log-time: "log-time <project_id> <date> <hours> [minutes] [description] [--billable]"
+    log-time-task: 'log-time-task <task_id> <date> <hours> [minutes] ["Description"] [--billable]'
+    update-timelog: "update-timelog <timelog_id> <description>"
+
+  known_issues:
+    - "list-workflows fails with schema validation error (stage name field mismatch)"
+    - "No command for listing or deleting comments — use raw API"
+    - "No command for moving tasks to workflow backlog — must be done in UI"
+
+# ============================================================
+# PROJECTS
+# ============================================================
+
+projects:
+  ai_development:
+    name: "EXHAUSTO - AI Development"
+    id: 806824
+    purpose: "AI-assisted development with detailed story tasks"
+    workflow: ai_dev  # references workflows.ai_dev below
+
+  storyblok_implementation:
+    name: "EXHAUSTO - Storyblok CMS & NextPage PIM Implementation"
+    id: 806515
+    purpose: "Client-facing sprint tasklists"
+
+# ============================================================
+# WORKFLOWS (BOARD)
+# ============================================================
+
+workflows:
+  ai_dev:
+    id: 9904
+    name: "AI Dev"
+    project_id: 806824
+    stages:
+      in_progress:
+        id: 54876
+        name: "In progress"
+      review:
+        id: 54884
+        name: "Review"
+      done:
+        id: 54885
+        name: "Done"
+      ready:
+        id: 54900
+        name: "Ready"
+
+    stage_operations:
+      list_stages: "list-stages 9904"
+      list_tasks_in_stage: "stage-tasks 9904 <stage_id>"
+      add_to_stage: "add-task-to-stage <task_id> 9904 <stage_id>"
+      move_between_stages: "move-task <task_id> 9904 <stage_id>"
+      move_to_backlog: "NOT SUPPORTED VIA API — must be done in Teamwork UI"
+
+    backlog:
+      description: "Tasks not assigned to any stage. Accessible via GET /projects/api/v3/workflows/9904/backlog.json"
+      api_note: "No POST/PUT/DELETE endpoint exists to move tasks TO backlog. The v3 API only supports adding/moving tasks between stages, not removing from stages."
+
+# ============================================================
+# RAW API PATTERNS
+# ============================================================
+
+api_patterns:
+  base: "Uses TeamworkHttpClient with methods: get, post, patch, put, delete"
+  client_file: "/Users/dalton/projects/teamwork/apps/teamwork_backend/teamwork_api_client/client.ts"
+
+  resource_files:
+    tasks: "/Users/dalton/projects/teamwork/apps/teamwork_backend/teamwork_api_client/resources/tasks.ts"
+    workflows: "/Users/dalton/projects/teamwork/apps/teamwork_backend/teamwork_api_client/resources/workflows.ts"
+    projects: "/Users/dalton/projects/teamwork/apps/teamwork_backend/teamwork_api_client/resources/projects.ts"
+
+  useful_raw_endpoints:
+    get_project_workflows: "GET /projects/api/v3/projects/{project_id}/workflows.json"
+    get_task_detail: "GET /projects/api/v3/tasks/{task_id}.json"
+    update_task: "PATCH /projects/api/v3/tasks/{task_id}.json"
+    list_comments: "GET /tasks/{task_id}/comments.json  # v1 API"
+    add_comment: "POST /tasks/{task_id}/comments.json  # v1 API"
+    delete_comment: "DELETE /comments/{comment_id}.json  # v1 API"
+    workflow_backlog: "GET /projects/api/v3/workflows/{workflow_id}/backlog.json"
+    add_tasks_to_stage: "POST /projects/api/v3/workflows/{workflow_id}/stages/{stage_id}/tasks.json"
+
+  delete_method_limitation: "client.delete() does not send request body — only params. For DELETE with body, need raw fetch."
+
+# ============================================================
+# TIME LOGGING
+# ============================================================
+
+time_logging:
+  description_language: Danish
+  description_format: "Must start with 'Jeg har...' followed by what was done"
+  example: 'log-time-task 26796667 2026-02-06 2 30 "Jeg har implementeret dynamic routing." --billable'
+
+# ============================================================
+# RESOURCE HIERARCHY
+# ============================================================
+
+resource_hierarchy:
+  structure: |
+    Project
+      └── Tasklist (container for tasks)
+            └── Task
+                  ├── Subtask (task with parentTaskId)
+                  └── Comment
+      └── Workflow (board)
+            └── Stage (column)
+  notes:
+    - "Tasks belong to tasklists, not directly to projects"
+    - "A workflow can span multiple projects (projectIds array)"
+    - "Backlog = tasks not assigned to any workflow stage"
+
+# ============================================================
+# SPRINT ORCHESTRATOR INTEGRATION
+# ============================================================
+
+orchestrator_integration:
+  description: "The sprint orchestrator uses Teamwork for story tracking"
+  operations:
+    - "Creates comments on tasks for build completion notifications"
+    - "Creates comments for preview environment URLs"
+    - "Moves tasks between workflow stages based on sprint progress"
+  integration_file: "adws/adw_modules/teamwork_ops.py"
+  skill_file: ".claude/skills/manage-teamwork/SKILL.md"

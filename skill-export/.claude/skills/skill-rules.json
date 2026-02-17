@@ -1,0 +1,95 @@
+{
+  "version": "1.0",
+  "description": "Skill activation triggers for Claude Code. Controls when skills automatically suggest or block actions.",
+  "skills": {
+    "manage-teamwork": {
+      "type": "domain",
+      "enforcement": "suggest",
+      "priority": "high",
+      "description": "Manage Teamwork.com projects, tasks, and workflows using the TypeScript API client",
+      "promptTriggers": {
+        "keywords": [
+          "teamwork",
+          "Teamwork",
+          "task",
+          "tasks",
+          "project",
+          "projects",
+          "tasklist",
+          "subtask",
+          "time entry",
+          "log time",
+          "time tracking",
+          "board stage",
+          "kanban",
+          "workflow",
+          "comment on task",
+          "create task",
+          "move task",
+          "assign task",
+          "budget",
+          "utilization"
+        ],
+        "intentPatterns": [
+          "(create|add|make).*?(task|subtask|tasklist|project)",
+          "(get|list|query|fetch).*?(task|project|tasklist)",
+          "(move|assign|update).*?task",
+          "(log|track|record).*?time",
+          "(comment|add comment).*?task",
+          "teamwork.*?(api|integration|client)",
+          "(board|kanban|workflow).*?(stage|column|move)"
+        ]
+      }
+    },
+    "railway-cli": {
+      "type": "domain",
+      "enforcement": "suggest",
+      "priority": "critical",
+      "description": "Diagnose, debug, and manage Railway deployments using the CLI. Use when troubleshooting deployment failures, checking logs, managing environment variables, or investigating service issues.",
+      "promptTriggers": {
+        "keywords": [
+          "railway",
+          "Railway",
+          "deploy",
+          "deployment",
+          "deploy logs",
+          "502",
+          "503",
+          "application failed",
+          "failed to respond",
+          "deployment failed",
+          "railway logs",
+          "railway variables",
+          "environment variables",
+          "CORS error",
+          "backend down",
+          "service crashed",
+          "redeploy"
+        ],
+        "intentPatterns": [
+          "(railway|Railway).*?(deploy|logs|variables|status|service)",
+          "(deployment|deploy).*?(failed|error|issue|logs)",
+          "(502|503|500).*?(error|gateway|response)",
+          "application.*?(failed|crashed|not responding)",
+          "(check|view|see).*?(deploy|deployment).*?logs",
+          "(environment|env).*?(variables|vars|config)",
+          "(backend|server).*?(down|crashed|failing|502)",
+          "CORS.*?(error|issue|failing)"
+        ]
+      }
+    }
+  },
+  "notes": {
+    "enforcement_types": {
+      "suggest": "Skill suggestion appears but doesn't block execution",
+      "block": "Requires skill to be used before proceeding (guardrail)",
+      "warn": "Shows warning but allows proceeding"
+    },
+    "priority_levels": {
+      "critical": "Highest - Always trigger when matched",
+      "high": "Important - Trigger for most matches",
+      "medium": "Moderate - Trigger for clear matches",
+      "low": "Optional - Trigger only for explicit matches"
+    }
+  }
+}

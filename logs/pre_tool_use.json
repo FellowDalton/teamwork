@@ -1,190 +1,87 @@
 [
   {
-    "session_id": "1aed05a9-ec20-4b1b-8b31-5461b709786c",
-    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/1aed05a9-ec20-4b1b-8b31-5461b709786c.jsonl",
+    "session_id": "3afa26d2-bf3b-4644-8c79-19523118553f",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/3afa26d2-bf3b-4644-8c79-19523118553f.jsonl",
     "cwd": "/Users/dalton/projects/teamwork",
     "permission_mode": "bypassPermissions",
     "hook_event_name": "PreToolUse",
-    "tool_name": "Read",
+    "tool_name": "Grep",
     "tool_input": {
-      "file_path": "/Users/dalton/projects/teamwork-frontend/index.html"
+      "pattern": "/api/",
+      "path": "/Users/dalton/projects/teamwork/apps/teamwork_backend/server-sdk.ts",
+      "output_mode": "content",
+      "-C": 2,
+      "-n": true
     },
-    "tool_use_id": "toolu_013XRfTPcjpNg3N8cGR3mke7",
+    "tool_use_id": "toolu_01WRjAG3Lygq33UnyPCHJXKo",
     "agent_id": "unknown"
   },
   {
-    "session_id": "1aed05a9-ec20-4b1b-8b31-5461b709786c",
-    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/1aed05a9-ec20-4b1b-8b31-5461b709786c.jsonl",
+    "session_id": "3afa26d2-bf3b-4644-8c79-19523118553f",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/3afa26d2-bf3b-4644-8c79-19523118553f.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Glob",
+    "tool_input": {
+      "pattern": "apps/teamwork_frontend/**/*.{ts,tsx}"
+    },
+    "tool_use_id": "toolu_01AEjJcWNCHaTAzxyZStKcW5",
+    "agent_id": "unknown"
+  },
+  {
+    "session_id": "3afa26d2-bf3b-4644-8c79-19523118553f",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/3afa26d2-bf3b-4644-8c79-19523118553f.jsonl",
     "cwd": "/Users/dalton/projects/teamwork",
     "permission_mode": "bypassPermissions",
     "hook_event_name": "PreToolUse",
     "tool_name": "Bash",
     "tool_input": {
-      "command": "find /Users/dalton/projects -name \"netlify.toml\" -o -name \"_redirects\" 2>/dev/null | head -20",
-      "description": "Find any Netlify config files across all projects"
+      "command": "find /Users/dalton/projects/teamwork/apps/teamwork_frontend -type f \\( -name \"*.ts\" -o -name \"*.tsx\" \\) ! -path \"*/node_modules/*\" 2>/dev/null | head -30",
+      "description": "Find frontend source files"
     },
-    "tool_use_id": "toolu_01C7qJhXDYLAomrLcjFsAex9",
+    "tool_use_id": "toolu_017TMJZVByH9k81wAAyvK1UQ",
     "agent_id": "unknown"
   },
   {
-    "session_id": "1aed05a9-ec20-4b1b-8b31-5461b709786c",
-    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/1aed05a9-ec20-4b1b-8b31-5461b709786c.jsonl",
-    "cwd": "/Users/dalton/projects/teamwork",
-    "permission_mode": "bypassPermissions",
-    "hook_event_name": "PreToolUse",
-    "tool_name": "Bash",
-    "tool_input": {
-      "command": "grep -r \"netlify\\|_redirects\" /Users/dalton/projects/*/README.md 2>/dev/null | head -20",
-      "description": "Search READMEs for Netlify mentions"
-    },
-    "tool_use_id": "toolu_01G6bCkV7rAjtLXEfk61TwRL",
-    "agent_id": "unknown"
-  },
-  {
-    "session_id": "1aed05a9-ec20-4b1b-8b31-5461b709786c",
-    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/1aed05a9-ec20-4b1b-8b31-5461b709786c.jsonl",
+    "session_id": "3afa26d2-bf3b-4644-8c79-19523118553f",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/3afa26d2-bf3b-4644-8c79-19523118553f.jsonl",
     "cwd": "/Users/dalton/projects/teamwork",
     "permission_mode": "bypassPermissions",
     "hook_event_name": "PreToolUse",
     "tool_name": "Read",
     "tool_input": {
-      "file_path": "/Users/dalton/projects/guides/interactive-webinar/_redirects"
+      "file_path": "/Users/dalton/projects/teamwork/apps/teamwork_frontend/contexts/AuthContext.tsx"
     },
-    "tool_use_id": "toolu_01FgcH9FrcRhzWPA1DVHZZc2",
+    "tool_use_id": "toolu_017cfxzLNxNugfHudBKi61DM",
     "agent_id": "unknown"
   },
   {
-    "session_id": "1aed05a9-ec20-4b1b-8b31-5461b709786c",
-    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/1aed05a9-ec20-4b1b-8b31-5461b709786c.jsonl",
-    "cwd": "/Users/dalton/projects/teamwork",
-    "permission_mode": "bypassPermissions",
-    "hook_event_name": "PreToolUse",
-    "tool_name": "Bash",
-    "tool_input": {
-      "command": "cd /Users/dalton/projects/LingoLift && git log --oneline -20 2>/dev/null",
-      "description": "Check LingoLift git history for context"
-    },
-    "tool_use_id": "toolu_014fBrnNB78zyiSN6fRCHjkE",
-    "agent_id": "unknown"
-  },
-  {
-    "session_id": "1aed05a9-ec20-4b1b-8b31-5461b709786c",
-    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/1aed05a9-ec20-4b1b-8b31-5461b709786c.jsonl",
+    "session_id": "3afa26d2-bf3b-4644-8c79-19523118553f",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/3afa26d2-bf3b-4644-8c79-19523118553f.jsonl",
     "cwd": "/Users/dalton/projects/teamwork",
     "permission_mode": "bypassPermissions",
     "hook_event_name": "PreToolUse",
     "tool_name": "Read",
     "tool_input": {
-      "file_path": "/Users/dalton/projects/LingoLift/netlify.toml"
+      "file_path": "/Users/dalton/projects/teamwork/apps/teamwork_frontend/App.tsx"
     },
-    "tool_use_id": "toolu_01XGgkwqZn9Y6ZCbMmcmasw6",
+    "tool_use_id": "toolu_01R2KD9uGj2CaE2mDw3pQUgU",
     "agent_id": "unknown"
   },
   {
-    "session_id": "1aed05a9-ec20-4b1b-8b31-5461b709786c",
-    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/1aed05a9-ec20-4b1b-8b31-5461b709786c.jsonl",
-    "cwd": "/Users/dalton/projects/teamwork",
-    "permission_mode": "bypassPermissions",
-    "hook_event_name": "PreToolUse",
-    "tool_name": "Bash",
-    "tool_input": {
-      "command": "grep -l \"aistudiocdn\\|gemini\\|google/genai\" /Users/dalton/projects/*/index.html /Users/dalton/projects/*/package.json 2>/dev/null | head -20",
-      "description": "Find Gemini App Builder projects by their CDN references"
-    },
-    "tool_use_id": "toolu_011cATN4AexbBL28hsB8fCGg",
-    "agent_id": "unknown"
-  },
-  {
-    "session_id": "1aed05a9-ec20-4b1b-8b31-5461b709786c",
-    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/1aed05a9-ec20-4b1b-8b31-5461b709786c.jsonl",
-    "cwd": "/Users/dalton/projects/teamwork",
-    "permission_mode": "bypassPermissions",
-    "hook_event_name": "PreToolUse",
-    "tool_name": "Bash",
-    "tool_input": {
-      "command": "ls -la /Users/dalton/projects/lead-gen-novenco/",
-      "description": "Check lead-gen-novenco project (recently modified)"
-    },
-    "tool_use_id": "toolu_01WxnorsBMcskZs4Bavaq2kd",
-    "agent_id": "unknown"
-  },
-  {
-    "session_id": "1aed05a9-ec20-4b1b-8b31-5461b709786c",
-    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/1aed05a9-ec20-4b1b-8b31-5461b709786c.jsonl",
+    "session_id": "3afa26d2-bf3b-4644-8c79-19523118553f",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/3afa26d2-bf3b-4644-8c79-19523118553f.jsonl",
     "cwd": "/Users/dalton/projects/teamwork",
     "permission_mode": "bypassPermissions",
     "hook_event_name": "PreToolUse",
     "tool_name": "Read",
     "tool_input": {
-      "file_path": "/Users/dalton/projects/lead-gen-novenco/railway.json"
+      "file_path": "/Users/dalton/projects/teamwork/apps/teamwork_frontend/vite.config.ts"
     },
-    "tool_use_id": "toolu_0135Czx1KzvGq7zkoVktAhrj",
+    "tool_use_id": "toolu_0191dwTBWLi8dhSJFR28aya7",
     "agent_id": "unknown"
-  },
-  {
-    "session_id": "1aed05a9-ec20-4b1b-8b31-5461b709786c",
-    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/1aed05a9-ec20-4b1b-8b31-5461b709786c.jsonl",
-    "cwd": "/Users/dalton/projects/teamwork",
-    "permission_mode": "bypassPermissions",
-    "hook_event_name": "PreToolUse",
-    "tool_name": "Bash",
-    "tool_input": {
-      "command": "cd /Users/dalton/projects/lead-gen-novenco && git log --oneline -20 2>/dev/null",
-      "description": "Check lead-gen-novenco git history"
-    },
-    "tool_use_id": "toolu_01AvjhsrnUeexU3WQ2X4b7F5",
-    "agent_id": "unknown"
-  },
-  {
-    "session_id": "1aed05a9-ec20-4b1b-8b31-5461b709786c",
-    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/1aed05a9-ec20-4b1b-8b31-5461b709786c.jsonl",
-    "cwd": "/Users/dalton/projects/teamwork",
-    "permission_mode": "bypassPermissions",
-    "hook_event_name": "PreToolUse",
-    "tool_name": "Read",
-    "tool_input": {
-      "file_path": "/Users/dalton/projects/lead-gen-novenco/index.html"
-    },
-    "tool_use_id": "toolu_018d4MXPZc5kBtyy5iyvUfGc",
-    "agent_id": "unknown"
-  },
-  {
-    "session_id": "1aed05a9-ec20-4b1b-8b31-5461b709786c",
-    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/1aed05a9-ec20-4b1b-8b31-5461b709786c.jsonl",
-    "cwd": "/Users/dalton/projects/teamwork",
-    "permission_mode": "bypassPermissions",
-    "hook_event_name": "PreToolUse",
-    "tool_name": "Read",
-    "tool_input": {
-      "file_path": "/Users/dalton/projects/lead-gen-novenco/server.js"
-    },
-    "tool_use_id": "toolu_0182KtA4Rzsi4jFueVvG8tKw",
-    "agent_id": "unknown"
-  },
-  {
-    "session_id": "1aed05a9-ec20-4b1b-8b31-5461b709786c",
-    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/1aed05a9-ec20-4b1b-8b31-5461b709786c.jsonl",
-    "cwd": "/Users/dalton/projects/teamwork",
-    "permission_mode": "bypassPermissions",
-    "hook_event_name": "PreToolUse",
-    "tool_name": "Read",
-    "tool_input": {
-      "file_path": "/Users/dalton/projects/lead-gen-novenco/Dockerfile"
-    },
-    "tool_use_id": "toolu_013SvACT3Twzi8kfvhZzgWS2",
-    "agent_id": "unknown"
-  },
-  {
-    "session_id": "1aed05a9-ec20-4b1b-8b31-5461b709786c",
-    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/1aed05a9-ec20-4b1b-8b31-5461b709786c.jsonl",
-    "cwd": "/Users/dalton/projects/teamwork",
-    "permission_mode": "bypassPermissions",
-    "hook_event_name": "PreToolUse",
-    "tool_name": "Read",
-    "tool_input": {
-      "file_path": "/Users/dalton/projects/lead-gen-novenco/package.json"
-    },
-    "tool_use_id": "toolu_012LWmZBicPFQGkL5wbTXRjT",
-    "agent_id": "unknown"
+  }
+]"
   }
 ]

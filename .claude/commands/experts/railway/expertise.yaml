@@ -1,0 +1,402 @@
+# Railway Expertise
+# Railway deployment and infrastructure management
+# Last validated: 2026-02-13
+# Auto-updated by self-improvement workflow
+
+domain: railway
+purpose: Railway deployment, configuration, and service management
+
+scope:
+  - Railway deployment workflows
+  - Environment configuration
+  - Service management
+  - Domain configuration
+  - Secrets management
+  - Deployment debugging
+  - Scaling and multi-region configuration
+  - Monorepo deployments
+
+project_context:
+  # Exhausto-specific configuration
+  project_id: "30e90dee-7fcf-4e5f-8829-a7eda67b5c30"
+
+  environments:
+    production:
+      branch: main
+      url: https://frontend-production-dddf.up.railway.app
+    test:
+      branch: test
+      url: https://frontend-test-cc3b.up.railway.app
+
+  frontend:
+    path: apps/frontend
+    service_id: "7ff0734c-6f56-46ef-b838-e11dc41bd90a"
+    node_version: "22"  # Required by dependencies (vite, jsdom require ^20.19.0+)
+    config_files:
+      - apps/frontend/railway.json
+    env_vars:
+      - STORYBLOK_TOKEN
+      - STORYBLOK_PERSONAL_ACCESS_TOKEN
+      - NODE_ENV=production
+    root_directory: "apps/frontend"  # CRITICAL: Must be set in Railway Dashboard → Service Settings → Source
+    railpack_notes:
+      - "Using Railpack (Railway default builder) since 2026-02"
+      - "Node.js version specified via engines.node in package.json (>=22)"
+      - "If cache errors occur, set RAILPACK_NO_CACHE=true in Railway dashboard"
+      - "CRITICAL: Root Directory must be set to 'apps/frontend' in Railway service settings"
+      - "Without root directory, Railpack analyzes repo root and fails: 'could not determine how to build'"
+      - "Root directory is a Railway Dashboard setting, NOT a railway.json or env var"
+    features:
+      - Health check on /
+      - ON_FAILURE restart policy (max 3 retries)
+      - Start command: npm run start (uses PORT env var)
+
+  pim_sync:
+    path: apps/pim-sync
+    runtime: bun
+    config_files:
+      - apps/pim-sync/railway.json
+    env_vars:
+      - PIM_BASE_URL
+      - PIM_USERNAME
+      - PIM_PASSWORD
+      - PIM_CONTEXT
+      - PIM_CONTEXT_ID
+      - PIM_LANG_ID
+      - STORYBLOK_MANAGEMENT_TOKEN
+      - STORYBLOK_SPACE_ID
+      - SYNC_COUNTRIES
+      - SYNC_DRY_RUN (optional, default false)
+      - SYNC_BATCH_SIZE (optional, default 50)
+      - SYNC_LOG_LEVEL (optional, default info)
+    root_directory: "apps/pim-sync"  # CRITICAL: Must be set in Railway Dashboard
+    service_type: cron
+    cron_schedule: "0 */4 * * *"
+    start_command: "bun run src/index.ts"
+    features:
+      - Cron service (no healthcheck, no restart policy)
+      - Bun runtime auto-detected via bun.lock
+      - Watch patterns scoped to /apps/pim-sync/**
+      - Env var validation at startup (exits with clear error on missing vars)
+
+cli_tool:
+  name: railway
+  install: "npm install -g @railway/cli"
+  auth: "railway login"
+  whoami: "railway whoami"
+
+  commands:
+    project:
+      list: "railway list"
+      link: "railway link"
+      unlink: "railway unlink"
+      init: "railway init"
+      status: "railway status"
+      status_json: "railway status --json"
+
+    environment:
+      list: "railway environment"
+      switch: "railway environment [name]"
+      new: "railway environment new [name]"
+      new_duplicate: "railway environment new [name] --duplicate [source]"
+      delete: "railway environment delete [name] --yes"
+
+    deploy:
+      up: "railway up"
+      up_detach: "railway up --detach"
+      up_service: "railway up --service [name]"
+      up_env: "railway up --environment [name] --service [name]"
+      redeploy: "railway redeploy"
+
+    logs:
+      all: "railway logs"
+      follow: "railway logs --follow"
+      build: "railway logs --build"
+      deployment: "railway logs --deployment"
+      service: "railway logs --service [name]"
+      lines: "railway logs --lines [n]"
+      json: "railway logs --json"
+
+    variables:
+      list: "railway variables"
+      list_kv: "railway variables --kv"
+      set: "railway variables --set \"KEY=value\""
+      set_multi: "railway variables --set \"KEY1=val1\" --set \"KEY2=val2\""
+      service: "railway variables --service [name]"
+      json: "railway variables --json"
+
+    domains:
+      list: "railway domain"
+      list_json: "railway domain --json"
+      list_for_env: "railway domain --service [name] --environment [env]"
+      add: "railway domain add [domain]"
+
+    services:
+      select: "railway service"
+      link: "railway service link [name]"
+      status: "railway service status"
+      add_empty: "railway add --service [name]"
+      add_db: "railway add --database [postgres|mysql|redis|mongo]"
+      add_from_repo: "railway add --service [name] --repo [owner/repo]"
+      add_from_image: "railway add --service [name] --image [image]"
+      connect: "railway connect [postgres|redis|mysql]"
+
+    debugging:
+      ssh: "railway ssh"
+      ssh_cmd: "railway ssh -- [command]"
+      run: "railway run [command]"
+      shell: "railway shell"
+
+deployment:
+  builders:
+    railpack:
+      description: Default builder - zero-config for most projects
+      docs: "https://railpack.com/llms.txt"
+      env_vars:
+        - RAILPACK_STATIC_FILE_ROOT
+        - RAILPACK_NODE_VERSION
+        - RAILPACK_PYTHON_VERSION
+        - RAILPACK_PACKAGES
+        - RAILPACK_BUILD_APT_PACKAGES
+        - RAILPACK_DEPLOY_APT_PACKAGES
+
+    nixpacks:
+      description: Alternative builder with Nix packages
+      config_file: "nixpacks.toml"
+
+    dockerfile:
+      description: Custom Dockerfile builds
+      config_file: "Dockerfile"
+
+    bun:
+      description: "Bun runtime auto-detected by Railpack via bun.lock in root directory"
+      detection: "bun.lock or bunfig.toml in service root directory"
+      start_command: "bun run src/index.ts (or bun run <entrypoint>)"
+      notes:
+        - "Railpack detects Bun automatically, no builder env var needed"
+        - "Root Directory must be set so Railpack finds bun.lock (same as Node.js)"
+        - "Native TypeScript execution, no build step required"
+        - "Works for both web and cron services"
+
+  configuration:
+    railway_json:
+      schema: "https://railway.app/railway.schema.json"
+      sections: [build, deploy]
+      options:
+        build: [builder, buildCommand, dockerfilePath, watchPatterns]
+        deploy: [startCommand, healthcheckPath, healthcheckTimeout, restartPolicyType, cronSchedule]
+
+    railway_toml:
+      sections: [build, deploy]
+      alternative_to: railway.json
+
+  cron_services:
+    description: "Scheduled jobs that run, execute, and exit. Not web servers."
+    railway_json_config:
+      cronSchedule: "Cron expression (e.g. '0 */4 * * *' for every 4 hours)"
+    differences_from_web:
+      - "No healthcheckPath (not a web server)"
+      - "No restartPolicyType (cron scheduler handles re-runs)"
+      - "No PORT env var needed (not listening on a port)"
+      - "Process expected to exit 0 after completion"
+    common_schedules:
+      every_hour: "0 * * * *"
+      every_2_hours: "0 */2 * * *"
+      every_4_hours: "0 */4 * * *"
+      every_6_hours: "0 */6 * * *"
+      daily_midnight: "0 0 * * *"
+
+variables:
+  template_syntax: "${{NAMESPACE.VAR}}"
+  namespaces:
+    shared: Project-wide shared variables
+    service_name: Variables from another service (case-sensitive)
+
+  railway_provided:
+    networking:
+      - "RAILWAY_PUBLIC_DOMAIN (only if domain configured)"
+      - "RAILWAY_PRIVATE_DOMAIN (always, format: service.railway.internal)"
+      - "RAILWAY_STATIC_URL (same as PUBLIC_DOMAIN)"
+      - "RAILWAY_SERVICE_NAME_URL (cross-reference format)"
+    context:
+      - RAILWAY_PROJECT_ID
+      - RAILWAY_PROJECT_NAME
+      - RAILWAY_ENVIRONMENT_ID
+      - RAILWAY_ENVIRONMENT_NAME
+      - RAILWAY_SERVICE_ID
+      - RAILWAY_SERVICE_NAME
+      - RAILWAY_DEPLOYMENT_ID
+      - RAILWAY_REPLICA_ID
+      - RAILWAY_REPLICA_REGION
+    volume:
+      - RAILWAY_VOLUME_NAME
+      - RAILWAY_VOLUME_MOUNT_PATH
+    git:
+      - RAILWAY_GIT_COMMIT_SHA
+      - RAILWAY_GIT_BRANCH
+
+  wiring_patterns:
+    frontend_to_backend: "${{backend.RAILWAY_PUBLIC_DOMAIN}}"
+    service_to_postgres: "${{Postgres.DATABASE_URL}}"
+    service_to_redis: "${{Redis.REDIS_URL}}"
+    service_to_mongo: "${{Mongo.MONGO_URL}}"
+    service_to_service: "http://${{api.RAILWAY_PRIVATE_DOMAIN}}:${{api.PORT}}"
+
+monorepo:
+  types:
+    isolated:
+      description: Independent apps, no shared code
+      config: Set root directory per service
+      use_when: Different languages, no shared packages
+
+    shared:
+      description: Apps share code from common packages
+      config: Use custom build/start commands, NOT root directory
+      use_when: TypeScript monorepo with workspaces
+      examples:
+        pnpm: "pnpm --filter backend build"
+        npm: "npm run build --workspace=packages/backend"
+        turbo: "turbo run build --filter=backend"
+
+  watch_paths:
+    purpose: Prevent cross-service rebuilds
+    format: gitignore-style patterns
+    example: ["/packages/backend/**", "/packages/shared/**"]
+
+  common_mistake: Setting root directory for shared monorepos breaks imports
+
+  examples_in_project:
+    frontend: "apps/frontend (Node.js, web service, root dir set in Dashboard)"
+    pim_sync: "apps/pim-sync (Bun, cron service, root dir set in Dashboard)"
+  note: "This project uses isolated monorepo pattern -- each service has its own root directory, runtime, and railway.json. No shared workspace packages between services."
+
+regions:
+  available:
+    us-west2: US West (California)
+    us-east4-eqdc4a: US East (Virginia)
+    europe-west4-drams3a: EU West (Amsterdam)
+    asia-southeast1-eqsg3a: Southeast Asia (Singapore)
+
+  multi_region_config:
+    format: '{ "us-west2": { "numReplicas": 3 } }'
+
+debugging:
+  workflow:
+    1: "railway logs --build (check build errors)"
+    2: "railway logs --deployment (check runtime errors)"
+    3: "railway variables --kv (verify env vars)"
+    4: "railway status (confirm service state)"
+    5: "railway ssh -- env (verify container env)"
+
+  common_issues:
+    502_error:
+      causes:
+        - Wrong port (not using $PORT)
+        - Wrong host (localhost instead of 0.0.0.0)
+        - Crash on startup
+        - Timeout during start
+      fix: "server.listen(process.env.PORT, '0.0.0.0')"
+
+    build_failure:
+      causes:
+        - Missing package.json scripts
+        - Wrong Node version (check package.json engines)
+        - Private package access
+        - Cache lock errors (EBUSY)
+        - "Monorepo: Root Directory not set in Railway service settings (Railpack analyzes repo root)"
+      diagnose: "railway logs --build --latest --lines 50"
+      cache_fix: "Set cacheDirectories = [] in nixpacks.toml phases"
+      root_dir_fix: "Railway Dashboard → Service → Settings → Source → Root Directory"
+
+    missing_env_vars:
+      diagnose: "railway variables --kv | grep -E 'API_KEY|URL|TOKEN'"
+      fix: "railway variables --set 'KEY=value'"
+
+key_files:
+  project_config: "railway.json or railway.toml"
+  nixpacks_config: "nixpacks.toml"
+  railpack_config: "railpack.json"
+  dockerfile: "Dockerfile"
+
+docs:
+  llm_optimized:
+    full: "https://docs.railway.com/api/llms-docs.md"
+    index: "https://railway.com/llms.txt"
+    templates: "https://railway.com/llms-templates.md"
+    changelog: "https://railway.com/llms-changelog.md"
+
+  common_paths:
+    projects: "https://docs.railway.com/guides/projects.md"
+    deployments: "https://docs.railway.com/guides/deployments.md"
+    variables: "https://docs.railway.com/guides/variables.md"
+    cli: "https://docs.railway.com/reference/cli-api.md"
+
+sprint_orchestrator_integration:
+  # ADW Sprint Orchestrator creates PR environments for track previews
+  module: adws/adw_modules/railway_ops.py
+
+  pr_environment_workflow:
+    trigger: "Track completion in sprint orchestrator"
+    steps:
+      1: "Push branch to remote origin"
+      2: "Create PR environment (duplicated from test)"
+      3: "Deploy frontend service to environment"
+      4: "Retrieve/generate public URL"
+      5: "Display URL at human checkpoint"
+    cleanup: "Environments deleted when worktrees cleaned up"
+
+  environment_naming:
+    pattern: "pr-{sanitized-branch-name}"
+    sanitization:
+      - "Replace / with -"
+      - "Remove special characters except hyphens"
+      - "Truncate to 50 chars max"
+      - "Add pr- prefix"
+    example: "story/1-2-routing -> pr-story-1-2-routing"
+
+  key_functions:
+    create_pr_environment: "Creates env duplicated from test"
+    deploy_to_environment: "railway up --detach --environment --service"
+    get_environment_url: "railway domain --json, generates if needed"
+    delete_pr_environment: "railway environment delete --yes"
+    create_and_deploy_pr_environment: "Full orchestration function"
+
+  configuration:
+    project_id_env: "RAILWAY_PROJECT_ID"
+    base_environment: "test"
+    frontend_service: "frontend"
+    frontend_path: "apps/frontend"
+    timeout: "120 seconds"
+
+  data_types:
+    location: "adws/adw_modules/sprint_types.py"
+    fields:
+      - "pr_environment_url: Optional[str]"
+      - "pr_environment_name: Optional[str]"
+
+  cleanup_integration:
+    command: ".claude/commands/cleanup-worktrees.md"
+    steps:
+      - "Derive env name from branch using sanitize_environment_name()"
+      - "Call delete_pr_environment(env_name)"
+      - "Graceful failure if env doesn't exist"
+
+workflow:
+  initial_setup:
+    1: "railway login"
+    2: "railway link (or railway init)"
+    3: "Configure environment variables"
+    4: "railway up"
+
+  debugging_flow:
+    1: "railway status (check current state)"
+    2: "railway logs --build (build issues)"
+    3: "railway logs --deployment (runtime issues)"
+    4: "railway variables --kv (missing env vars)"
+    5: "railway ssh (live debugging)"
+
+  pr_environment_flow:
+    1: "railway environment new pr-branch-name --duplicate test"
+    2: "railway up --detach --environment pr-branch-name --service frontend"
+    3: "railway domain --service frontend --environment pr-branch-name --json"
+    4: "railway environment delete pr-branch-name --yes"

@@ -256,8 +256,9 @@ export class TasksResource {
     if (options.status !== undefined) body.task.status = options.status;
     if (options.priority !== undefined) body.task.priority = options.priority;
     if (options.progress !== undefined) body.task.progress = options.progress;
-    if (options.startDate !== undefined) body.task.startDate = options.startDate;
-    if (options.dueDate !== undefined) body.task.dueDate = options.dueDate;
+    // Note: V3 API uses 'startAt' and 'dueAt' for updates, not 'startDate' and 'dueDate'
+    if (options.startDate !== undefined) (body.task as any).startAt = options.startDate;
+    if (options.dueDate !== undefined) (body.task as any).dueAt = options.dueDate;
     if (options.estimatedMinutes !== undefined) body.task.estimatedMinutes = options.estimatedMinutes;
     if (options.tagIds !== undefined) body.task.tagIds = options.tagIds;
 

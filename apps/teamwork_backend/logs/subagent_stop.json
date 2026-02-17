@@ -328,5 +328,35 @@
     "stop_hook_active": false,
     "agent_id": "a9dd94e",
     "agent_transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/agent-a9dd94e.jsonl"
+  },
+  {
+    "session_id": "3afa26d2-bf3b-4644-8c79-19523118553f",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/3afa26d2-bf3b-4644-8c79-19523118553f.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork/apps/teamwork_backend",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "ab219cb",
+    "agent_transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/3afa26d2-bf3b-4644-8c79-19523118553f/subagents/agent-ab219cb.jsonl"
+  },
+  {
+    "session_id": "3afa26d2-bf3b-4644-8c79-19523118553f",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/3afa26d2-bf3b-4644-8c79-19523118553f.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork/apps/teamwork_backend",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "ab8e1f2",
+    "agent_transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/3afa26d2-bf3b-4644-8c79-19523118553f/subagents/agent-ab8e1f2.jsonl"
+  },
+  {
+    "session_id": "3afa26d2-bf3b-4644-8c79-19523118553f",
+    "transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/3afa26d2-bf3b-4644-8c79-19523118553f.jsonl",
+    "cwd": "/Users/dalton/projects/teamwork/apps/teamwork_backend",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a2c1e33",
+    "agent_transcript_path": "/Users/dalton/.claude/projects/-Users-dalton-projects-teamwork/3afa26d2-bf3b-4644-8c79-19523118553f/subagents/agent-a2c1e33.jsonl"
   }
 ]
