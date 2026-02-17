@@ -415,6 +415,7 @@ export interface StreamingChatOptions {
   topic: ConversationTopic;
   projectId?: number;
   projectName?: string;
+  model?: string;
   conversationHistory?: Array<{ role: string; content: string }>;
   onChunk: (text: string) => void;
   onThinking: (thinking: string, fullText?: string) => void;
@@ -524,7 +525,7 @@ export const processStreamingChat = async (options: StreamingChatOptions): Promi
 // Agent SDK streaming - uses skills for intelligent Teamwork interactions
 // No hard-coded date parsing - Claude handles everything via skills
 export const processAgentStream = async (options: StreamingChatOptions): Promise<void> => {
-  const { message, topic, projectId, projectName, conversationHistory, onChunk, onThinking, onVisualization, onTimelogDraft, onProjectDraft, onProjectDraftUpdate, onProjectDraftComplete, onComplete, onError } = options;
+  const { message, topic, projectId, projectName, model, conversationHistory, onChunk, onThinking, onVisualization, onTimelogDraft, onProjectDraft, onProjectDraftUpdate, onProjectDraftComplete, onComplete, onError } = options;
 
   const modeMap: Record<ConversationTopic, string> = {
     project: 'project',
@@ -544,6 +545,7 @@ export const processAgentStream = async (options: StreamingChatOptions): Promise
         mode: modeMap[topic],
         projectId: projectId,
         projectName: projectName,
+        model: model,
         conversationHistory: conversationHistory,
       }),
     });

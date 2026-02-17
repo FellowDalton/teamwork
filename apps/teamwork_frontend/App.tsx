@@ -20,7 +20,7 @@ import { DataDisplayPanel } from "./components/DataDisplayPanel";
 // ConversationSelector is now rendered inside ConversationPanel
 import { LoginButton, UserMenu } from "./components/LoginButton";
 import { LoginScreen } from "./components/LoginScreen";
-import SettingsModal from "./components/SettingsModal";
+import SettingsModal, { type AIModel } from "./components/SettingsModal";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { processChatCommand, processStreamingChat, processAgentStream, requestAdditionalChart, VisualizationSpec, TimelogDraftData, TimelogDraftEntry, submitTimelogEntries, submitProject } from "./services/claudeService";
 import { teamworkService, TeamworkTask, TeamworkTimeEntry } from "./services/teamworkService";
@@ -149,11 +149,20 @@ function AppContent() {
     const saved = localStorage.getItem('hourlyRate');
     return saved ? parseInt(saved, 10) : 1200;
   });
+  const [model, setModel] = useState<AIModel>(() => {
+    const saved = localStorage.getItem('aiModel');
+    return (saved === 'haiku' || saved === 'sonnet' || saved === 'opus') ? saved : 'haiku';
+  });
 
   // Persist hourly rate to localStorage
   useEffect(() => {
     localStorage.setItem('hourlyRate', hourlyRate.toString());
   }, [hourlyRate]);
+
+  // Persist model to localStorage
+  useEffect(() => {
+    localStorage.setItem('aiModel', model);
+  }, [model]);
 
   const activeProject = projects.find((p) => p.id === activeProjectId) || null;
   const isLight = theme === "light";
@@ -779,6 +788,7 @@ function AppContent() {
         topic: activeTopic,
         projectId: numericProjectId,
         projectName: activeProject?.name,
+        model,
         conversationHistory: historyForAgent.length > 0 ? historyForAgent : undefined,
         onChunk: (text) => {
           receivedText = text;
@@ -1871,6 +1881,8 @@ function AppContent() {
         onClose={() => setShowSettings(false)}
         hourlyRate={hourlyRate}
         onHourlyRateChange={setHourlyRate}
+        model={model}
+        onModelChange={setModel}
         theme={theme}
       />
     </div>

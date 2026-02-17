@@ -246,7 +246,7 @@ async function runVisualizationAgent(context: {
   question: string;
   data: any;
   periodLabel: string;
-}): Promise<any | null> {
+}, agentModel?: string): Promise<any | null> {
   const vizSystemPrompt = `You are a visualization expert. Given a question and time tracking data, output the BEST visualization(s) to answer it.
 
 You can output MULTIPLE visualizations if appropriate. Output a JSON array of visualizations.
@@ -293,7 +293,7 @@ Only output valid JSON, no markdown or explanation.`;
 
   const options: Options = {
     cwd: process.cwd() + "/../..",
-    model: "default", // Uses Claude default model (Sonnet) - OAuth requires short names
+    model: agentModel || "haiku",
     disallowedTools: [
       "Bash",
       "Edit",
@@ -359,7 +359,8 @@ async function runChatAgent(
     projectName?: string;
   },
   onChunk: (text: string) => void,
-  onThinking?: (text: string) => void
+  onThinking?: (text: string) => void,
+  agentModel?: string
 ): Promise<string> {
   const chatSystemPrompt = `You are a helpful time tracking assistant. The user asked a question and data has already been fetched.
 
@@ -374,7 +375,7 @@ Keep responses concise (2-4 paragraphs max). Data is being visualized separately
 
   const options: Options = {
     cwd: process.cwd() + "/../..",
-    model: "opus", // OAuth requires short names (opus/haiku/default)
+    model: agentModel || "haiku",
     disallowedTools: [
       "Bash",
       "Edit",
@@ -904,9 +905,10 @@ async function handleAgentChat(body: {
   mode?: "status" | "timelog" | "project" | "general";
   projectId?: number;
   projectName?: string;
+  model?: string;
   conversationHistory?: Array<{ role: string; content: string }>;
 }) {
-  const { message, mode = "general", projectId, projectName, conversationHistory } = body;
+  const { message, mode = "general", projectId, projectName, model = "haiku", conversationHistory } = body;
 
   if (!message) {
     return new Response("Message is required", {
@@ -951,7 +953,7 @@ async function handleAgentChat(body: {
 
       try {
         console.log("=== PARALLEL AGENT FLOW ===");
-        console.log("Mode:", mode, "| Message:", message.slice(0, 50));
+        console.log("Mode:", mode, "| Model:", model, "| Message:", message.slice(0, 50));
 
         // STEP 1: Parse date range from question
         const dateRange = parseDateRange(message);
@@ -1058,7 +1060,7 @@ async function handleAgentChat(body: {
         };
 
         // Start both agents simultaneously
-        const vizPromise = runVisualizationAgent(agentContext);
+        const vizPromise = runVisualizationAgent(agentContext, model);
         const chatPromise = runChatAgent(
           agentContext,
           (chunk) => {
@@ -1069,7 +1071,8 @@ async function handleAgentChat(body: {
             safeEnqueue(
               `data: ${JSON.stringify({ type: "thinking", thinking })}\n\n`
             );
-          }
+          },
+          model
         );
 
         // Wait for both to complete
@@ -1431,6 +1434,7 @@ async function handleProjectChat(body: {
   mode?: string;
   projectId?: number;
   projectName?: string;
+  model?: string;
   conversationHistory?: Array<{ role: string; content: string }>;
   projectDraft?: {
     project: { name: string; description?: string };
@@ -1450,7 +1454,7 @@ async function handleProjectChat(body: {
     summary: { totalTasklists: number; totalTasks: number; totalSubtasks: number };
   };
 }) {
-  const { message, conversationHistory, projectDraft } = body;
+  const { message, model = "haiku", conversationHistory, projectDraft } = body;
 
   // System prompt for project creation assistant - uses JSON Lines streaming format
   const systemPrompt = `You are a project creation assistant for Teamwork.com. Your role is to help users set up new projects with well-organized task structures.
@@ -2035,7 +2039,7 @@ If the user provides a PRD or detailed requirements, analyze them and output the
 
       const options: Options = {
         cwd: process.cwd(),
-        model: "opus",
+        model: model,
         mcpServers: {
           teamwork: teamworkMcpServer,
           project_draft: projectDraftMcpServer,
@@ -2176,9 +2180,10 @@ async function handleTimelogChat(body: {
   mode?: string;
   projectId?: number;
   projectName?: string;
+  model?: string;
   conversationHistory?: Array<{ role: string; content: string }>;
 }) {
-  const { message, projectId, projectName, conversationHistory } = body;
+  const { message, projectId, projectName, model = "haiku", conversationHistory } = body;
 
   // Load the timelog agent prompt
   const promptPath = `${process.cwd()}/../../prompts/agents/timelog-agent.txt`;
@@ -2208,7 +2213,7 @@ ${
 
   const options: Options = {
     cwd: process.cwd(),
-    model: "opus",
+    model: model,
     mcpServers: { teamwork: teamworkMcpServer },
     disallowedTools: [
       "Bash",

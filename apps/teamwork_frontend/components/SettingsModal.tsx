@@ -1,11 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { X, Settings, DollarSign } from 'lucide-react';
+import { X, Settings, DollarSign, Cpu } from 'lucide-react';
+
+export type AIModel = 'haiku' | 'sonnet' | 'opus';
 
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
   hourlyRate: number;
   onHourlyRateChange: (rate: number) => void;
+  model: AIModel;
+  onModelChange: (model: AIModel) => void;
   theme?: 'light' | 'dark';
 }
 
@@ -14,15 +18,22 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   onClose,
   hourlyRate,
   onHourlyRateChange,
+  model,
+  onModelChange,
   theme = 'dark',
 }) => {
   const [localRate, setLocalRate] = useState(hourlyRate);
+  const [localModel, setLocalModel] = useState<AIModel>(model);
   const isLight = theme === 'light';
 
-  // Sync local state when prop changes
+  // Sync local state when props change
   useEffect(() => {
     setLocalRate(hourlyRate);
   }, [hourlyRate]);
+
+  useEffect(() => {
+    setLocalModel(model);
+  }, [model]);
 
   if (!isOpen) return null;
 
@@ -34,6 +45,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 
   const handleSave = () => {
     onHourlyRateChange(localRate);
+    onModelChange(localModel);
     onClose();
   };
 
@@ -119,6 +131,41 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                 {rate.toLocaleString()}
               </button>
             ))}
+          </div>
+
+          {/* AI Model Setting */}
+          <div>
+            <label className={`block text-sm font-medium mb-2 ${textSecondary}`}>
+              <span className="flex items-center gap-2">
+                <Cpu size={16} className="text-cyan-500" />
+                AI Model
+              </span>
+            </label>
+            <div className="flex gap-2">
+              {([
+                { value: 'haiku' as const, label: 'Haiku', desc: 'Fast & cheap' },
+                { value: 'sonnet' as const, label: 'Sonnet', desc: 'Balanced' },
+                { value: 'opus' as const, label: 'Opus', desc: 'Most capable' },
+              ]).map((m) => (
+                <button
+                  key={m.value}
+                  onClick={() => setLocalModel(m.value)}
+                  className={`
+                    flex-1 px-3 py-2 text-xs rounded-md border transition-colors text-center
+                    ${localModel === m.value
+                      ? 'bg-cyan-500 border-cyan-500 text-white'
+                      : `${borderColor} ${textSecondary} hover:border-cyan-500`
+                    }
+                  `}
+                >
+                  <div className="font-medium">{m.label}</div>
+                  <div className={`text-[10px] mt-0.5 ${localModel === m.value ? 'text-cyan-100' : 'opacity-60'}`}>{m.desc}</div>
+                </button>
+              ))}
+            </div>
+            <p className={`mt-1 text-xs ${textSecondary}`}>
+              Used for all AI agent responses
+            </p>
           </div>
         </div>
 
