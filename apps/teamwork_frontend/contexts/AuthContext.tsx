@@ -11,6 +11,7 @@ interface AuthState {
   isLoading: boolean;
   isAuthenticated: boolean;
   isConfigured: boolean;
+  authError: string | null;
 }
 
 interface AuthContextType extends AuthState {
@@ -42,6 +43,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     isLoading: true,
     isAuthenticated: false,
     isConfigured: isSupabaseConfigured(),
+    authError: null,
   });
 
   // Fetch profile and workspace for a user
@@ -78,12 +80,22 @@ export function AuthProvider({ children }: AuthProviderProps) {
     // Get initial session with timeout
     const initAuth = async () => {
       try {
-        console.log('Getting session...');
+        // Detect if we're returning from an OAuth callback
+        const isCallback = window.location.pathname === '/auth/callback' ||
+          window.location.hash.includes('access_token') ||
+          new URLSearchParams(window.location.search).has('code');
+
+        const timeoutMs = isCallback ? 30000 : 5000;
+        console.log(`Getting session... (${isCallback ? 'OAuth callback' : 'normal'}, timeout: ${timeoutMs}ms)`);
 
         // Add timeout to prevent infinite loading
         const sessionPromise = supabase.auth.getSession();
         const timeoutPromise = new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error('Session timeout')), 5000)
+          setTimeout(() => reject(new Error(
+            isCallback
+              ? 'Authentication timed out after returning from Microsoft. This may indicate an expired Azure AD secret in the Supabase configuration.'
+              : 'Session check timed out'
+          )), timeoutMs)
         );
 
         const { data: { session }, error } = await Promise.race([sessionPromise, timeoutPromise])
@@ -92,12 +104,21 @@ export function AuthProvider({ children }: AuthProviderProps) {
             return { data: { session: null }, error: err };
           }) as { data: { session: any }, error: any };
 
+        // Clean up callback URL params to prevent issues on refresh
+        if (isCallback) {
+          window.history.replaceState({}, '', '/');
+        }
+
         if (error) {
+          const errorMessage = error instanceof Error ? error.message : (error?.message || String(error));
           console.error('Error getting session:', error);
           setState((prev) => ({
             ...prev,
             isLoading: false,
             isAuthenticated: false,
+            authError: isCallback
+              ? `Sign-in failed: ${errorMessage}`
+              : null,
           }));
           return;
         }
@@ -118,6 +139,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
               isLoading: false,
               isAuthenticated: true,
               isConfigured: true,
+              authError: null,
             });
           } catch (profileErr) {
             console.error('Profile fetch error:', profileErr);
@@ -130,6 +152,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
               isLoading: false,
               isAuthenticated: true,
               isConfigured: true,
+              authError: null,
             });
           }
         } else {
@@ -138,14 +161,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
             ...prev,
             isLoading: false,
             isAuthenticated: false,
+            authError: isCallback
+              ? 'Sign-in failed: No session was returned after authentication. The OAuth code exchange may have failed.'
+              : prev.authError,
           }));
         }
       } catch (err) {
         console.error('Error in initAuth:', err);
+        const errorMessage = err instanceof Error ? err.message : String(err);
         setState((prev) => ({
           ...prev,
           isLoading: false,
           isAuthenticated: false,
+          authError: `Authentication error: ${errorMessage}`,
         }));
       }
     };
@@ -168,6 +196,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
             isLoading: false,
             isAuthenticated: true,
             isConfigured: true,
+            authError: null,
           });
         } else if (event === 'SIGNED_OUT') {
           setState({
@@ -178,6 +207,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
             isLoading: false,
             isAuthenticated: false,
             isConfigured: true,
+            authError: null,
           });
         } else if (event === 'TOKEN_REFRESHED' && session) {
           setState((prev) => ({

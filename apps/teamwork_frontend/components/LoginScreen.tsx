@@ -3,9 +3,11 @@ import { Layout, Zap } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 
 export function LoginScreen() {
-  const { signIn, isLoading } = useAuth();
+  const { signIn, isLoading, authError } = useAuth();
   const [isSigningIn, setIsSigningIn] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const displayError = error || authError;
 
   const handleSignIn = async () => {
     setError(null);
@@ -105,9 +107,9 @@ export function LoginScreen() {
             </div>
           </button>
 
-          {error && (
+          {displayError && (
             <div className="mt-4 p-3 bg-red-900/20 border border-red-800/50 rounded-lg">
-              <p className="text-sm text-red-400">{error}</p>
+              <p className="text-sm text-red-400">{displayError}</p>
             </div>
           )}
         </div>
