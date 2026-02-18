@@ -2079,7 +2079,10 @@ If the user provides a PRD or detailed requirements, analyze them and output the
         );
 
         // Use fullPrompt which includes conversation history context
+        let eventCount = 0;
         for await (const event of query({ prompt: fullPrompt, options })) {
+          eventCount++;
+          console.log("Project Agent event:", event.type, event.subtype || "");
           if (event.type === "stream_event") {
             const streamEvent = event.event;
             if (streamEvent.type === "content_block_delta") {
@@ -2099,6 +2102,8 @@ If the user provides a PRD or detailed requirements, analyze them and output the
             fullText = (event as any).result || fullText;
           }
         }
+
+        console.log("Project Agent finished. Events:", eventCount, "Text length:", fullText.length);
 
         // SAFETY VALIDATION: Check agent response for any unsafe patterns
         const validation = validateAgentResponse(fullText);
