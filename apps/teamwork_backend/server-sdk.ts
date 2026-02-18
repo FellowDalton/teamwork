@@ -2064,7 +2064,7 @@ If the user provides a PRD or detailed requirements, analyze them and output the
         maxTurns: 500, // High limit to allow for many progressive tool calls
         env: process.env,
         ...(claudeCodePath && { pathToClaudeCodeExecutable: claudeCodePath }),
-        stderr: (data: string) => console.log("Project Agent STDERR:", data),
+        stderr: (data: string) => console.error("Project Agent STDERR:", data),
       };
 
       try {
