@@ -8,9 +8,9 @@ RUN bun install --frozen-lockfile
 # Copy source
 COPY . .
 
-# Create non-root user (required by Claude Code CLI v2+)
-RUN adduser --disabled-password --gecos "" appuser && \
-    chown -R appuser:appuser /app
+# Create non-root user with home directory (required by Claude Code CLI v2+)
+RUN adduser --disabled-password --gecos "" --home /home/appuser appuser && \
+    chown -R appuser:appuser /app /home/appuser
 USER appuser
 
 EXPOSE 8080

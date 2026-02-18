@@ -2060,6 +2060,8 @@ If the user provides a PRD or detailed requirements, analyze them and output the
         ],
         systemPrompt,
         includePartialMessages: true,
+        permissionMode: "bypassPermissions",
+        allowDangerouslySkipPermissions: true,
         maxTurns: 500, // High limit to allow for many progressive tool calls
         env: process.env,
         ...(claudeCodePath && { pathToClaudeCodeExecutable: claudeCodePath }),
@@ -2234,6 +2236,8 @@ ${
     ],
     systemPrompt,
     includePartialMessages: true,
+    permissionMode: "bypassPermissions",
+    allowDangerouslySkipPermissions: true,
     maxTurns: 8,
     env: process.env,
     ...(claudeCodePath && { pathToClaudeCodeExecutable: claudeCodePath }),
