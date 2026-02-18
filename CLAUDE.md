@@ -166,6 +166,12 @@ Request → Load Skills → Route Decision → Execute → Commit
 
 ---
 
+## Reminders
+
+- **2026-08-13**: Renew the Azure AD client secret for Supabase OAuth (Microsoft login). It was last renewed on 2026-02-18 with a 6-month expiry. Go to Azure Portal > App Registrations > Certificates & secrets, create a new secret, then update it in Supabase Dashboard > Authentication > Providers > Azure.
+
+---
+
 ## Executing Reusable Prompts
 
 When engineer uses `\<prompt>`:
