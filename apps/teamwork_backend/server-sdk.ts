@@ -98,6 +98,11 @@ function getClaudeCodePath(): string | undefined {
 
 const claudeCodePath = getClaudeCodePath();
 
+// Sanitize env for Agent SDK - remove CLAUDECODE to prevent "nested session" error
+// when the backend is started from within a Claude Code session
+const sdkEnv = { ...process.env };
+delete sdkEnv.CLAUDECODE;
+
 const { createTeamworkClient } = await import(
   "./teamwork_api_client/index.ts"
 );
@@ -310,7 +315,7 @@ Only output valid JSON, no markdown or explanation.`;
     ],
     systemPrompt: vizSystemPrompt,
     maxTurns: 1,
-    env: process.env, // Use current environment with API key
+    env: sdkEnv, // Use current environment with API key
     ...(claudeCodePath && { pathToClaudeCodeExecutable: claudeCodePath }), // Use installed CLI
   };
 
@@ -393,7 +398,7 @@ Keep responses concise (2-4 paragraphs max). Data is being visualized separately
     systemPrompt: chatSystemPrompt,
     maxTurns: 1,
     includePartialMessages: true,
-    env: process.env, // Use current environment with API key
+    env: sdkEnv, // Use current environment with API key
     ...(claudeCodePath && { pathToClaudeCodeExecutable: claudeCodePath }), // Use installed CLI (works with OAuth)
     stderr: (data: string) => console.log("Chat Agent STDERR:", data),
   };
@@ -487,11 +492,18 @@ const TEAMWORK_API_URL = process.env.TEAMWORK_API_URL;
 const TEAMWORK_BEARER_TOKEN = process.env.TEAMWORK_BEARER_TOKEN;
 const DEFAULT_PROJECT_ID = parseInt(process.env.TEAMWORK_PROJECT_ID || "0");
 
-// Allowed project IDs
-const ALLOWED_PROJECTS = [
-  { id: 805682, name: "AI workflow test" },
-  { id: 804926, name: "KiroViden - Klyngeplatform" },
-];
+// Project cache - fetched dynamically from Teamwork API at startup
+let cachedProjects: Array<{ id: number; name: string }> = [];
+
+async function refreshProjectCache() {
+  try {
+    const projects = await teamwork.projects.listActive({ pageSize: 500 });
+    cachedProjects = projects.map((p: any) => ({ id: Number(p.id), name: p.name }));
+    console.log(`Loaded ${cachedProjects.length} active projects from Teamwork`);
+  } catch (err) {
+    console.error("Failed to load projects from Teamwork:", err);
+  }
+}
 
 // Initialize Teamwork client
 if (!TEAMWORK_API_URL || !TEAMWORK_BEARER_TOKEN) {
@@ -505,6 +517,9 @@ const teamwork = createTeamworkClient({
   apiUrl: TEAMWORK_API_URL,
   bearerToken: TEAMWORK_BEARER_TOKEN,
 });
+
+// Load project cache at startup
+await refreshProjectCache();
 
 // ============================================================================
 // SAFETY ARCHITECTURE: Read-Only MCP Tools
@@ -572,6 +587,192 @@ function validateAgentResponse(response: string): {
 }
 
 // ============================================================================
+// SHARED DATA FETCHERS - Used by both MCP tools and pre-fetch helpers
+// ============================================================================
+
+/**
+ * Fetch ALL tasks for a project with pagination.
+ * Returns formatted task objects with resolved assignee names.
+ */
+async function fetchAllTasks(projectId: number): Promise<{
+  tasks: Array<{
+    id: number;
+    name: string;
+    description: string;
+    status: string;
+    priority: string;
+    estimatedMinutes: number;
+    progress: number;
+    tags: string[];
+    workflowStage: string | null;
+    completedAt: string | null;
+    assignee: string | null;
+  }>;
+  count: number;
+}> {
+  const allTasks: any[] = [];
+  const allIncludedUsers: Record<string, any> = {};
+  let page = 1;
+  let hasMore = true;
+
+  while (hasMore) {
+    const response = await teamwork.tasks.listByProject(projectId, {
+      include: ["tags", "assignees"],
+      includeCompletedTasks: true,
+      pageSize: 250,
+      page,
+    });
+
+    allTasks.push(...response.tasks);
+    if (response.included?.users) {
+      Object.assign(allIncludedUsers, response.included.users);
+    }
+    hasMore = response.meta?.page?.hasMore ?? false;
+    page++;
+
+    if (page > 20) {
+      console.warn("fetchAllTasks: hit 20-page safety limit");
+      break;
+    }
+  }
+
+  console.log(`fetchAllTasks: fetched ${allTasks.length} tasks across ${page - 1} pages`);
+
+  const resolveAssignee = (t: any): string | null => {
+    const assignees = t.assignees;
+    if (!assignees) return null;
+    if (Array.isArray(assignees)) {
+      const userRef = assignees.find((a: any) => a.type === 'users');
+      if (userRef && allIncludedUsers[String(userRef.id)]) {
+        const u = allIncludedUsers[String(userRef.id)];
+        return `${u.firstName || ''} ${u.lastName || ''}`.trim() || null;
+      }
+    }
+    if (assignees.userIds?.length) {
+      const u = allIncludedUsers[String(assignees.userIds[0])];
+      if (u) return `${u.firstName || ''} ${u.lastName || ''}`.trim() || null;
+    }
+    return null;
+  };
+
+  const tasks = allTasks.map((t: any) => ({
+    id: t.id,
+    name: t.name,
+    description: t.description || "",
+    status: t.status || "active",
+    priority: t.priority || "",
+    estimatedMinutes: t.estimatedMinutes || 0,
+    progress: t.progress || 0,
+    tags: t.tags?.map((tag: any) => tag.name) || [],
+    workflowStage: t.workflowColumn?.name || null,
+    completedAt: t.completedAt || null,
+    assignee: resolveAssignee(t),
+  }));
+
+  return { tasks, count: tasks.length };
+}
+
+/**
+ * Fetch time entries for a date range, filtered to the current user.
+ * Returns formatted entry objects with task/project names resolved.
+ */
+async function fetchTimeEntries(options: {
+  startDate: string;
+  endDate: string;
+  projectId?: number;
+}): Promise<{
+  totalHours: number;
+  totalMinutes: number;
+  entryCount: number;
+  taskCount: number;
+  period: { startDate: string; endDate: string };
+  entries: Array<{
+    id: number;
+    date: string;
+    hours: number;
+    taskId: number;
+    taskName: string;
+    projectName: string;
+    description: string;
+  }>;
+}> {
+  const person = await teamwork.people.me();
+  const userId = person.id;
+
+  const response = await teamwork.timeEntries.list({
+    startDate: options.startDate,
+    endDate: options.endDate,
+    include: ["tasks", "projects"],
+    orderBy: "date",
+    orderMode: "desc",
+    pageSize: 500,
+    ...(options.projectId ? { projectIds: [options.projectId] } : {}),
+  });
+
+  const myEntries = response.timelogs.filter((t) => t.userId === userId);
+  const totalMinutes = myEntries.reduce((sum, e) => sum + e.minutes, 0);
+  const totalHours = totalMinutes / 60;
+  const taskIds = new Set(myEntries.map((e) => e.taskId).filter(Boolean));
+
+  const entries = myEntries.slice(0, 50).map((e) => ({
+    id: e.id,
+    date: e.date,
+    hours: Math.round((e.minutes / 60) * 100) / 100,
+    taskId: e.taskId,
+    taskName:
+      response.included?.tasks?.[String(e.taskId)]?.name ||
+      `Task #${e.taskId}`,
+    projectName:
+      response.included?.projects?.[String(e.projectId)]?.name ||
+      `Project #${e.projectId}`,
+    description: e.description || "",
+  }));
+
+  return {
+    totalHours: Math.round(totalHours * 100) / 100,
+    totalMinutes,
+    entryCount: myEntries.length,
+    taskCount: taskIds.size,
+    period: { startDate: options.startDate, endDate: options.endDate },
+    entries,
+  };
+}
+
+/**
+ * Pre-fetch project data in parallel for agent injection.
+ * Used by status and timelog handlers to avoid MCP tool round-trips.
+ */
+async function prefetchProjectData(projectId: number, options?: {
+  includeTasks?: boolean;
+  includeTimeEntries?: boolean;
+  timeRange?: { startDate: string; endDate: string };
+}): Promise<{
+  tasks?: Awaited<ReturnType<typeof fetchAllTasks>>;
+  timeEntries?: Awaited<ReturnType<typeof fetchTimeEntries>>;
+}> {
+  const fetches: Array<Promise<any>> = [];
+  const keys: string[] = [];
+
+  if (options?.includeTasks) {
+    fetches.push(fetchAllTasks(projectId));
+    keys.push("tasks");
+  }
+  if (options?.includeTimeEntries && options?.timeRange) {
+    fetches.push(fetchTimeEntries({
+      startDate: options.timeRange.startDate,
+      endDate: options.timeRange.endDate,
+      projectId,
+    }));
+    keys.push("timeEntries");
+  }
+
+  const results = await Promise.all(fetches);
+  const data: any = {};
+  keys.forEach((key, i) => { data[key] = results[i]; });
+  return data;
+}
+
+// ============================================================================
 // MCP SERVER: Teamwork Tools (READ-ONLY)
 // These tools are called directly by Claude - no code writing needed
 // ============================================================================
@@ -602,78 +803,17 @@ const teamworkMcpServer = createSdkMcpServer({
         projectId: z.string().optional(),
       },
       async ({ startDate, endDate, projectId }) => {
-        // Convert projectId to number if it's a string
         const numericProjectId = projectId ? Number(projectId) : undefined;
-        console.log("get_time_entries called with:", {
-          startDate,
-          endDate,
-          projectId: numericProjectId,
-        });
+        console.log("get_time_entries called with:", { startDate, endDate, projectId: numericProjectId });
         try {
-          const person = await teamwork.people.me();
-          const userId = person.id;
-          console.log("User ID:", userId);
-
-          const response = await teamwork.timeEntries.list({
-            startDate,
-            endDate,
-            include: ["tasks", "projects"],
-            orderBy: "date",
-            orderMode: "desc",
-            pageSize: 500,
-            ...(numericProjectId ? { projectIds: [numericProjectId] } : {}),
-          });
-
-          // Filter to user's entries
-          const myEntries = response.timelogs.filter(
-            (t) => t.userId === userId
-          );
-          const totalMinutes = myEntries.reduce((sum, e) => sum + e.minutes, 0);
-          const totalHours = totalMinutes / 60;
-          const taskIds = new Set(
-            myEntries.map((e) => e.taskId).filter(Boolean)
-          );
-
-          // Format entries for output
-          const entries = myEntries.slice(0, 50).map((e) => ({
-            id: e.id,
-            date: e.date,
-            hours: e.minutes / 60,
-            taskId: e.taskId,
-            taskName:
-              response.included?.tasks?.[String(e.taskId)]?.name ||
-              `Task #${e.taskId}`,
-            projectName:
-              response.included?.projects?.[String(e.projectId)]?.name ||
-              `Project #${e.projectId}`,
-            description: e.description || "",
-          }));
-
+          const result = await fetchTimeEntries({ startDate, endDate, projectId: numericProjectId });
           return {
-            content: [
-              {
-                type: "text",
-                text: JSON.stringify(
-                  {
-                    totalHours: Math.round(totalHours * 100) / 100,
-                    totalMinutes,
-                    entryCount: myEntries.length,
-                    taskCount: taskIds.size,
-                    period: { startDate, endDate },
-                    entries,
-                  },
-                  null,
-                  2
-                ),
-              },
-            ],
+            content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
           };
         } catch (err) {
           console.error("get_time_entries error:", err);
           return {
-            content: [
-              { type: "text", text: `Error fetching time entries: ${err}` },
-            ],
+            content: [{ type: "text", text: `Error fetching time entries: ${err}` }],
             isError: true,
           };
         }
@@ -717,20 +857,24 @@ const teamworkMcpServer = createSdkMcpServer({
 
     // Get projects list
     tool("get_projects", "Get list of available projects.", {}, async () => {
+      // Refresh cache if empty
+      if (cachedProjects.length === 0) {
+        await refreshProjectCache();
+      }
       return {
         content: [
           {
             type: "text",
-            text: JSON.stringify(ALLOWED_PROJECTS, null, 2),
+            text: JSON.stringify(cachedProjects, null, 2),
           },
         ],
       };
     }),
 
-    // Get tasks for a project
+    // Get tasks for a project (paginated - fetches ALL pages)
     tool(
       "get_tasks_by_project",
-      "Get all tasks for a specific project. Returns task id, name, description, and status.",
+      "Get all tasks for a specific project including completed ones. Returns task id, name, description, status, priority, workflow stage, and completion info. Automatically paginates to fetch every task.",
       {
         projectId: z.union([z.number(), z.string()]).describe("The project ID"),
       },
@@ -738,31 +882,9 @@ const teamworkMcpServer = createSdkMcpServer({
         try {
           const numericProjectId = Number(projectId);
           console.log("get_tasks_by_project called with:", numericProjectId);
-
-          const response = await teamwork.tasks.listByProject(
-            numericProjectId,
-            {
-              include: ["tags"],
-              pageSize: 100,
-            }
-          );
-
-          const tasks = response.tasks.map((t: any) => ({
-            id: t.id,
-            name: t.name,
-            description: t.description || "",
-            status: t.status || "active",
-            estimatedMinutes: t.estimatedMinutes || 0,
-            tags: t.tags?.map((tag: any) => tag.name) || [],
-          }));
-
+          const result = await fetchAllTasks(numericProjectId);
           return {
-            content: [
-              {
-                type: "text",
-                text: JSON.stringify({ tasks, count: tasks.length }, null, 2),
-              },
-            ],
+            content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
           };
         } catch (err) {
           return {
@@ -773,10 +895,10 @@ const teamworkMcpServer = createSdkMcpServer({
       }
     ),
 
-    // Search tasks by description
+    // Search tasks by description (paginated - fetches ALL pages before filtering)
     tool(
       "search_tasks",
-      "Search for tasks matching a query string. Searches task names and descriptions.",
+      "Search for tasks matching a query string. Searches task names and descriptions across all tasks including completed ones.",
       {
         projectId: z
           .union([z.number(), z.string()])
@@ -795,19 +917,32 @@ const teamworkMcpServer = createSdkMcpServer({
             query,
           });
 
-          const response = await teamwork.tasks.listByProject(
-            numericProjectId,
-            {
-              include: ["tags"],
-              pageSize: 100,
-            }
-          );
+          // Paginate through ALL pages to search the full task set
+          const allTasks: any[] = [];
+          let page = 1;
+          let hasMore = true;
+
+          while (hasMore) {
+            const response = await teamwork.tasks.listByProject(
+              numericProjectId,
+              {
+                include: ["tags"],
+                includeCompletedTasks: true,
+                pageSize: 250,
+                page,
+              }
+            );
+            allTasks.push(...response.tasks);
+            hasMore = response.meta?.page?.hasMore ?? false;
+            page++;
+            if (page > 20) break;
+          }
 
           const queryLower = query.toLowerCase();
           const queryTerms = queryLower.split(/\s+/);
 
           // Score and filter tasks by relevance
-          const scoredTasks = response.tasks.map((t: any) => {
+          const scoredTasks = allTasks.map((t: any) => {
             const nameLower = (t.name || "").toLowerCase();
             const descLower = (t.description || "").toLowerCase();
             let score = 0;
@@ -835,9 +970,13 @@ const teamworkMcpServer = createSdkMcpServer({
               name: st.task.name,
               description: st.task.description || "",
               status: st.task.status || "active",
+              priority: st.task.priority || "",
               estimatedMinutes: st.task.estimatedMinutes || 0,
+              progress: st.task.progress || 0,
               relevanceScore: st.score,
               tags: st.task.tags?.map((tag: any) => tag.name) || [],
+              workflowStage: st.task.workflowColumn?.name || null,
+              completedAt: st.task.completedAt || null,
             }));
 
           return {
@@ -924,6 +1063,10 @@ async function handleAgentChat(body: {
 
   if (mode === "project") {
     return handleProjectChat(body);
+  }
+
+  if (mode === "status") {
+    return handleStatusChat({ ...body, conversationHistory });
   }
 
   // Create SSE stream
@@ -1603,446 +1746,14 @@ If the user provides a PRD or detailed requirements, analyze them and output the
         }
       };
 
-      // === PROGRESSIVE DRAFT STATE ===
-      // This state accumulates as Claude calls the draft tools
-      interface DraftState {
-        project: {
-          name: string;
-          description?: string;
-          startDate?: string;
-          endDate?: string;
-          tags: Array<{ name: string; color?: string }>;
-        } | null;
-        tasklists: Array<{
-          id: string;
-          name: string;
-          description?: string;
-          tasks: Array<{
-            id: string;
-            name: string;
-            description?: string;
-            priority?: "none" | "low" | "medium" | "high";
-            dueDate?: string;
-            startDate?: string;
-            estimatedMinutes?: number;
-            tags: Array<{ name: string; color?: string }>;
-            subtasks: Array<{
-              id: string;
-              name: string;
-              description?: string;
-              dueDate?: string;
-            }>;
-          }>;
-        }>;
-        budget?: { type: "time" | "money"; capacity: number };
-        nextTasklistNum: number;
-        nextTaskNum: number;
-        nextSubtaskNum: number;
-      }
-
-      const draftState: DraftState = {
-        project: null,
-        tasklists: [],
-        nextTasklistNum: 1,
-        nextTaskNum: 1,
-        nextSubtaskNum: 1,
-      };
-
-      // Helper to calculate summary
-      const getDraftSummary = () => ({
-        totalTasklists: draftState.tasklists.length,
-        totalTasks: draftState.tasklists.reduce(
-          (sum, tl) => sum + tl.tasks.length,
-          0
-        ),
-        totalSubtasks: draftState.tasklists.reduce(
-          (sum, tl) =>
-            sum + tl.tasks.reduce((s, t) => s + t.subtasks.length, 0),
-          0
-        ),
-      });
-
-      // Create project draft MCP server with closure access to safeEnqueue
-      const projectDraftMcpServer = createSdkMcpServer({
-        name: "project_draft",
-        tools: [
-          // Initialize project draft
-          tool(
-            "init_project_draft",
-            "Start building a new project structure. Call this first with project details.",
-            {
-              name: z.string().describe("Project name"),
-              description: z
-                .string()
-                .optional()
-                .describe("Project description"),
-              startDate: z
-                .string()
-                .optional()
-                .describe("Start date YYYY-MM-DD"),
-              endDate: z.string().optional().describe("End date YYYY-MM-DD"),
-              tags: z
-                .array(
-                  z.object({
-                    name: z.string(),
-                    color: z.string().optional(),
-                  })
-                )
-                .optional()
-                .describe("Project tags"),
-            },
-            async ({ name, description, startDate, endDate, tags }) => {
-              console.log("init_project_draft:", name);
-
-              draftState.project = {
-                name,
-                description,
-                startDate,
-                endDate,
-                tags: (tags || []) as Array<{ name: string; color?: string }>,
-              };
-
-              // Emit SSE event immediately
-              safeEnqueue(
-                `data: ${JSON.stringify({
-                  type: "project_draft_init",
-                  draft: {
-                    project: draftState.project,
-                    tasklists: [],
-                    summary: getDraftSummary(),
-                    isBuilding: true,
-                    isDraft: true,
-                  },
-                })}\n\n`
-              );
-
-              return {
-                content: [
-                  {
-                    type: "text",
-                    text: `Project "${name}" initialized. Now add tasklists.`,
-                  },
-                ],
-              };
-            }
-          ),
-
-          // Add a tasklist
-          tool(
-            "add_tasklist_draft",
-            "Add a tasklist (phase/category) to the project draft. The UI will show it immediately.",
-            {
-              name: z
-                .string()
-                .describe(
-                  'Tasklist name (e.g., "Phase 1: Planning", "Design", "Development")'
-                ),
-              description: z
-                .string()
-                .optional()
-                .describe("What this phase/category covers"),
-            },
-            async ({ name, description }) => {
-              const id = `tl-${draftState.nextTasklistNum++}`;
-              console.log("add_tasklist_draft:", id, name);
-
-              const tasklist = { id, name, description, tasks: [] };
-              draftState.tasklists.push(tasklist);
-
-              // Emit SSE update
-              safeEnqueue(
-                `data: ${JSON.stringify({
-                  type: "project_draft_update",
-                  action: "add_tasklist",
-                  tasklist,
-                })}\n\n`
-              );
-
-              return {
-                content: [
-                  {
-                    type: "text",
-                    text: `Tasklist "${name}" added with id=${id}. Use this id when adding tasks.`,
-                  },
-                ],
-              };
-            }
-          ),
-
-          // Add a task to a tasklist
-          tool(
-            "add_task_draft",
-            "Add a task to a tasklist. The UI will show it immediately.",
-            {
-              tasklistId: z.string().describe('The tasklist ID (e.g., "tl-1")'),
-              name: z.string().describe("Task name"),
-              description: z.string().optional().describe("Task description"),
-              priority: z
-                .enum(["none", "low", "medium", "high"])
-                .optional()
-                .describe("Task priority"),
-              dueDate: z.string().optional().describe("Due date YYYY-MM-DD"),
-              startDate: z
-                .string()
-                .optional()
-                .describe("Start date YYYY-MM-DD"),
-              estimatedMinutes: z
-                .number()
-                .optional()
-                .describe("Estimated time in minutes"),
-              tags: z
-                .array(
-                  z.object({
-                    name: z.string(),
-                    color: z.string().optional(),
-                  })
-                )
-                .optional()
-                .describe("Task tags"),
-            },
-            async ({
-              tasklistId,
-              name,
-              description,
-              priority,
-              dueDate,
-              startDate,
-              estimatedMinutes,
-              tags,
-            }) => {
-              const id = `t-${draftState.nextTaskNum++}`;
-              console.log("add_task_draft:", id, name, "to", tasklistId);
-
-              const tasklist = draftState.tasklists.find(
-                (tl) => tl.id === tasklistId
-              );
-
-              if (!tasklist) {
-                return {
-                  content: [
-                    {
-                      type: "text",
-                      text: `Error: Tasklist ${tasklistId} not found. Create it first with add_tasklist_draft.`,
-                    },
-                  ],
-                  isError: true,
-                };
-              }
-
-              const task = {
-                id,
-                name,
-                description,
-                priority: priority || ("none" as const),
-                dueDate,
-                startDate,
-                estimatedMinutes,
-                tags: (tags || []) as Array<{ name: string; color?: string }>,
-                subtasks: [] as Array<{
-                  id: string;
-                  name: string;
-                  description?: string;
-                  dueDate?: string;
-                }>,
-              };
-              tasklist.tasks.push(task);
-
-              // Emit SSE update
-              safeEnqueue(
-                `data: ${JSON.stringify({
-                  type: "project_draft_update",
-                  action: "add_task",
-                  tasklistId,
-                  task,
-                })}\n\n`
-              );
-
-              return {
-                content: [
-                  {
-                    type: "text",
-                    text: `Task "${name}" added with id=${id}. Use this id when adding subtasks.`,
-                  },
-                ],
-              };
-            }
-          ),
-
-          // Add subtasks to a task (batch)
-          tool(
-            "add_subtasks_draft",
-            "Add multiple subtasks to a task. The UI will show them immediately.",
-            {
-              taskId: z.string().describe('The task ID (e.g., "t-1")'),
-              subtasks: z
-                .array(
-                  z.object({
-                    name: z.string().describe("Subtask name"),
-                    description: z.string().optional(),
-                    dueDate: z.string().optional(),
-                  })
-                )
-                .describe("Array of subtasks to add"),
-            },
-            async ({ taskId, subtasks }) => {
-              console.log(
-                "add_subtasks_draft:",
-                subtasks.length,
-                "subtasks to",
-                taskId
-              );
-
-              // Find the task
-              let foundTask:
-                | (typeof draftState.tasklists)[0]["tasks"][0]
-                | null = null;
-              for (const tl of draftState.tasklists) {
-                const task = tl.tasks.find((t) => t.id === taskId);
-                if (task) {
-                  foundTask = task;
-                  break;
-                }
-              }
-
-              if (!foundTask) {
-                return {
-                  content: [
-                    {
-                      type: "text",
-                      text: `Error: Task ${taskId} not found. Create it first with add_task_draft.`,
-                    },
-                  ],
-                  isError: true,
-                };
-              }
-
-              const newSubtasks = subtasks.map((st) => ({
-                id: `st-${draftState.nextSubtaskNum++}`,
-                name: st.name,
-                description: st.description,
-                dueDate: st.dueDate,
-              }));
-              foundTask.subtasks.push(...newSubtasks);
-
-              // Emit SSE update
-              safeEnqueue(
-                `data: ${JSON.stringify({
-                  type: "project_draft_update",
-                  action: "add_subtasks",
-                  taskId,
-                  subtasks: newSubtasks,
-                })}\n\n`
-              );
-
-              return {
-                content: [
-                  {
-                    type: "text",
-                    text: `Added ${newSubtasks.length} subtasks to task ${taskId}.`,
-                  },
-                ],
-              };
-            }
-          ),
-
-          // Set project budget
-          tool(
-            "set_project_budget",
-            "Set the project budget (optional).",
-            {
-              type: z.enum(["time", "money"]).describe("Budget type"),
-              capacity: z
-                .number()
-                .describe("Budget capacity (hours for time, amount for money)"),
-            },
-            async ({ type, capacity }) => {
-              console.log("set_project_budget:", type, capacity);
-
-              draftState.budget = { type, capacity };
-
-              // Emit SSE update
-              safeEnqueue(
-                `data: ${JSON.stringify({
-                  type: "project_draft_update",
-                  action: "set_budget",
-                  budget: draftState.budget,
-                })}\n\n`
-              );
-
-              return {
-                content: [
-                  {
-                    type: "text",
-                    text: `Budget set: ${capacity} ${
-                      type === "time" ? "hours" : "currency units"
-                    }`,
-                  },
-                ],
-              };
-            }
-          ),
-
-          // Finalize the draft
-          tool(
-            "finalize_project_draft",
-            "Complete the project draft. Call this when done building the structure.",
-            {
-              message: z
-                .string()
-                .optional()
-                .describe("Summary message to show user"),
-            },
-            async ({ message: summaryMessage }) => {
-              console.log("finalize_project_draft");
-
-              // Emit complete event
-              safeEnqueue(
-                `data: ${JSON.stringify({
-                  type: "project_draft_complete",
-                  message:
-                    summaryMessage || "Project structure is ready for review!",
-                })}\n\n`
-              );
-
-              // Also emit the final project_draft for backward compatibility
-              safeEnqueue(
-                `data: ${JSON.stringify({
-                  type: "project_draft",
-                  draft: {
-                    project: draftState.project,
-                    tasklists: draftState.tasklists,
-                    budget: draftState.budget,
-                    summary: getDraftSummary(),
-                    message: summaryMessage || "",
-                    isDraft: true,
-                    isBuilding: false,
-                  },
-                })}\n\n`
-              );
-
-              return {
-                content: [
-                  {
-                    type: "text",
-                    text: `Project draft finalized with ${
-                      getDraftSummary().totalTasklists
-                    } tasklists, ${getDraftSummary().totalTasks} tasks, and ${
-                      getDraftSummary().totalSubtasks
-                    } subtasks.`,
-                  },
-                ],
-              };
-            }
-          ),
-        ],
-      });
+      // Legacy progressive MCP draft tools removed - JSON Lines (NDJSON) is now the sole approach
+      // Project creation happens via thinking stream output parsed by the frontend streaming framework
 
       const options: Options = {
         cwd: process.cwd(),
         model: model,
         mcpServers: {
           teamwork: teamworkMcpServer,
-          project_draft: projectDraftMcpServer,
         },
         disallowedTools: [
           "Bash",
@@ -2063,7 +1774,7 @@ If the user provides a PRD or detailed requirements, analyze them and output the
         permissionMode: "bypassPermissions",
         allowDangerouslySkipPermissions: true,
         maxTurns: 500, // High limit to allow for many progressive tool calls
-        env: process.env,
+        env: sdkEnv,
         ...(claudeCodePath && { pathToClaudeCodeExecutable: claudeCodePath }),
         stderr: (data: string) => console.error("Project Agent STDERR:", data),
       };
@@ -2202,47 +1913,20 @@ async function handleTimelogChat(body: {
   }
 
   // Add context to the system prompt
+  const projectList = cachedProjects.length > 0 ? cachedProjects : [{ id: projectId, name: projectName }].filter(p => p.id);
   const contextAddition = `
 
 ## CURRENT CONTEXT
 - Today's date: ${new Date().toISOString().split("T")[0]}
-- Available projects: ${JSON.stringify(ALLOWED_PROJECTS)}
+- Available projects: ${JSON.stringify(projectList)}
 ${
   projectId
-    ? `- Selected project: ${projectName} (ID: ${projectId})`
+    ? `- **Active project**: ${projectName} (ID: ${projectId}) — use this project by default unless the user specifies otherwise`
     : "- No project selected - ask user which project to use"
 }
 `;
 
   systemPrompt += contextAddition;
-
-  const options: Options = {
-    cwd: process.cwd(),
-    model: model,
-    mcpServers: { teamwork: teamworkMcpServer },
-    disallowedTools: [
-      "Bash",
-      "Edit",
-      "Write",
-      "MultiEdit",
-      "Read",
-      "Glob",
-      "Grep",
-      "Task",
-      "WebSearch",
-      "WebFetch",
-      "TodoWrite",
-      "NotebookEdit",
-    ],
-    systemPrompt,
-    includePartialMessages: true,
-    permissionMode: "bypassPermissions",
-    allowDangerouslySkipPermissions: true,
-    maxTurns: 8,
-    env: process.env,
-    ...(claudeCodePath && { pathToClaudeCodeExecutable: claudeCodePath }),
-    stderr: (data: string) => console.log("Timelog Agent STDERR:", data),
-  };
 
   const stream = new ReadableStream({
     async start(controller) {
@@ -2288,9 +1972,73 @@ ${
           `data: ${JSON.stringify({
             type: "init",
             model: "timelog-agent",
-            info: "Processing your time logging request...",
+            info: "Fetching project tasks...",
           })}\n\n`
         );
+
+        // PRE-FETCH: Get all tasks before calling the agent
+        let prefetchedData: Awaited<ReturnType<typeof prefetchProjectData>> | null = null;
+        if (projectId) {
+          console.log("Timelog pre-fetch: fetching tasks for project", projectId);
+
+          safeEnqueue(
+            `data: ${JSON.stringify({
+              type: "thinking",
+              thinking: "Loading project tasks...",
+            })}\n\n`
+          );
+
+          try {
+            prefetchedData = await prefetchProjectData(projectId, {
+              includeTasks: true,
+            });
+
+            console.log(
+              `Timelog pre-fetch complete: ${prefetchedData.tasks?.count || 0} tasks`
+            );
+
+            // Inject pre-fetched tasks into system prompt
+            systemPrompt += `
+
+## PRE-FETCHED DATA (use this instead of calling tools)
+
+### All Project Tasks (${prefetchedData.tasks?.count || 0} total)
+${JSON.stringify(prefetchedData.tasks?.tasks || [], null, 2)}
+
+IMPORTANT: All tasks for the active project have been pre-loaded above. Search through this data to find matching tasks instead of calling search_tasks or get_tasks_by_project. You may still call get_time_entries if you need to check for duplicate entries.
+`;
+          } catch (err) {
+            console.warn("Timelog pre-fetch failed, agent will use MCP tools as fallback:", err);
+          }
+        }
+
+        const options: Options = {
+          cwd: process.cwd(),
+          model: model,
+          mcpServers: { teamwork: teamworkMcpServer },
+          disallowedTools: [
+            "Bash",
+            "Edit",
+            "Write",
+            "MultiEdit",
+            "Read",
+            "Glob",
+            "Grep",
+            "Task",
+            "WebSearch",
+            "WebFetch",
+            "TodoWrite",
+            "NotebookEdit",
+          ],
+          systemPrompt,
+          includePartialMessages: true,
+          permissionMode: "bypassPermissions",
+          allowDangerouslySkipPermissions: true,
+          maxTurns: prefetchedData ? 3 : 8, // Reduced turns when data is pre-fetched
+          env: sdkEnv,
+          ...(claudeCodePath && { pathToClaudeCodeExecutable: claudeCodePath }),
+          stderr: (data: string) => console.log("Timelog Agent STDERR:", data),
+        };
 
         for await (const event of query({ prompt: fullPrompt, options })) {
           if (event.type === "stream_event") {
@@ -2299,24 +2047,13 @@ ${
               const delta = (streamEvent as any).delta;
               if (delta?.type === "text_delta" && delta.text) {
                 fullText += delta.text;
-                // Stream thinking status but filter out JSON data
-                const chunk = delta.text;
-                // Skip chunks that look like JSON or code blocks
-                const isJson =
-                  chunk.includes("{") ||
-                  chunk.includes("}") ||
-                  chunk.includes("```") ||
-                  chunk.includes('"action"') ||
-                  chunk.includes('"entries"') ||
-                  chunk.includes('"taskId"');
-                if (!isJson && chunk.trim().length > 0) {
-                  safeEnqueue(
-                    `data: ${JSON.stringify({
-                      type: "thinking",
-                      thinking: chunk,
-                    })}\n\n`
-                  );
-                }
+                // Stream ALL text as thinking (frontend detects NDJSON lines)
+                safeEnqueue(
+                  `data: ${JSON.stringify({
+                    type: "thinking",
+                    thinking: delta.text,
+                  })}\n\n`
+                );
               }
             }
           } else if (event.type === "result" && event.subtype === "success") {
@@ -2343,69 +2080,29 @@ ${
           return;
         }
 
-        // Check if response contains a timelog draft
-        const draft = extractTimelogDraft(fullText);
+        // Send final text result — clean NDJSON lines from the output
+        let cleanText = fullText
+          // Remove markdown JSON blocks
+          .replace(/```json[\s\S]*?```/g, "")
+          // Remove JSON Lines (any line that looks like a JSON object with "type" field)
+          .split('\n')
+          .filter(line => {
+            const trimmed = line.trim();
+            if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+              if (/"type"\s*:/.test(trimmed)) {
+                return false;
+              }
+            }
+            return true;
+          })
+          .join('\n')
+          .trim();
 
-        if (draft && draft.entries && draft.entries.length > 0) {
-          console.log(
-            "Found timelog draft with",
-            draft.entries.length,
-            "entries"
-          );
-
-          // Send the draft entries to the frontend
-          safeEnqueue(
-            `data: ${JSON.stringify({
-              type: "timelog_draft",
-              draft: {
-                entries: draft.entries.map((e: any, idx: number) => ({
-                  id: `draft-${idx}-${Date.now()}`,
-                  taskId: e.taskId,
-                  taskName: e.taskName,
-                  projectId: e.projectId || projectId,
-                  projectName: e.projectName || projectName,
-                  hours: e.hours,
-                  date: e.date,
-                  comment: e.comment,
-                  confidence: e.confidence || 0.8,
-                  isBillable: true,
-                })),
-                summary: draft.summary || {
-                  totalHours: draft.entries.reduce(
-                    (sum: number, e: any) => sum + e.hours,
-                    0
-                  ),
-                  totalEntries: draft.entries.length,
-                  dateRange: draft.entries.map((e: any) => e.date).join(", "),
-                },
-                message:
-                  draft.message ||
-                  "Review the entries below and click Submit to log your time.",
-              },
-            })}\n\n`
-          );
-
-          // Send a clean text message without the JSON
-          const cleanMessage =
-            draft.message ||
-            "I've prepared your time entries. Review them in the panel and adjust if needed, then confirm to submit.";
-          safeEnqueue(
-            `data: ${JSON.stringify({
-              type: "result",
-              text: cleanMessage,
-              final: true,
-            })}\n\n`
-          );
-        } else {
-          // No draft found - send the full text response
-          // Remove any partial JSON that might have appeared
-          const cleanText =
-            fullText.replace(/```json[\s\S]*?```/g, "").trim() || fullText;
+        if (cleanText) {
           safeEnqueue(
             `data: ${JSON.stringify({
               type: "result",
               text: cleanText,
-              final: true,
             })}\n\n`
           );
         }
@@ -2414,6 +2111,250 @@ ${
         safeClose();
       } catch (err) {
         console.error("Timelog agent error:", err);
+        safeEnqueue(
+          `data: ${JSON.stringify({ type: "error", error: String(err) })}\n\n`
+        );
+        safeClose();
+      }
+    },
+  });
+
+  return new Response(stream, {
+    headers: {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      ...corsHeaders,
+    },
+  });
+}
+
+// Handle status mode - dedicated agent for project status dashboards
+async function handleStatusChat(body: {
+  message: string;
+  mode?: string;
+  projectId?: number;
+  projectName?: string;
+  model?: string;
+  conversationHistory?: Array<{ role: string; content: string }>;
+}) {
+  const { message, projectId, projectName, model = "haiku", conversationHistory } = body;
+
+  // Load the status agent prompt
+  const promptPath = `${process.cwd()}/../../prompts/agents/status-agent.txt`;
+  let systemPrompt: string;
+  try {
+    const promptFile = Bun.file(promptPath);
+    systemPrompt = await promptFile.text();
+  } catch {
+    systemPrompt =
+      "You are a project status assistant for Teamwork.com. Help users view project metrics and status dashboards. Output NDJSON lines with status data.";
+  }
+
+  // Add context to the system prompt
+  const projectList = cachedProjects.length > 0 ? cachedProjects : [{ id: projectId, name: projectName }].filter(p => p.id);
+  const contextAddition = `
+
+## CURRENT CONTEXT
+- Today's date: ${new Date().toISOString().split("T")[0]}
+- Available projects: ${JSON.stringify(projectList)}
+${
+  projectId
+    ? `- **Active project**: ${projectName} (ID: ${projectId}) — use this project by default unless the user specifies otherwise`
+    : "- No project selected - ask user which project to use"
+}
+`;
+
+  systemPrompt += contextAddition;
+
+  const stream = new ReadableStream({
+    async start(controller) {
+      const encoder = new TextEncoder();
+      let closed = false;
+      let fullText = "";
+
+      const safeEnqueue = (data: string) => {
+        if (!closed) {
+          try {
+            controller.enqueue(encoder.encode(data));
+          } catch {
+            closed = true;
+          }
+        }
+      };
+
+      const safeClose = () => {
+        if (!closed) {
+          closed = true;
+          try {
+            controller.close();
+          } catch {}
+        }
+      };
+
+      try {
+        console.log("=== STATUS AGENT ===");
+        console.log("Message:", message.slice(0, 100));
+        console.log("Project:", projectId, projectName);
+        console.log("Conversation history:", conversationHistory?.length || 0, "messages");
+
+        // Build prompt with conversation history for context
+        let fullPrompt = message;
+        if (conversationHistory && conversationHistory.length > 0) {
+          const historyContext = conversationHistory
+            .map((m) => `${m.role === "user" ? "User" : "Assistant"}: ${m.content}`)
+            .join("\n\n");
+          fullPrompt = `## Previous Conversation:\n${historyContext}\n\n## Current Request:\n${message}`;
+        }
+
+        safeEnqueue(
+          `data: ${JSON.stringify({
+            type: "init",
+            model: "status-agent",
+            info: "Fetching project data...",
+          })}\n\n`
+        );
+
+        // PRE-FETCH: Get tasks + time entries in parallel BEFORE calling the agent
+        let prefetchedData: Awaited<ReturnType<typeof prefetchProjectData>> | null = null;
+        if (projectId) {
+          const dateRange = parseDateRange(message);
+          console.log("Status pre-fetch: date range =", dateRange);
+
+          safeEnqueue(
+            `data: ${JSON.stringify({
+              type: "thinking",
+              thinking: `Fetching tasks and time entries for ${dateRange.label}...`,
+            })}\n\n`
+          );
+
+          try {
+            prefetchedData = await prefetchProjectData(projectId, {
+              includeTasks: true,
+              includeTimeEntries: true,
+              timeRange: { startDate: dateRange.startDate, endDate: dateRange.endDate },
+            });
+
+            console.log(
+              `Status pre-fetch complete: ${prefetchedData.tasks?.count || 0} tasks, ${prefetchedData.timeEntries?.entryCount || 0} time entries`
+            );
+
+            // Inject pre-fetched data into system prompt
+            systemPrompt += `
+
+## PRE-FETCHED DATA (use this instead of calling tools)
+
+### Tasks (${prefetchedData.tasks?.count || 0} total)
+${JSON.stringify(prefetchedData.tasks?.tasks || [], null, 2)}
+
+### Time Entries (period: ${dateRange.startDate} to ${dateRange.endDate})
+${JSON.stringify(prefetchedData.timeEntries || {}, null, 2)}
+
+IMPORTANT: All project data has been pre-loaded above. Compute your metrics directly from this data. Do NOT call get_tasks_by_project or get_time_entries — the data is already here.
+`;
+          } catch (err) {
+            console.warn("Status pre-fetch failed, agent will use MCP tools as fallback:", err);
+          }
+        }
+
+        const options: Options = {
+          cwd: process.cwd(),
+          model: model,
+          mcpServers: { teamwork: teamworkMcpServer },
+          disallowedTools: [
+            "Bash",
+            "Edit",
+            "Write",
+            "MultiEdit",
+            "Read",
+            "Glob",
+            "Grep",
+            "Task",
+            "WebSearch",
+            "WebFetch",
+            "TodoWrite",
+            "NotebookEdit",
+          ],
+          systemPrompt,
+          includePartialMessages: true,
+          permissionMode: "bypassPermissions",
+          allowDangerouslySkipPermissions: true,
+          maxTurns: prefetchedData ? 3 : 8, // Reduced turns when data is pre-fetched
+          env: sdkEnv,
+          ...(claudeCodePath && { pathToClaudeCodeExecutable: claudeCodePath }),
+          stderr: (data: string) => console.log("Status Agent STDERR:", data),
+        };
+
+        for await (const event of query({ prompt: fullPrompt, options })) {
+          if (event.type === "stream_event") {
+            const streamEvent = event.event;
+            if (streamEvent.type === "content_block_delta") {
+              const delta = (streamEvent as any).delta;
+              if (delta?.type === "text_delta" && delta.text) {
+                fullText += delta.text;
+                // Stream ALL text as thinking (frontend detects NDJSON lines)
+                safeEnqueue(
+                  `data: ${JSON.stringify({
+                    type: "thinking",
+                    thinking: delta.text,
+                  })}\n\n`
+                );
+              }
+            }
+          } else if (event.type === "result" && event.subtype === "success") {
+            fullText = event.result || fullText;
+          }
+        }
+
+        console.log("Status agent response length:", fullText.length);
+
+        // SAFETY VALIDATION: Check agent response for any unsafe patterns
+        const validation = validateAgentResponse(fullText);
+        if (!validation.safe) {
+          console.error(
+            "SAFETY: Blocked unsafe agent response:",
+            validation.warning
+          );
+          safeEnqueue(
+            `data: ${JSON.stringify({
+              type: "error",
+              error: "Safety check failed. Please try again.",
+            })}\n\n`
+          );
+          safeClose();
+          return;
+        }
+
+        // Send final text result — clean NDJSON lines from the output
+        let cleanText = fullText
+          // Remove markdown JSON blocks
+          .replace(/```json[\s\S]*?```/g, "")
+          // Remove JSON Lines (any line that looks like a JSON object with "type" field)
+          .split('\n')
+          .filter(line => {
+            const trimmed = line.trim();
+            if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+              if (/"type"\s*:/.test(trimmed)) {
+                return false;
+              }
+            }
+            return true;
+          })
+          .join('\n')
+          .trim();
+
+        if (cleanText) {
+          safeEnqueue(
+            `data: ${JSON.stringify({
+              type: "result",
+              text: cleanText,
+            })}\n\n`
+          );
+        }
+
+        safeEnqueue("data: [DONE]\n\n");
+        safeClose();
+      } catch (err) {
+        console.error("Status agent error:", err);
         safeEnqueue(
           `data: ${JSON.stringify({ type: "error", error: String(err) })}\n\n`
         );
@@ -3327,7 +3268,7 @@ async function handleWebhook(req: Request): Promise<Response> {
               const options: Options = {
                 model: agentModel,
                 cwd: agentCwd,
-                env: process.env,
+                env: sdkEnv,
                 ...(claudeCodePath && { pathToClaudeCodeExecutable: claudeCodePath }),
               };
 
