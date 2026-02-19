@@ -155,7 +155,7 @@ export const ApiTaskSchema = z.object({
     ])
     .optional(),
   tags: z.array(TagSchema).nullable().optional(),
-  // Workflow stage info
+  // Workflow stage info (legacy field — rarely populated by V3 API)
   workflowColumn: z
     .object({
       id: z.number(),
@@ -163,6 +163,12 @@ export const ApiTaskSchema = z.object({
     })
     .nullable()
     .optional(),
+  // Workflow stages array — actual field returned by V3 API with board stage assignments
+  workflowStages: z.array(z.object({
+    workflowId: z.number(),
+    stageId: z.number(),
+    stageTaskDisplayOrder: z.number().optional(),
+  })).nullable().optional(),
   // Custom fields can be present
   customFields: z.array(z.unknown()).optional(),
 });

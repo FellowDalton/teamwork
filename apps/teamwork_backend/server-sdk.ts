@@ -638,6 +638,40 @@ async function fetchAllTasks(projectId: number): Promise<{
 
   console.log(`fetchAllTasks: fetched ${allTasks.length} tasks across ${page - 1} pages`);
 
+  // Resolve workflow stage names from the project's workflow
+  // Tasks have workflowStages: [{workflowId, stageId, ...}] but no stage name
+  // We need to fetch the workflow to get stage ID → name mapping
+  const stageNameMap: Record<number, string> = {};
+  try {
+    // Collect unique workflow IDs from tasks
+    const workflowIds = new Set<number>();
+    for (const t of allTasks) {
+      if (t.workflowStages?.[0]?.workflowId) {
+        workflowIds.add(t.workflowStages[0].workflowId);
+      }
+    }
+
+    // Fetch each workflow with stage details
+    for (const wfId of workflowIds) {
+      const wfResponse = await teamwork.http.get(
+        `/projects/api/v3/workflows/${wfId}.json?include=stages`
+      );
+      const stages = (wfResponse as any)?.included?.stages;
+      if (stages) {
+        for (const [stageId, stage] of Object.entries(stages)) {
+          stageNameMap[Number(stageId)] = (stage as any).name;
+        }
+      }
+    }
+
+    if (Object.keys(stageNameMap).length > 0) {
+      console.log(`fetchAllTasks: resolved ${Object.keys(stageNameMap).length} workflow stages:`,
+        Object.entries(stageNameMap).map(([id, name]) => `${name} (${id})`).join(", "));
+    }
+  } catch (err) {
+    console.warn("fetchAllTasks: failed to resolve workflow stages:", err);
+  }
+
   const resolveAssignee = (t: any): string | null => {
     const assignees = t.assignees;
     if (!assignees) return null;
@@ -655,19 +689,25 @@ async function fetchAllTasks(projectId: number): Promise<{
     return null;
   };
 
-  const tasks = allTasks.map((t: any) => ({
-    id: t.id,
-    name: t.name,
-    description: t.description || "",
-    status: t.status || "active",
-    priority: t.priority || "",
-    estimatedMinutes: t.estimatedMinutes || 0,
-    progress: t.progress || 0,
-    tags: t.tags?.map((tag: any) => tag.name) || [],
-    workflowStage: t.workflowColumn?.name || null,
-    completedAt: t.completedAt || null,
-    assignee: resolveAssignee(t),
-  }));
+  const tasks = allTasks.map((t: any) => {
+    // Resolve workflow stage name from stageId
+    const stageId = t.workflowStages?.[0]?.stageId;
+    const workflowStage = stageId ? (stageNameMap[stageId] || null) : null;
+
+    return {
+      id: t.id,
+      name: t.name,
+      description: t.description || "",
+      status: t.status || "active",
+      priority: t.priority || "",
+      estimatedMinutes: t.estimatedMinutes || 0,
+      progress: t.progress || 0,
+      tags: t.tags?.map((tag: any) => tag.name) || [],
+      workflowStage,
+      completedAt: t.completedAt || null,
+      assignee: resolveAssignee(t),
+    };
+  });
 
   return { tasks, count: tasks.length };
 }
