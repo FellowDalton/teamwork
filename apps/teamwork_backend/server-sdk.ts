@@ -619,6 +619,7 @@ async function fetchAllTasks(projectId: number): Promise<{
     const response = await teamwork.tasks.listByProject(projectId, {
       include: ["tags", "assignees"],
       includeCompletedTasks: true,
+      showCompletedLists: true,
       pageSize: 250,
       page,
     });
@@ -968,6 +969,7 @@ const teamworkMcpServer = createSdkMcpServer({
               {
                 include: ["tags"],
                 includeCompletedTasks: true,
+                showCompletedLists: true,
                 pageSize: 250,
                 page,
               }
@@ -3018,6 +3020,7 @@ async function handleProjectStructure(projectId: number) {
       include: ["tags"],
       pageSize: 500,
       includeCompletedTasks: true,
+      showCompletedLists: true,
     });
 
     // Group tasks by tasklist (exclude subtasks - they have parentTaskId)

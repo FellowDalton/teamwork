@@ -37,6 +37,8 @@ export interface ListTasksOptions {
   updatedAfter?: string;
   /** Include completed tasks */
   includeCompletedTasks?: boolean;
+  /** Include tasks from completed tasklists */
+  showCompletedLists?: boolean;
   /** Search term */
   searchTerm?: string;
 }
@@ -112,6 +114,9 @@ export class TasksResource {
     if (options?.includeCompletedTasks !== undefined) {
       params['includeCompletedTasks'] = options.includeCompletedTasks;
     }
+    if (options?.showCompletedLists !== undefined) {
+      params['showCompletedLists'] = options.showCompletedLists;
+    }
     if (options?.searchTerm) {
       params['searchTerm'] = options.searchTerm;
     }
@@ -158,6 +163,9 @@ export class TasksResource {
     }
     if (options?.includeCompletedTasks !== undefined) {
       params['includeCompletedTasks'] = options.includeCompletedTasks;
+    }
+    if (options?.showCompletedLists !== undefined) {
+      params['showCompletedLists'] = options.showCompletedLists;
     }
     if (options?.searchTerm) {
       params['searchTerm'] = options.searchTerm;
