@@ -178,7 +178,7 @@ export const DataCard: React.FC<DataCardProps> = ({ item, theme = 'dark', onClic
             {/* Bottom row: date left, hours right */}
             <div className={`flex items-center justify-between mt-auto pt-2 border-t ${isLight ? 'border-zinc-200/70' : 'border-zinc-600/30'}`}>
               <div className={`text-[10px] font-mono ${metaColor}`}>
-                {date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                {date.toLocaleDateString('da-DK', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
               </div>
               <h4 className="text-xl font-bold font-mono">
                 {timelog.hours}h
