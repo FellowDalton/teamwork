@@ -138,20 +138,58 @@ const response = await fetch(url, {
 ```
 </adding_commands>
 
+<critical_api_notes>
+## Critical API Notes
+
+### Completed Tasklists Hide Their Tasks
+The V3 API **silently excludes** tasks from completed tasklists by default. If a sprint/tasklist has `status: "completed"`, its tasks won't appear in query results even with `includeCompletedTasks=true`. You **must** pass `showCompletedLists=true` to get all tasks:
+
+```bash
+# This misses tasks in completed sprints:
+bun cli.ts list-tasks 806824
+
+# This gets ALL tasks including from completed sprints:
+# (requires adding showCompletedLists support to CLI if not present)
+```
+
+When using the API client directly:
+```typescript
+const response = await client.tasks.listByProject(projectId, {
+  includeCompletedTasks: true,
+  showCompletedLists: true,  // REQUIRED for tasks in completed sprints
+  include: ['tags', 'assignees'],
+});
+```
+
+### Workflow Stage Resolution
+Tasks have `workflowStages: [{workflowId, stageId}]` but **NOT** the stage name. To get stage names:
+
+```bash
+# 1. Get the workflow with stages included
+# Use direct API: GET /projects/api/v3/workflows/{workflowId}.json?include=stages
+# 2. Map stageId → name from response.included.stages
+```
+
+### Authentication
+The API uses **Basic Auth** with format `Basic base64(token:X)`, NOT Bearer token. The client handles this automatically.
+</critical_api_notes>
+
 <resource_hierarchy>
 ## Teamwork Resource Hierarchy
 
 ```
 Project
-  └── Tasklist (container for tasks)
+  └── Tasklist (container for tasks, can be "completed" status)
         └── Task
               ├── Subtask (task with parentTaskId)
               └── Comment
-  └── Workflow (board)
+  └── Workflow (board, can be shared across projects)
         └── Stage (column)
 ```
 
 Tasks belong to tasklists, not directly to projects.
+Tasklists can have `status: "completed"` — their tasks are hidden by default in V3 API.
+Workflows can span multiple projects — stage names may differ per project.
 </resource_hierarchy>
 
 <success_criteria>
