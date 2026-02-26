@@ -32,6 +32,9 @@ export const supabase: SupabaseClient<Database> | null =
           // no session and ultimately timeout.
           detectSessionInUrl: false,
           flowType: 'pkce',
+          // Disable navigator.locks to prevent deadlocks between _initialize()
+          // and manual exchangeCodeForSession/getSession calls
+          lock: false,
           storageKey: 'teamwork-ai-synth-auth',
         },
       })
