@@ -105,9 +105,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
           }
 
           // For callbacks, onAuthStateChange handles the session.
-          // Clean URL and set a safety timeout.
+          // DO NOT clear the URL here - Supabase's _initialize() needs to
+          // read the ?code= param. URL is cleaned in onAuthStateChange after
+          // the session is established.
           console.log('OAuth callback detected, waiting for onAuthStateChange...');
-          window.history.replaceState({}, '', '/');
           setTimeout(() => {
             setState((prev) => {
               if (prev.isLoading) {
@@ -177,6 +178,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
         // Handle both SIGNED_IN and INITIAL_SESSION (OAuth callback returns INITIAL_SESSION)
         if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user) {
+          // Clean callback URL params now that session is established
+          if (window.location.pathname === '/auth/callback' || new URLSearchParams(window.location.search).has('code')) {
+            window.history.replaceState({}, '', '/');
+          }
           const { profile, workspace } = await fetchProfile(session.user.id);
           setState({
             user: session.user,
