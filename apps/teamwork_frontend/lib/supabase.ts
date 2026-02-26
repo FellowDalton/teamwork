@@ -26,7 +26,8 @@ export const supabase: SupabaseClient<Database> | null =
           autoRefreshToken: true,
           persistSession: true,
           detectSessionInUrl: true,
-          // Disable browser lock to prevent hanging on getSession()
+          flowType: 'pkce',
+          // Disable browser lock to prevent deadlocks on getSession()
           lock: false,
           storageKey: 'teamwork-ai-synth-auth',
         },

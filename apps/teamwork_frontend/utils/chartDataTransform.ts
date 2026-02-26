@@ -196,7 +196,7 @@ export function groupByDay(
   const data = Object.entries(dayData)
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([day, value]) => ({
-      label: new Date(day).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
+      label: new Date(day).toLocaleDateString('da-DK', { weekday: 'short', day: 'numeric', month: 'short' }),
       value: parseFloat(value.toFixed(1)),
     }));
 

@@ -17,20 +17,19 @@ import {
 import { AnalogButton } from "./components/AnalogButton";
 import { ConversationPanel } from "./components/ConversationPanel";
 import { DataDisplayPanel } from "./components/DataDisplayPanel";
-// ConversationSelector is now rendered inside ConversationPanel
 import { LoginButton, UserMenu } from "./components/LoginButton";
 import { LoginScreen } from "./components/LoginScreen";
-import SettingsModal, { type AIModel } from "./components/SettingsModal";
+import SettingsModal, { type ModelConfig, DEFAULT_MODEL_CONFIG } from "./components/SettingsModal";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { processChatCommand, processStreamingChat, processAgentStream, requestAdditionalChart, VisualizationSpec, TimelogDraftData, TimelogDraftEntry, submitTimelogEntries, submitProject } from "./services/claudeService";
 import { teamworkService, TeamworkTask, TeamworkTimeEntry } from "./services/teamworkService";
 import * as supabaseService from "./services/supabaseService";
 import type { Conversation } from "./types/supabase";
+import { StreamProvider, useStreamContext, registerBuiltinPlugins } from "./streaming";
 import {
   Layout,
   Plus,
   Bell,
-  Briefcase,
   Settings,
   Sun,
   Moon,
@@ -38,7 +37,81 @@ import {
   Clock,
   Grid,
   Loader2,
+  Search,
+  X,
+  ListTodo,
+  LayoutDashboard,
+  Calendar,
+  CalendarDays,
 } from "lucide-react";
+import type { SuggestionCard } from "./components/SuggestionCards";
+
+// Register all built-in stream plugins on app startup
+registerBuiltinPlugins();
+
+// Status mode suggestion cards
+const STATUS_SUGGESTIONS: SuggestionCard[] = [
+  {
+    id: "metrics",
+    label: "Project Metrics",
+    description: "Task counts, completion rate, and KPIs",
+    icon: React.createElement(BarChart3, { size: 16 }),
+    prompt: "Show me project metrics and KPIs",
+  },
+  {
+    id: "tasks",
+    label: "Task Breakdown",
+    description: "Tasks grouped by status and priority",
+    icon: React.createElement(ListTodo, { size: 16 }),
+    prompt: "Show me the task breakdown by status and priority",
+  },
+  {
+    id: "time",
+    label: "Time Summary",
+    description: "Hours by task, billable vs total",
+    icon: React.createElement(Clock, { size: 16 }),
+    prompt: "Show me a time summary with hours by task and week",
+  },
+  {
+    id: "dashboard",
+    label: "Full Dashboard",
+    description: "Complete project overview with all data",
+    icon: React.createElement(LayoutDashboard, { size: 16 }),
+    prompt: "Generate a full project dashboard",
+  },
+];
+
+// Period selection cards (shown after initial status card pick)
+const PERIOD_SUGGESTIONS: SuggestionCard[] = [
+  {
+    id: "this-week",
+    label: "This Week",
+    description: "Monday to today",
+    icon: React.createElement(Calendar, { size: 16 }),
+    prompt: "This week",
+  },
+  {
+    id: "this-month",
+    label: "This Month",
+    description: "From the 1st to today",
+    icon: React.createElement(CalendarDays, { size: 16 }),
+    prompt: "This month",
+  },
+  {
+    id: "last-30",
+    label: "Last 30 Days",
+    description: "Past 30 days from today",
+    icon: React.createElement(Clock, { size: 16 }),
+    prompt: "Last 30 days",
+  },
+  {
+    id: "last-quarter",
+    label: "Last Quarter",
+    description: "Previous 3 months",
+    icon: React.createElement(BarChart3, { size: 16 }),
+    prompt: "Last quarter",
+  },
+];
 
 // Transform Teamwork API data to frontend format
 function transformTeamworkData(
@@ -111,9 +184,11 @@ type Theme = "light" | "dark";
 // Main app content - separated to use auth context
 function AppContent() {
   const { isAuthenticated, isConfigured, isLoading: isAuthLoading, profile } = useAuth();
+  const streamCtx = useStreamContext();
 
   const [projects, setProjects] = useState<Project[]>([]);
   const [activeProjectId, setActiveProjectId] = useState<string>("");
+  const [projectSearch, setProjectSearch] = useState("");
   const [theme, setTheme] = useState<Theme>("dark");
   const [isLoadingProjects, setIsLoadingProjects] = useState(true);
   const [apiError, setApiError] = useState<string | null>(null);
@@ -127,6 +202,8 @@ function AppContent() {
   const [inputValue, setInputValue] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [thinkingStatus, setThinkingStatus] = useState<string>("");
+  // Status mode: selected type card (waiting for period selection)
+  const [statusSelectedType, setStatusSelectedType] = useState<SuggestionCard | null>(null);
 
   // Supabase conversation persistence
   const [currentConversation, setCurrentConversation] = useState<Conversation | null>(null);
@@ -149,9 +226,12 @@ function AppContent() {
     const saved = localStorage.getItem('hourlyRate');
     return saved ? parseInt(saved, 10) : 1200;
   });
-  const [model, setModel] = useState<AIModel>(() => {
-    const saved = localStorage.getItem('aiModel');
-    return (saved === 'haiku' || saved === 'sonnet' || saved === 'opus') ? saved : 'haiku';
+  const [modelConfig, setModelConfig] = useState<ModelConfig>(() => {
+    const saved = localStorage.getItem('aiModelConfig');
+    if (saved) {
+      try { return { ...DEFAULT_MODEL_CONFIG, ...JSON.parse(saved) }; } catch {}
+    }
+    return DEFAULT_MODEL_CONFIG;
   });
 
   // Persist hourly rate to localStorage
@@ -159,10 +239,10 @@ function AppContent() {
     localStorage.setItem('hourlyRate', hourlyRate.toString());
   }, [hourlyRate]);
 
-  // Persist model to localStorage
+  // Persist model config to localStorage
   useEffect(() => {
-    localStorage.setItem('aiModel', model);
-  }, [model]);
+    localStorage.setItem('aiModelConfig', JSON.stringify(modelConfig));
+  }, [modelConfig]);
 
   const activeProject = projects.find((p) => p.id === activeProjectId) || null;
   const isLight = theme === "light";
@@ -265,6 +345,7 @@ function AppContent() {
     setDisplayData(null);
     setTimelogDraft(null); // Clear any draft when switching topics
     setProjectDraft(null);
+    setStatusSelectedType(null); // Clear status card selection
   }, [activeTopic]);
 
   // --- Theme Styles ---
@@ -280,7 +361,6 @@ function AppContent() {
   const sidebarBg = isLight
     ? "bg-[#d4d4d8] border-zinc-400"
     : "bg-[#18181b] border-black";
-  const sidebarHeading = isLight ? "text-zinc-500" : "text-zinc-600";
   const sidebarFooterBorder = isLight ? "border-zinc-400" : "border-zinc-800";
   const lcdBg = isLight
     ? "bg-[#e4e4e7] border-zinc-400 shadow-[inset_0_2px_4px_rgba(0,0,0,0.05)]"
@@ -293,43 +373,6 @@ function AppContent() {
 
   // --- Conversation Persistence Handlers ---
 
-  // Handle selecting an existing conversation from the dropdown
-  const handleSelectConversation = useCallback(async (conversation: Conversation | null) => {
-    if (!conversation) {
-      // Starting fresh - clear current conversation
-      setCurrentConversation(null);
-      setMessages([]);
-      setDisplayData(null);
-      return;
-    }
-
-    setCurrentConversation(conversation);
-    setActiveTopic(conversation.topic);
-
-    // Load messages from Supabase
-    const convWithMessages = await supabaseService.getConversationWithMessages(conversation.id);
-    if (convWithMessages?.messages) {
-      const loadedMessages: ChatMessage[] = convWithMessages.messages.map((msg) => ({
-        id: msg.id,
-        role: msg.role,
-        content: msg.content || '',
-        timestamp: msg.created_at,
-        topic: conversation.topic,
-        displayData: msg.display_data as DisplayData | undefined,
-      }));
-      setMessages(loadedMessages);
-    }
-  }, []);
-
-  // Handle creating a new conversation
-  const handleNewConversation = useCallback((conversation: Conversation) => {
-    setCurrentConversation(conversation);
-    setActiveTopic(conversation.topic);
-    setMessages([]);
-    setDisplayData(null);
-    setTimelogDraft(null);
-    setProjectDraft(null);
-  }, []);
 
   // Save message to Supabase (called after each message exchange)
   const persistMessage = useCallback(async (
@@ -711,8 +754,15 @@ function AppContent() {
   };
 
   const handleSendMessage = async (content: string, files?: import('./types/conversation').FileAttachment[]) => {
+    // If user types freely while a status type card is selected, combine with the period
+    let resolvedContent = content;
+    if (statusSelectedType && activeTopic === "status") {
+      resolvedContent = `${statusSelectedType.prompt} for ${content.toLowerCase()}`;
+      setStatusSelectedType(null);
+    }
+
     // Build message content including file contents
-    let fullContent = content;
+    let fullContent = resolvedContent;
     if (files && files.length > 0) {
       const fileContents = files
         .filter(f => f.content)
@@ -736,13 +786,13 @@ function AppContent() {
       }
     }
 
-    // Add user message (show original content, not the file dump)
+    // Add user message (show resolved content for status mode, original for files)
     const userMsg: ChatMessage = {
       id: `msg-${Date.now()}`,
       role: "user",
       content: files && files.length > 0
         ? `${content}\n\n📎 ${files.length} file(s) attached: ${files.map(f => f.name).join(', ')}`
-        : content,
+        : resolvedContent,
       timestamp: new Date().toISOString(),
       topic: activeTopic,
     };
@@ -752,6 +802,7 @@ function AppContent() {
     setIsProcessing(true);
     setDisplayData(null); // Clear previous visualizations
     setTimelogDraft(null); // Clear any previous draft
+    streamCtx.reset(); // Reset streaming framework for new message
 
     // Persist user message to Supabase (non-blocking to prevent UI freeze)
     // Don't await - let stream start immediately while message saves in background
@@ -788,7 +839,7 @@ function AppContent() {
         topic: activeTopic,
         projectId: numericProjectId,
         projectName: activeProject?.name,
-        model,
+        model: modelConfig[activeTopic],
         conversationHistory: historyForAgent.length > 0 ? historyForAgent : undefined,
         onChunk: (text) => {
           receivedText = text;
@@ -919,88 +970,55 @@ function AppContent() {
           console.log("Timelog draft received:", draft.entries.length, "entries");
           setTimelogDraft(draft);
         },
+        onStreamFeed: (chunk) => {
+          // Feed to the streaming framework - it routes to the right accumulator
+          streamCtx.feed(chunk);
+          // Sync stream state back to legacy state for DataDisplayPanel
+          const projectState = streamCtx.router.getState<ProjectDraftData>('project');
+          if (projectState && streamCtx.router.isActive('project')) {
+            setProjectDraft(projectState);
+          }
+          const timelogState = streamCtx.router.getState<TimelogDraftData>('timelog');
+          if (timelogState && streamCtx.router.isActive('timelog')) {
+            setTimelogDraft(timelogState);
+          }
+        },
+        onStreamFlush: () => {
+          streamCtx.flush();
+          // Final sync after flush
+          const projectState = streamCtx.router.getState<ProjectDraftData>('project');
+          if (projectState && streamCtx.router.isActive('project')) {
+            setProjectDraft(projectState);
+          }
+          const timelogState = streamCtx.router.getState<TimelogDraftData>('timelog');
+          if (timelogState && streamCtx.router.isActive('timelog')) {
+            setTimelogDraft(timelogState);
+            // Reset stream so legacy draft rendering takes over for editing/submit
+            streamCtx.reset();
+          }
+        },
         onProjectDraft: (draft) => {
           // Project agent returned draft project structure for review
           console.log("Project draft received:", draft.summary.totalTasks, "tasks");
           setProjectDraft(draft);
         },
-        onProjectDraftUpdate: (update) => {
-          // Progressive update - accumulate into existing draft
-          console.log("Project draft update:", update.action);
-          setProjectDraft((prev) => {
-            if (!prev) return prev;
-
-            switch (update.action) {
-              case 'add_tasklist':
-                if (update.tasklist) {
-                  return {
-                    ...prev,
-                    tasklists: [...prev.tasklists, { ...update.tasklist, tasks: [] }],
-                    summary: {
-                      ...prev.summary,
-                      totalTasklists: prev.summary.totalTasklists + 1,
-                    },
-                  };
-                }
-                break;
-              case 'add_task':
-                if (update.tasklistId && update.task) {
-                  return {
-                    ...prev,
-                    tasklists: prev.tasklists.map(tl =>
-                      tl.id === update.tasklistId
-                        ? { ...tl, tasks: [...tl.tasks, { ...update.task!, subtasks: [], tags: update.task!.tags || [] }] }
-                        : tl
-                    ),
-                    summary: {
-                      ...prev.summary,
-                      totalTasks: prev.summary.totalTasks + 1,
-                    },
-                  };
-                }
-                break;
-              case 'add_subtasks':
-                if (update.taskId && update.subtasks) {
-                  return {
-                    ...prev,
-                    tasklists: prev.tasklists.map(tl => ({
-                      ...tl,
-                      tasks: tl.tasks.map(t =>
-                        t.id === update.taskId
-                          ? { ...t, subtasks: [...t.subtasks, ...update.subtasks!] }
-                          : t
-                      ),
-                    })),
-                    summary: {
-                      ...prev.summary,
-                      totalSubtasks: prev.summary.totalSubtasks + update.subtasks.length,
-                    },
-                  };
-                }
-                break;
-              case 'set_budget':
-                if (update.budget) {
-                  return {
-                    ...prev,
-                    budget: update.budget,
-                  };
-                }
-                break;
-            }
-            return prev;
-          });
-        },
         onProjectDraftComplete: (message) => {
           // Mark draft as complete (no longer building)
           console.log("Project draft complete:", message);
-          setProjectDraft((prev) => {
-            if (!prev) return prev;
-            return {
-              ...prev,
-              message: message || prev.message,
-              isBuilding: false,
-            } as ProjectDraftData;
-          });
+          // Check if stream framework has the final state
+          const streamState = streamCtx.router.getState<ProjectDraftData>('project');
+          if (streamState && streamCtx.router.isActive('project')) {
+            setProjectDraft(streamState);
+          } else {
+            setProjectDraft((prev) => {
+              if (!prev) return prev;
+              return {
+                ...prev,
+                message: message || prev.message,
+                isBuilding: false,
+              } as ProjectDraftData;
+            });
+          }
         },
         onComplete: async (fullText) => {
           setThinkingStatus("");
@@ -1015,15 +1033,14 @@ function AppContent() {
             topic: activeTopic,
           };
           setMessages((prev) => [...prev, aiMsg]);
-
-          // Persist assistant message to Supabase
-          if (isAuthenticated && activeConversation) {
-            await supabaseService.addMessage(activeConversation.id, 'assistant', responseContent);
-          }
-
-          // Cards are now populated via onCards callback when Opus includes [[DISPLAY:cards]]
-          // The CardAgent (Haiku) formats the data intelligently
           setIsProcessing(false);
+
+          // Persist assistant message to Supabase (non-blocking)
+          if (isAuthenticated && activeConversation) {
+            supabaseService.addMessage(activeConversation.id, 'assistant', responseContent).catch(
+              (err) => console.error('Failed to persist message:', err)
+            );
+          }
         },
         onError: (error) => {
           console.error("Stream error:", error);
@@ -1556,6 +1573,43 @@ function AppContent() {
 
   // --- UI Components ---
 
+  // Status mode card flow (no LLM until both type + period are selected)
+  const getStatusSuggestionCards = (): SuggestionCard[] | undefined => {
+    if (activeTopic !== "status" || isProcessing) return undefined;
+
+    // Step 1: Show type cards when only the welcome message exists and no type selected
+    if (messages.length <= 1 && !statusSelectedType) return STATUS_SUGGESTIONS;
+
+    // Step 2: Show period cards after type is selected
+    if (statusSelectedType) return PERIOD_SUGGESTIONS;
+
+    return undefined;
+  };
+
+  const getStatusSuggestionHeader = (): string | undefined => {
+    if (activeTopic !== "status" || isProcessing) return undefined;
+    if (statusSelectedType) return `${statusSelectedType.label} — pick a time period`;
+    return undefined;
+  };
+
+  const getStatusSuggestionSubtitle = (): string | undefined => {
+    if (activeTopic !== "status" || isProcessing) return undefined;
+    if (statusSelectedType) return "Or type a custom period below";
+    return undefined;
+  };
+
+  const handleStatusSuggestionSelect = (card: SuggestionCard) => {
+    if (!statusSelectedType) {
+      // Step 1: user picked a type card — store it, don't send to LLM
+      setStatusSelectedType(card);
+    } else {
+      // Step 2: user picked a period card — combine and send to LLM
+      const combinedPrompt = `${statusSelectedType.prompt} for ${card.prompt.toLowerCase()}`;
+      setStatusSelectedType(null);
+      handleSendMessage(combinedPrompt);
+    }
+  };
+
   const getTopicLabel = () => {
     const labels: Record<ConversationTopic, string> = {
       project: "NEW PROJECT",
@@ -1760,13 +1814,36 @@ function AppContent() {
           className={`w-64 ${sidebarBg} flex flex-col border-r z-10 transition-colors duration-300 relative`}
         >
           <div className="p-4 flex-1 overflow-y-auto no-scrollbar">
-            <h2
-              className={`text-xs font-bold uppercase tracking-widest mb-4 flex items-center gap-2 ${sidebarHeading}`}
-            >
-              <Briefcase size={12} /> Projects
-            </h2>
+            <div className={`flex items-center gap-2 mb-3 px-2 py-1.5 rounded border ${
+              isLight
+                ? 'bg-zinc-200/80 border-zinc-300'
+                : 'bg-zinc-900/80 border-zinc-800'
+            }`}>
+              <Search size={12} className={isLight ? 'text-zinc-400' : 'text-zinc-600'} />
+              <input
+                type="text"
+                value={projectSearch}
+                onChange={(e) => setProjectSearch(e.target.value)}
+                placeholder="Search..."
+                className={`flex-1 bg-transparent text-xs font-mono outline-none placeholder:opacity-50 ${
+                  isLight ? 'text-zinc-700 placeholder:text-zinc-400' : 'text-zinc-300 placeholder:text-zinc-600'
+                }`}
+              />
+              {projectSearch && (
+                <button
+                  onClick={() => setProjectSearch("")}
+                  className={`flex-shrink-0 rounded-full p-0.5 transition-colors ${
+                    isLight ? 'text-zinc-400 hover:text-zinc-600 hover:bg-zinc-300' : 'text-zinc-600 hover:text-zinc-300 hover:bg-zinc-800'
+                  }`}
+                >
+                  <X size={10} />
+                </button>
+              )}
+            </div>
             <div className="space-y-4">
-              {projects.map((proj, idx) => (
+              {projects
+                .filter((proj) => !projectSearch || proj.name.toLowerCase().includes(projectSearch.toLowerCase()))
+                .map((proj, idx) => (
                 <AnalogButton
                   key={proj.id}
                   label={proj.name}
@@ -1844,9 +1921,10 @@ function AppContent() {
                 theme={theme}
                 attachedFiles={attachedFiles}
                 onFilesChange={setAttachedFiles}
-                currentConversation={currentConversation}
-                onSelectConversation={handleSelectConversation}
-                onNewConversation={handleNewConversation}
+                suggestionCards={getStatusSuggestionCards()}
+                suggestionHeader={getStatusSuggestionHeader()}
+                suggestionSubtitle={getStatusSuggestionSubtitle()}
+                onSuggestionSelect={activeTopic === "status" ? handleStatusSuggestionSelect : undefined}
               />
             </div>
 
@@ -1869,6 +1947,8 @@ function AppContent() {
                 onUpdateProjectTasklist={handleProjectTasklistUpdate}
                 onUpdateProjectTask={handleProjectTaskUpdate}
                 hourlyRate={hourlyRate}
+                isProcessing={isProcessing}
+                activeTopic={activeTopic}
               />
             </div>
           </div>
@@ -1881,19 +1961,21 @@ function AppContent() {
         onClose={() => setShowSettings(false)}
         hourlyRate={hourlyRate}
         onHourlyRateChange={setHourlyRate}
-        model={model}
-        onModelChange={setModel}
+        modelConfig={modelConfig}
+        onModelConfigChange={setModelConfig}
         theme={theme}
       />
     </div>
   );
 }
 
-// App wrapper with AuthProvider
+// App wrapper with AuthProvider and StreamProvider
 export default function App() {
   return (
     <AuthProvider>
-      <AppContent />
+      <StreamProvider>
+        <AppContent />
+      </StreamProvider>
     </AuthProvider>
   );
 }

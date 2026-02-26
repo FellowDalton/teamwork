@@ -3,8 +3,7 @@ import { Bot, User, Sparkles, Command, ChevronRight, CheckCircle2, AlertCircle, 
 import ReactMarkdown from 'react-markdown';
 import { ChatMessage, ConversationTopic, FileAttachment } from '../types/conversation';
 import { FileAttachmentsBar } from './FileAttachment';
-import { ConversationSelector } from './ConversationSelector';
-import type { Conversation } from '../types/supabase';
+import { SuggestionCards, type SuggestionCard } from './SuggestionCards';
 
 // Convert bullet characters to markdown list syntax
 const normalizeMarkdown = (text: string): string => {
@@ -58,10 +57,11 @@ interface ConversationPanelProps {
   theme?: 'light' | 'dark';
   attachedFiles?: FileAttachment[];
   onFilesChange?: (files: FileAttachment[]) => void;
-  // Conversation selector props
-  currentConversation?: Conversation | null;
-  onSelectConversation?: (conversation: Conversation | null) => void;
-  onNewConversation?: (conversation: Conversation) => void;
+  // Suggestion cards (status mode type/period selection)
+  suggestionCards?: SuggestionCard[];
+  suggestionHeader?: string;
+  suggestionSubtitle?: string;
+  onSuggestionSelect?: (card: SuggestionCard) => void;
 }
 
 // Screw component for hardware aesthetic
@@ -83,9 +83,10 @@ export const ConversationPanel: React.FC<ConversationPanelProps> = ({
   theme = 'dark',
   attachedFiles = [],
   onFilesChange,
-  currentConversation,
-  onSelectConversation,
-  onNewConversation,
+  suggestionCards,
+  suggestionHeader,
+  suggestionSubtitle,
+  onSuggestionSelect,
 }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -244,19 +245,9 @@ export const ConversationPanel: React.FC<ConversationPanelProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
-          {onSelectConversation && onNewConversation ? (
-            <ConversationSelector
-              currentConversationId={currentConversation?.id || null}
-              onSelectConversation={onSelectConversation}
-              onNewConversation={onNewConversation}
-              filterTopic={topic}
-              isLight={isLight}
-            />
-          ) : (
-            <span className={`font-mono text-[9px] ${textSecondary}`}>
-              {messages.length} MSG
-            </span>
-          )}
+          <span className={`font-mono text-[9px] ${textSecondary}`}>
+            {messages.length} MSG
+          </span>
           <Screw isLight={isLight} />
         </div>
       </div>
@@ -335,6 +326,17 @@ export const ConversationPanel: React.FC<ConversationPanelProps> = ({
             </div>
           </div>
         ))}
+
+        {/* Suggestion cards (status mode type/period selection) */}
+        {suggestionCards && suggestionCards.length > 0 && !isProcessing && (
+          <SuggestionCards
+            cards={suggestionCards}
+            onSelect={onSuggestionSelect || ((card) => onSend(card.prompt))}
+            header={suggestionHeader}
+            subtitle={suggestionSubtitle}
+            theme={theme}
+          />
+        )}
 
         {/* Processing indicator */}
         {isProcessing && (

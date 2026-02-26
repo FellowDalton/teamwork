@@ -70,7 +70,7 @@ export const TimelogDraftCard: React.FC<TimelogDraftCardProps> = ({
         </div>
         <div className={`flex items-center gap-1 text-xs ${textSecondary}`}>
           <Calendar size={12} />
-          <span>{entry.date}</span>
+          <span>{new Date(entry.date + 'T00:00:00').toLocaleDateString('da-DK', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}</span>
         </div>
       </div>
       

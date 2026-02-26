@@ -1,6 +1,7 @@
 import { Project, Task } from "../types";
-import { DisplayData, DisplayItem, ConversationTopic, ProjectDraftData, ProjectDraftUpdateEvent } from "../types/conversation";
+import { DisplayData, DisplayItem, ConversationTopic, ProjectDraftData } from "../types/conversation";
 import { createProjectJsonLineProcessor } from "./projectJsonParser";
+import { StreamRegistry } from "../streaming/core/StreamRegistry";
 import { apiUrl } from "./apiConfig";
 
 // Helper to call Claude API via backend proxy
@@ -423,8 +424,11 @@ export interface StreamingChatOptions {
   onVisualization?: (spec: VisualizationSpec) => void;
   onTimelogDraft?: (draft: TimelogDraftData) => void;
   onProjectDraft?: (draft: ProjectDraftData) => void;
-  onProjectDraftUpdate?: (update: ProjectDraftUpdateEvent) => void;
   onProjectDraftComplete?: (message?: string) => void;
+  /** New: feed raw text to the streaming framework (StreamContext) */
+  onStreamFeed?: (chunk: string) => void;
+  /** New: flush the streaming framework parser */
+  onStreamFlush?: () => void;
   onComplete: (fullText: string) => void;
   onError: (error: Error) => void;
 }
@@ -525,7 +529,7 @@ export const processStreamingChat = async (options: StreamingChatOptions): Promi
 // Agent SDK streaming - uses skills for intelligent Teamwork interactions
 // No hard-coded date parsing - Claude handles everything via skills
 export const processAgentStream = async (options: StreamingChatOptions): Promise<void> => {
-  const { message, topic, projectId, projectName, model, conversationHistory, onChunk, onThinking, onVisualization, onTimelogDraft, onProjectDraft, onProjectDraftUpdate, onProjectDraftComplete, onComplete, onError } = options;
+  const { message, topic, projectId, projectName, model, conversationHistory, onChunk, onThinking, onVisualization, onTimelogDraft, onProjectDraft, onProjectDraftComplete, onStreamFeed, onStreamFlush, onComplete, onError } = options;
 
   const modeMap: Record<ConversationTopic, string> = {
     project: 'project',
@@ -562,23 +566,19 @@ export const processAgentStream = async (options: StreamingChatOptions): Promise
     const decoder = new TextDecoder();
     let fullText = "";
 
-    // === JSON Lines Parser for Project Mode ===
-    // Detects JSON Lines format and parses progressively
-    let jsonLinesDetected = false;
-    let jsonLineBuffer = '';
-    const isProjectMode = topic === 'project';
+    // === Stream Framework Detection ===
+    // Uses registry-based detection pattern instead of hardcoded regex
+    let streamDetected = false;
+    let streamBuffer = '';
+    const detectionPattern = StreamRegistry.buildDetectionPattern();
+    const hasStreamFeed = !!onStreamFeed;
 
-    // Create JSON Lines processor for project mode
-    const jsonLineProcessor = isProjectMode && onProjectDraft ? createProjectJsonLineProcessor(
+    // Legacy fallback: project-specific JSON Lines processor
+    // Used when onStreamFeed is not provided (backward compatibility)
+    const jsonLineProcessor = !hasStreamFeed && onProjectDraft ? createProjectJsonLineProcessor(
+      (draft) => onProjectDraft(draft),
       (draft) => {
-        // Progressive update - emit for each new element
-        onProjectDraft(draft);
-      },
-      (draft) => {
-        // Complete - mark as done
-        if (onProjectDraftComplete) {
-          onProjectDraftComplete(draft.message);
-        }
+        if (onProjectDraftComplete) onProjectDraftComplete(draft.message);
       }
     ) : null;
 
@@ -594,9 +594,13 @@ export const processAgentStream = async (options: StreamingChatOptions): Promise
         const data = line.slice(6); // Remove "data: " prefix
 
         if (data === "[DONE]") {
-          // Flush any remaining buffer in JSON Lines parser
-          if (jsonLineProcessor && jsonLinesDetected) {
-            jsonLineProcessor.flush();
+          // Flush streaming framework or legacy parser
+          if (streamDetected) {
+            if (hasStreamFeed && onStreamFlush) {
+              onStreamFlush();
+            } else if (jsonLineProcessor) {
+              jsonLineProcessor.flush();
+            }
           }
           streamDone = true;
           break;
@@ -608,63 +612,66 @@ export const processAgentStream = async (options: StreamingChatOptions): Promise
           if (parsed.type === 'init') {
             console.log('Agent initialized:', parsed.model, parsed.tools);
           } else if (parsed.type === 'text' && parsed.text) {
-            // === JSON Lines Detection & Processing for Project Mode ===
-            if (isProjectMode && jsonLineProcessor) {
-              const textChunk = parsed.text;
+            // === Stream Detection & Processing ===
+            const textChunk = parsed.text;
 
-              // Detect JSON Lines format: look for lines starting with {"type":
-              if (!jsonLinesDetected) {
-                jsonLineBuffer += textChunk;
-                // Check if we have a JSON Lines pattern (line starting with {"type":"project" or similar)
-                if (/\{"type"\s*:\s*"(project|tasklist|task|subtask|complete)"/.test(jsonLineBuffer)) {
-                  jsonLinesDetected = true;
-                  console.log('JSON Lines format detected for project creation');
-                  // Feed the accumulated buffer to the parser
-                  jsonLineProcessor.feed(jsonLineBuffer);
-                  jsonLineBuffer = '';
-                } else if (jsonLineBuffer.length > 500) {
-                  // After 500 chars without JSON Lines pattern, fall back to SSE events
-                  // This handles legacy tool-based responses
-                  jsonLineBuffer = '';
+            if (hasStreamFeed || jsonLineProcessor) {
+              if (!streamDetected) {
+                streamBuffer += textChunk;
+                // Check against registry-based detection pattern
+                if (detectionPattern.test(streamBuffer)) {
+                  streamDetected = true;
+                  console.log('NDJSON stream detected in text');
+                  if (hasStreamFeed) {
+                    onStreamFeed!(streamBuffer);
+                  } else if (jsonLineProcessor) {
+                    jsonLineProcessor.feed(streamBuffer);
+                  }
+                  streamBuffer = '';
+                } else if (streamBuffer.length > 500) {
+                  streamBuffer = '';
                 }
               } else {
-                // Already in JSON Lines mode - feed directly to parser
-                jsonLineProcessor.feed(textChunk);
+                if (hasStreamFeed) {
+                  onStreamFeed!(textChunk);
+                } else if (jsonLineProcessor) {
+                  jsonLineProcessor.feed(textChunk);
+                }
               }
 
-              // If JSON Lines detected, don't pass text to fullText (it's being handled by parser)
-              if (jsonLinesDetected) {
-                continue;
-              }
+              if (streamDetected) continue;
             }
 
             fullText += parsed.text;
             onChunk(parsed.text);
           } else if (parsed.type === 'thinking' && parsed.thinking) {
-            // === JSON Lines Detection in Thinking for Project Mode ===
-            // Backend sends project output as 'thinking' events
-            if (isProjectMode && jsonLineProcessor) {
-              const thinkingText = parsed.thinking;
+            // === Stream Detection in Thinking ===
+            const thinkingText = parsed.thinking;
 
-              if (!jsonLinesDetected) {
-                jsonLineBuffer += thinkingText;
-                // Check for JSON Lines pattern
-                if (/\{"type"\s*:\s*"(project|tasklist|task|subtask|complete)"/.test(jsonLineBuffer)) {
-                  jsonLinesDetected = true;
-                  console.log('JSON Lines format detected in thinking stream');
-                  jsonLineProcessor.feed(jsonLineBuffer);
-                  jsonLineBuffer = '';
-                } else if (jsonLineBuffer.length > 500) {
-                  // No JSON Lines pattern - fall back to tool-based
-                  jsonLineBuffer = '';
+            if (hasStreamFeed || jsonLineProcessor) {
+              if (!streamDetected) {
+                streamBuffer += thinkingText;
+                if (detectionPattern.test(streamBuffer)) {
+                  streamDetected = true;
+                  console.log('NDJSON stream detected in thinking');
+                  if (hasStreamFeed) {
+                    onStreamFeed!(streamBuffer);
+                  } else if (jsonLineProcessor) {
+                    jsonLineProcessor.feed(streamBuffer);
+                  }
+                  streamBuffer = '';
+                } else if (streamBuffer.length > 500) {
+                  streamBuffer = '';
                 }
               } else {
-                // Already in JSON Lines mode - feed to parser
-                jsonLineProcessor.feed(thinkingText);
+                if (hasStreamFeed) {
+                  onStreamFeed!(thinkingText);
+                } else if (jsonLineProcessor) {
+                  jsonLineProcessor.feed(thinkingText);
+                }
               }
 
-              // If JSON Lines detected, still show thinking but don't add to fullText
-              if (jsonLinesDetected) {
+              if (streamDetected) {
                 onThinking(parsed.thinking, parsed.fullText);
                 continue;
               }
@@ -676,14 +683,17 @@ export const processAgentStream = async (options: StreamingChatOptions): Promise
             console.log('Agent using tool:', parsed.tool);
           } else if (parsed.type === 'result' && parsed.text) {
             // === Handle final result text ===
-            // For project mode with JSON Lines, parse the result
-            if (isProjectMode && jsonLineProcessor && !jsonLinesDetected) {
-              // Check if result contains JSON Lines format
-              if (/\{"type"\s*:\s*"(project|tasklist|task|subtask|complete)"/.test(parsed.text)) {
-                jsonLinesDetected = true;
-                console.log('JSON Lines format detected in result');
-                jsonLineProcessor.feed(parsed.text);
-                jsonLineProcessor.flush();
+            if ((hasStreamFeed || jsonLineProcessor) && !streamDetected) {
+              if (detectionPattern.test(parsed.text)) {
+                streamDetected = true;
+                console.log('NDJSON stream detected in result');
+                if (hasStreamFeed) {
+                  onStreamFeed!(parsed.text);
+                  onStreamFlush?.();
+                } else if (jsonLineProcessor) {
+                  jsonLineProcessor.feed(parsed.text);
+                  jsonLineProcessor.flush();
+                }
                 continue;
               }
             }
@@ -701,45 +711,6 @@ export const processAgentStream = async (options: StreamingChatOptions): Promise
               isDraft: true,
             };
             onTimelogDraft(draft);
-          } else if (parsed.type === 'project_draft' && parsed.draft && onProjectDraft) {
-            // Handle project draft for review/editing (final or legacy)
-            // This is the legacy tool-based format - still supported
-            const draft: ProjectDraftData = {
-              project: parsed.draft.project,
-              tasklists: parsed.draft.tasklists,
-              budget: parsed.draft.budget,
-              summary: parsed.draft.summary,
-              message: parsed.draft.message,
-              isDraft: true,
-            };
-            onProjectDraft(draft);
-          } else if (parsed.type === 'project_draft_init' && parsed.draft && onProjectDraft) {
-            // Handle progressive project draft initialization (legacy tool-based)
-            const draft: ProjectDraftData = {
-              project: parsed.draft.project,
-              tasklists: parsed.draft.tasklists || [],
-              summary: parsed.draft.summary,
-              message: '',
-              isDraft: true,
-            };
-            // Mark as building so UI knows more content is coming
-            (draft as any).isBuilding = true;
-            onProjectDraft(draft);
-          } else if (parsed.type === 'project_draft_update' && onProjectDraftUpdate) {
-            // Handle progressive updates (add_tasklist, add_task, add_subtasks, set_budget) - legacy
-            onProjectDraftUpdate({
-              type: 'project_draft_update',
-              action: parsed.action,
-              tasklist: parsed.tasklist,
-              tasklistId: parsed.tasklistId,
-              task: parsed.task,
-              taskId: parsed.taskId,
-              subtasks: parsed.subtasks,
-              budget: parsed.budget,
-            });
-          } else if (parsed.type === 'project_draft_complete' && onProjectDraftComplete) {
-            // Handle project draft completion (legacy tool-based)
-            onProjectDraftComplete(parsed.message);
           } else if (parsed.type === 'error') {
             throw new Error(parsed.error);
           }

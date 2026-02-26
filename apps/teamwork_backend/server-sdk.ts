@@ -2803,7 +2803,7 @@ async function handleTimelogSubmit(body: {
   for (const entry of entries) {
     try {
       const minutes = Math.round(entry.hours * 60);
-      await teamwork.timeEntries.create(entry.taskId, {
+      await teamwork.timeEntries.createForTask(entry.taskId, {
         description: entry.comment,
         minutes,
         date: entry.date,

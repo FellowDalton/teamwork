@@ -1,10 +1,14 @@
 import React, { useState } from 'react';
 import { Database, Inbox, BarChart3, Clock, FolderOpen, Plus, TrendingUp, LayoutGrid, Send, Sparkles, CheckCircle2, Loader2, Rocket } from 'lucide-react';
 import { DisplayData, DisplayType, ChartDisplayData, CustomDisplayData, TimelogDraftEntry, TimelogDraftData, ProjectDraftData, TasklistDraft, TaskDraft } from '../types/conversation';
+import type { StatusDraftState } from '../streaming/accumulators/StatusAccumulator';
 import { DataCard } from './DataCard';
 import { ChartCard } from './ChartCard';
 import { TimelogDraftCard } from './TimelogDraftCard';
 import { ProjectDraftCard } from './ProjectDraftCard';
+import { StreamDisplayPanel } from '../streaming/renderers/StreamDisplayPanel';
+import { useOptionalStreamContext } from '../streaming/hooks/StreamContext';
+import { useActivePlugins, useStreamState } from '../streaming/hooks/useStreamState';
 
 // Visualization type options
 const VIZ_TYPES = [
@@ -41,6 +45,9 @@ interface DataDisplayPanelProps {
   onUpdateProjectTasklist?: (tasklistId: string, updates: Partial<TasklistDraft>) => void;
   onUpdateProjectTask?: (tasklistId: string, taskId: string, updates: Partial<TaskDraft>) => void;
   hourlyRate?: number;
+  // Early indicator: show building spinner before NDJSON arrives
+  isProcessing?: boolean;
+  activeTopic?: string;
 }
 
 // Screw component for hardware aesthetic
@@ -68,15 +75,43 @@ export const DataDisplayPanel: React.FC<DataDisplayPanelProps> = ({
   onUpdateProjectTasklist,
   onUpdateProjectTask,
   hourlyRate = 1200,
+  isProcessing = false,
+  activeTopic,
 }) => {
   const isLight = theme === 'light';
   const [selectedVizType, setSelectedVizType] = useState('bar');
   const [selectedGrouping, setSelectedGrouping] = useState('weekly');
   const [vizInput, setVizInput] = useState('');
-  
-  // Check if we're in draft mode
+
+  // Check for active stream plugins from the streaming framework
+  const streamCtx = useOptionalStreamContext();
+  const activeStreamPlugins = useActivePlugins(streamCtx?.router ?? null);
+  const hasActiveStreams = activeStreamPlugins.length > 0;
+  // Get stream state for header building indicators
+  const { state: streamProjectState } = useStreamState<ProjectDraftData>(streamCtx?.router ?? null, 'project');
+  const { state: streamTimelogState } = useStreamState<TimelogDraftData>(streamCtx?.router ?? null, 'timelog');
+  const { state: streamStatusState } = useStreamState<StatusDraftState>(streamCtx?.router ?? null, 'status');
+
+  // Check if we're in draft mode (legacy or stream-based)
   const isDraftMode = draftData && draftData.isDraft && draftData.entries.length > 0;
   const isProjectDraftMode = projectDraftData && projectDraftData.isDraft;
+  // Use StreamDisplayPanel when stream plugins are active
+  const useStreamPanel = hasActiveStreams && streamCtx;
+
+  // Building indicators: check both stream state and legacy props
+  const isProjectBuilding = useStreamPanel
+    ? !!(streamProjectState as any)?.isBuilding
+    : !!(isProjectDraftMode && (projectDraftData as any)?.isBuilding);
+  const isTimelogBuilding = useStreamPanel
+    ? !!(streamTimelogState as any)?.isBuilding
+    : false;
+  const isStatusBuilding = !!(streamStatusState as any)?.isBuilding;
+  const isStatusStreamActive = activeStreamPlugins.includes('status');
+  // Early indicator: show building when agent is processing but NDJSON hasn't arrived yet
+  const isTimelogPreparing = !isTimelogBuilding && isProcessing && activeTopic === 'timelog' && !isDraftMode;
+  // Status preparing: only when processing hasn't produced any stream data yet
+  const isStatusPreparing = !isStatusBuilding && !isStatusStreamActive && isProcessing && activeTopic === 'status';
+  const isBuilding = isProjectBuilding || isTimelogBuilding || isTimelogPreparing || isStatusBuilding || isStatusPreparing;
 
   const handleVizInputSubmit = () => {
     if (vizInput.trim() && onVisualizationRequest) {
@@ -135,8 +170,11 @@ export const DataDisplayPanel: React.FC<DataDisplayPanelProps> = ({
   const contentBg = isLight ? 'bg-[#f4f4f5]' : 'bg-[#09090b]';
   const textSecondary = isLight ? 'text-zinc-500' : 'text-zinc-500';
 
-  const displayType = data?.type || 'empty';
-  const title = data?.title || 'DATA DISPLAY';
+  const isTimelogStreaming = activeStreamPlugins.includes('timelog');
+  const isTimelogActive = isTimelogStreaming || isTimelogPreparing;
+  const isStatusActive = isStatusStreamActive || isStatusPreparing;
+  const displayType = isStatusActive ? 'status' : isTimelogActive ? 'timelogs' : (data?.type || 'empty');
+  const title = isStatusActive ? 'STATUS DASHBOARD' : isTimelogActive ? 'DRAFT TIMELOGS' : (data?.title || 'DATA DISPLAY');
 
   return (
     <div className={`
@@ -166,8 +204,8 @@ export const DataDisplayPanel: React.FC<DataDisplayPanelProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Building indicator for project draft */}
-          {isProjectDraftMode && (projectDraftData as any)?.isBuilding && (
+          {/* Building indicator for project/timelog draft (stream or legacy) */}
+          {isBuilding && (
             <div className="flex items-center gap-1.5 mr-2">
               <Loader2 size={12} className="text-cyan-500 animate-spin" />
               <span className="text-[10px] font-mono text-cyan-500 animate-pulse">BUILDING...</span>
@@ -184,8 +222,24 @@ export const DataDisplayPanel: React.FC<DataDisplayPanelProps> = ({
         ${contentBg}
         ${isLight ? 'shadow-[inset_0_2px_6px_rgba(0,0,0,0.06)]' : 'shadow-[inset_0_2px_8px_rgba(0,0,0,0.6)]'}
       `}>
-        {/* Draft Mode - Editable Timelog Entries */}
-        {isDraftMode && (
+        {/* Stream Framework Display - renders active stream plugins */}
+        {useStreamPanel && (
+          <StreamDisplayPanel
+            theme={theme}
+            onProjectDraftSubmit={onProjectDraftSubmit}
+            isCreatingProject={isCreatingProject}
+            onUpdateProjectTasklist={onUpdateProjectTasklist}
+            onUpdateProjectTask={onUpdateProjectTask}
+            hourlyRate={hourlyRate}
+            onDraftUpdate={onDraftUpdate}
+            onDraftRemove={onDraftRemove}
+            onDraftSubmit={onDraftSubmit}
+            isSubmitting={isSubmitting}
+          />
+        )}
+
+        {/* Draft Mode - Editable Timelog Entries (legacy fallback) */}
+        {!useStreamPanel && isDraftMode && (
           <div className="mb-4">
             {/* Draft Header */}
             <div className={`
@@ -249,8 +303,8 @@ export const DataDisplayPanel: React.FC<DataDisplayPanelProps> = ({
           </div>
         )}
 
-        {/* Project Draft Mode - Create Project Preview */}
-        {isProjectDraftMode && (
+        {/* Project Draft Mode - Create Project Preview (legacy fallback) */}
+        {!useStreamPanel && isProjectDraftMode && (
           <div className="mb-4">
             {/* Draft Header */}
             <div className={`
@@ -329,8 +383,8 @@ export const DataDisplayPanel: React.FC<DataDisplayPanelProps> = ({
           </div>
         )}
         
-        {/* Data Cards Grid - show when NOT in draft mode */}
-        {!isDraftMode && !isProjectDraftMode && data && data.items && data.items.length > 0 && (
+        {/* Data Cards Grid - show when NOT in draft mode and NOT in stream mode */}
+        {!useStreamPanel && !isDraftMode && !isProjectDraftMode && data && data.items && data.items.length > 0 && (
           <div className={`
             grid gap-3 mb-4
             ${data.type === 'status' || data.type === 'timelogs'
@@ -380,8 +434,8 @@ export const DataDisplayPanel: React.FC<DataDisplayPanelProps> = ({
           </div>
         )}
 
-        {/* Add Visualization Card - only show when there's data and NOT in draft mode */}
-        {!isDraftMode && !isProjectDraftMode && data?.items && data.items.length > 0 && (
+        {/* Add Visualization Card - only show when there's data and NOT in draft/stream mode */}
+        {!useStreamPanel && !isDraftMode && !isProjectDraftMode && data?.items && data.items.length > 0 && (
         <div className={`
           rounded-lg border-2 border-dashed p-4
           ${isLight ? 'border-zinc-300 bg-zinc-100/50' : 'border-zinc-700 bg-zinc-900/50'}
@@ -502,8 +556,8 @@ export const DataDisplayPanel: React.FC<DataDisplayPanelProps> = ({
         </div>
         )}
 
-        {/* Empty State - show when no data and NOT in draft mode */}
-        {!isDraftMode && !isProjectDraftMode && (!data || data.type === 'empty' || !data.items || data.items.length === 0) && (
+        {/* Empty State - show when no data and NOT in draft/stream mode */}
+        {!useStreamPanel && !isDraftMode && !isProjectDraftMode && (!data || data.type === 'empty' || !data.items || data.items.length === 0) && (
           <div className={`flex flex-col items-center justify-center flex-1 ${textSecondary}`}>
             <div className={`w-16 h-16 rounded-full border-2 border-dashed flex items-center justify-center mb-4 ${isLight ? 'border-zinc-300' : 'border-zinc-800'}`}>
               <Inbox size={24} className="opacity-30" />

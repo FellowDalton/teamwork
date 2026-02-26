@@ -1,15 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { X, Settings, DollarSign, Cpu } from 'lucide-react';
+import type { ConversationTopic } from '../types/conversation';
 
 export type AIModel = 'haiku' | 'sonnet' | 'opus';
+export type ModelConfig = Record<ConversationTopic, AIModel>;
+
+export const DEFAULT_MODEL_CONFIG: ModelConfig = {
+  project: 'sonnet',
+  timelog: 'haiku',
+  status: 'sonnet',
+  general: 'sonnet',
+};
 
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
   hourlyRate: number;
   onHourlyRateChange: (rate: number) => void;
-  model: AIModel;
-  onModelChange: (model: AIModel) => void;
+  modelConfig: ModelConfig;
+  onModelConfigChange: (config: ModelConfig) => void;
   theme?: 'light' | 'dark';
 }
 
@@ -18,12 +27,12 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   onClose,
   hourlyRate,
   onHourlyRateChange,
-  model,
-  onModelChange,
+  modelConfig,
+  onModelConfigChange,
   theme = 'dark',
 }) => {
   const [localRate, setLocalRate] = useState(hourlyRate);
-  const [localModel, setLocalModel] = useState<AIModel>(model);
+  const [localModelConfig, setLocalModelConfig] = useState<ModelConfig>(modelConfig);
   const isLight = theme === 'light';
 
   // Sync local state when props change
@@ -32,8 +41,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   }, [hourlyRate]);
 
   useEffect(() => {
-    setLocalModel(model);
-  }, [model]);
+    setLocalModelConfig(modelConfig);
+  }, [modelConfig]);
 
   if (!isOpen) return null;
 
@@ -45,7 +54,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 
   const handleSave = () => {
     onHourlyRateChange(localRate);
-    onModelChange(localModel);
+    onModelConfigChange(localModelConfig);
     onClose();
   };
 
@@ -133,38 +142,49 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
             ))}
           </div>
 
-          {/* AI Model Setting */}
+          {/* AI Model Setting - Per Mode */}
           <div>
             <label className={`block text-sm font-medium mb-2 ${textSecondary}`}>
               <span className="flex items-center gap-2">
                 <Cpu size={16} className="text-cyan-500" />
-                AI Model
+                AI Model per Mode
               </span>
             </label>
-            <div className="flex gap-2">
+            <div className="space-y-2">
               {([
-                { value: 'haiku' as const, label: 'Haiku', desc: 'Fast & cheap' },
-                { value: 'sonnet' as const, label: 'Sonnet', desc: 'Balanced' },
-                { value: 'opus' as const, label: 'Opus', desc: 'Most capable' },
-              ]).map((m) => (
-                <button
-                  key={m.value}
-                  onClick={() => setLocalModel(m.value)}
-                  className={`
-                    flex-1 px-3 py-2 text-xs rounded-md border transition-colors text-center
-                    ${localModel === m.value
-                      ? 'bg-cyan-500 border-cyan-500 text-white'
-                      : `${borderColor} ${textSecondary} hover:border-cyan-500`
-                    }
-                  `}
-                >
-                  <div className="font-medium">{m.label}</div>
-                  <div className={`text-[10px] mt-0.5 ${localModel === m.value ? 'text-cyan-100' : 'opacity-60'}`}>{m.desc}</div>
-                </button>
+                { mode: 'project' as ConversationTopic, label: 'Project' },
+                { mode: 'timelog' as ConversationTopic, label: 'Timelog' },
+                { mode: 'status' as ConversationTopic, label: 'Status' },
+                { mode: 'general' as ConversationTopic, label: 'General' },
+              ]).map((row) => (
+                <div key={row.mode} className="flex items-center gap-2">
+                  <span className={`text-xs font-mono w-16 shrink-0 ${textSecondary}`}>{row.label}</span>
+                  <div className="flex gap-1 flex-1">
+                    {([
+                      { value: 'haiku' as const, label: 'Haiku' },
+                      { value: 'sonnet' as const, label: 'Sonnet' },
+                      { value: 'opus' as const, label: 'Opus' },
+                    ]).map((m) => (
+                      <button
+                        key={m.value}
+                        onClick={() => setLocalModelConfig({ ...localModelConfig, [row.mode]: m.value })}
+                        className={`
+                          flex-1 px-2 py-1.5 text-xs rounded-md border transition-colors text-center
+                          ${localModelConfig[row.mode] === m.value
+                            ? 'bg-cyan-500 border-cyan-500 text-white'
+                            : `${borderColor} ${textSecondary} hover:border-cyan-500`
+                          }
+                        `}
+                      >
+                        {m.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               ))}
             </div>
             <p className={`mt-1 text-xs ${textSecondary}`}>
-              Used for all AI agent responses
+              Each mode uses its own AI model
             </p>
           </div>
         </div>
