@@ -77,10 +77,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
       return;
     }
 
-    // Get initial session - relies on Supabase's built-in detectSessionInUrl
-    // to handle PKCE code exchange from OAuth callbacks automatically.
-    // getSession() awaits the internal _initialize() which does the exchange,
-    // so no manual exchangeCodeForSession call is needed.
+    // Initialize auth state.
+    // For OAuth callbacks: getSession() hangs because Supabase's _initialize()
+    // promise never resolves during PKCE exchange. But onAuthStateChange DOES
+    // fire SIGNED_IN successfully. So for callbacks we skip getSession() and
+    // let onAuthStateChange (below) handle the session. We just clean the URL
+    // and set a safety timeout in case onAuthStateChange never fires.
     const initAuth = async () => {
       try {
         const isCallback = window.location.pathname === '/auth/callback' ||
@@ -101,15 +103,28 @@ export function AuthProvider({ children }: AuthProviderProps) {
             }));
             return;
           }
+
+          // For callbacks, onAuthStateChange handles the session.
+          // Clean URL and set a safety timeout.
+          console.log('OAuth callback detected, waiting for onAuthStateChange...');
+          window.history.replaceState({}, '', '/');
+          setTimeout(() => {
+            setState((prev) => {
+              if (prev.isLoading) {
+                console.warn('Auth callback timeout - onAuthStateChange did not fire in time');
+                return { ...prev, isLoading: false, authError: 'Sign-in timed out. Please try again.' };
+              }
+              return prev;
+            });
+          }, 30000);
+          return;
         }
 
-        const timeoutMs = isCallback ? 30000 : 5000;
-        console.log(`Getting session... (${isCallback ? 'OAuth callback' : 'normal'}, timeout: ${timeoutMs}ms)`);
-
-        // getSession() waits for _initialize() which handles the PKCE exchange
+        // Normal (non-callback) session check
+        console.log('Getting session... (normal, timeout: 5000ms)');
         const sessionPromise = supabase.auth.getSession();
         const timeoutPromise = new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error('Session check timed out')), timeoutMs)
+          setTimeout(() => reject(new Error('Session check timed out')), 5000)
         );
 
         const { data: { session }, error } = await Promise.race([sessionPromise, timeoutPromise])
@@ -118,21 +133,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
             return { data: { session: null }, error: err };
           }) as { data: { session: any }, error: any };
 
-        // Clean up callback URL params
-        if (isCallback) {
-          window.history.replaceState({}, '', '/');
-        }
-
         if (error) {
           console.error('Error getting session:', error);
-          setState((prev) => ({
-            ...prev,
-            isLoading: false,
-            isAuthenticated: false,
-            authError: isCallback
-              ? `Sign-in failed: ${error instanceof Error ? error.message : String(error)}`
-              : null,
-          }));
+          setState((prev) => ({ ...prev, isLoading: false }));
           return;
         }
 
@@ -142,47 +145,24 @@ export function AuthProvider({ children }: AuthProviderProps) {
           console.log('Fetching profile...');
           try {
             const { profile, workspace } = await fetchProfile(session.user.id);
-            console.log('Profile fetched:', profile?.email || 'none');
             setState({
-              user: session.user,
-              profile,
-              workspace,
-              session,
-              isLoading: false,
-              isAuthenticated: true,
-              isConfigured: true,
-              authError: null,
+              user: session.user, profile, workspace, session,
+              isLoading: false, isAuthenticated: true, isConfigured: true, authError: null,
             });
           } catch (profileErr) {
             console.error('Profile fetch error:', profileErr);
             setState({
-              user: session.user,
-              profile: null,
-              workspace: null,
-              session,
-              isLoading: false,
-              isAuthenticated: true,
-              isConfigured: true,
-              authError: null,
+              user: session.user, profile: null, workspace: null, session,
+              isLoading: false, isAuthenticated: true, isConfigured: true, authError: null,
             });
           }
         } else {
-          console.log('No session found');
-          setState((prev) => ({
-            ...prev,
-            isLoading: false,
-            isAuthenticated: false,
-            authError: isCallback
-              ? 'Sign-in failed: No session was returned after authentication.'
-              : prev.authError,
-          }));
+          setState((prev) => ({ ...prev, isLoading: false }));
         }
       } catch (err) {
         console.error('Error in initAuth:', err);
         setState((prev) => ({
-          ...prev,
-          isLoading: false,
-          isAuthenticated: false,
+          ...prev, isLoading: false,
           authError: `Authentication error: ${err instanceof Error ? err.message : String(err)}`,
         }));
       }
