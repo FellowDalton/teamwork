@@ -77,24 +77,20 @@ export function AuthProvider({ children }: AuthProviderProps) {
       return;
     }
 
-    // Get initial session with timeout
+    // Get initial session - relies on Supabase's built-in detectSessionInUrl
+    // to handle PKCE code exchange from OAuth callbacks automatically.
+    // getSession() awaits the internal _initialize() which does the exchange,
+    // so no manual exchangeCodeForSession call is needed.
     const initAuth = async () => {
       try {
-        // Detect if we're returning from an OAuth callback
         const isCallback = window.location.pathname === '/auth/callback' ||
           window.location.hash.includes('access_token') ||
           new URLSearchParams(window.location.search).has('code');
 
-        const timeoutMs = isCallback ? 30000 : 5000;
-        console.log(`Getting session... (${isCallback ? 'OAuth callback' : 'normal'}, timeout: ${timeoutMs}ms)`);
-
-        let sessionFromCallback: Session | null = null;
-
+        // Check for explicit OAuth error params
         if (isCallback) {
           const callbackParams = new URLSearchParams(window.location.search);
-          const callbackCode = callbackParams.get('code');
           const callbackError = callbackParams.get('error_description') || callbackParams.get('error');
-
           if (callbackError) {
             window.history.replaceState({}, '', '/');
             setState((prev) => ({
@@ -105,59 +101,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
             }));
             return;
           }
-
-          if (callbackCode) {
-            console.log('Exchanging OAuth callback code for session...');
-            const exchangePromise = supabase.auth.exchangeCodeForSession(callbackCode);
-            const exchangeTimeoutPromise = new Promise<never>((_, reject) =>
-              setTimeout(() => reject(new Error(
-                'Authentication timed out while exchanging callback code.'
-              )), timeoutMs)
-            );
-
-            const { data, error } = await Promise.race([exchangePromise, exchangeTimeoutPromise])
-              .catch((err) => {
-                console.warn('OAuth code exchange timed out or failed:', err);
-                return { data: { session: null }, error: err };
-              }) as { data: { session: Session | null }, error: any };
-
-            if (error) {
-              const errorMessage = error instanceof Error ? error.message : (error?.message || String(error));
-              window.history.replaceState({}, '', '/');
-              setState((prev) => ({
-                ...prev,
-                isLoading: false,
-                isAuthenticated: false,
-                authError: `Sign-in failed during callback exchange: ${errorMessage}`,
-              }));
-              return;
-            }
-
-            sessionFromCallback = data?.session || null;
-
-            if (!sessionFromCallback) {
-              window.history.replaceState({}, '', '/');
-              setState((prev) => ({
-                ...prev,
-                isLoading: false,
-                isAuthenticated: false,
-                authError: 'Sign-in failed during callback exchange: No session was returned for the callback code.',
-              }));
-              return;
-            }
-          }
         }
 
-        // Add timeout to prevent infinite loading
-        const sessionPromise = sessionFromCallback
-          ? Promise.resolve({ data: { session: sessionFromCallback }, error: null })
-          : supabase.auth.getSession();
+        const timeoutMs = isCallback ? 30000 : 5000;
+        console.log(`Getting session... (${isCallback ? 'OAuth callback' : 'normal'}, timeout: ${timeoutMs}ms)`);
+
+        // getSession() waits for _initialize() which handles the PKCE exchange
+        const sessionPromise = supabase.auth.getSession();
         const timeoutPromise = new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error(
-            isCallback
-              ? 'Authentication timed out after returning from Microsoft. This may indicate an expired Azure AD secret in the Supabase configuration.'
-              : 'Session check timed out'
-          )), timeoutMs)
+          setTimeout(() => reject(new Error('Session check timed out')), timeoutMs)
         );
 
         const { data: { session }, error } = await Promise.race([sessionPromise, timeoutPromise])
@@ -166,20 +118,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
             return { data: { session: null }, error: err };
           }) as { data: { session: any }, error: any };
 
-        // Clean up callback URL params to prevent issues on refresh
+        // Clean up callback URL params
         if (isCallback) {
           window.history.replaceState({}, '', '/');
         }
 
         if (error) {
-          const errorMessage = error instanceof Error ? error.message : (error?.message || String(error));
           console.error('Error getting session:', error);
           setState((prev) => ({
             ...prev,
             isLoading: false,
             isAuthenticated: false,
             authError: isCallback
-              ? `Sign-in failed: ${errorMessage}`
+              ? `Sign-in failed: ${error instanceof Error ? error.message : String(error)}`
               : null,
           }));
           return;
@@ -188,7 +139,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
         console.log('Session:', session?.user?.email || 'none');
 
         if (session?.user) {
-          // Fetch profile with timeout
           console.log('Fetching profile...');
           try {
             const { profile, workspace } = await fetchProfile(session.user.id);
@@ -205,7 +155,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
             });
           } catch (profileErr) {
             console.error('Profile fetch error:', profileErr);
-            // Still authenticate even if profile fails
             setState({
               user: session.user,
               profile: null,
@@ -224,18 +173,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
             isLoading: false,
             isAuthenticated: false,
             authError: isCallback
-              ? 'Sign-in failed: No session was returned after authentication. The OAuth code exchange may have failed.'
+              ? 'Sign-in failed: No session was returned after authentication.'
               : prev.authError,
           }));
         }
       } catch (err) {
         console.error('Error in initAuth:', err);
-        const errorMessage = err instanceof Error ? err.message : String(err);
         setState((prev) => ({
           ...prev,
           isLoading: false,
           isAuthenticated: false,
-          authError: `Authentication error: ${errorMessage}`,
+          authError: `Authentication error: ${err instanceof Error ? err.message : String(err)}`,
         }));
       }
     };
