@@ -814,7 +814,7 @@ async function prefetchProjectData(projectId: number, options?: {
 }
 
 // ============================================================================
-// MCP SERVER: Teamwork Tools (READ-ONLY)
+// MCP SERVER: Teamwork Tools
 // These tools are called directly by Claude - no code writing needed
 // ============================================================================
 
@@ -936,6 +936,48 @@ const teamworkMcpServer = createSdkMcpServer({
       }
     ),
 
+    // Get tasklists for a project
+    tool(
+      "get_tasklists_by_project",
+      "Get all tasklists for a project. Useful before creating a task.",
+      {
+        projectId: z.union([z.number(), z.string()]).describe("The project ID"),
+      },
+      async ({ projectId }) => {
+        try {
+          const numericProjectId = Number(projectId);
+          const response = await teamwork.projects.getTasklists(numericProjectId);
+          const tasklists = (response.tasklists || []).map((tl: any) => ({
+            id: tl.id,
+            name: tl.name,
+            description: tl.description || "",
+            isPrivate: tl.isPrivate || false,
+          }));
+          return {
+            content: [
+              {
+                type: "text",
+                text: JSON.stringify(
+                  {
+                    projectId: numericProjectId,
+                    count: tasklists.length,
+                    tasklists,
+                  },
+                  null,
+                  2
+                ),
+              },
+            ],
+          };
+        } catch (err) {
+          return {
+            content: [{ type: "text", text: `Error fetching tasklists: ${err}` }],
+            isError: true,
+          };
+        }
+      }
+    ),
+
     // Search tasks by description (paginated - fetches ALL pages before filtering)
     tool(
       "search_tasks",
@@ -1047,11 +1089,12 @@ const teamworkMcpServer = createSdkMcpServer({
       }
     ),
 
-    // SAFETY: log_time tool REMOVED from chat agent MCP server
-    // Write operations are only allowed via explicit submit endpoints:
-    // - /api/agent/timelog/submit (for time entries)
-    // - /api/agent/project/submit (for project creation)
-    // This ensures users always review changes before they're applied.
+    // SAFETY: log_time is still submit-only to keep explicit review for time entries.
+    // - /api/agent/timelog/submit
+    // Project creation remains submit-only:
+    // - /api/agent/project/submit
+    // General task drafts are also submit-only:
+    // - /api/agent/general/submit
   ],
 });
 
@@ -1109,6 +1152,10 @@ async function handleAgentChat(body: {
 
   if (mode === "status") {
     return handleStatusChat({ ...body, conversationHistory });
+  }
+
+  if (mode === "general") {
+    return handleGeneralChat({ ...body, conversationHistory });
   }
 
   // Create SSE stream
@@ -1331,6 +1378,197 @@ async function handleAgentChat(body: {
       "Content-Type": "text/event-stream",
       "Cache-Control": "no-cache",
       Connection: "keep-alive",
+      ...corsHeaders,
+    },
+  });
+}
+
+// General mode - broad Teamwork assistant (read + task creation)
+async function handleGeneralChat(body: {
+  message: string;
+  mode?: string;
+  projectId?: number;
+  projectName?: string;
+  model?: string;
+  conversationHistory?: Array<{ role: string; content: string }>;
+}) {
+  const { message, projectId, projectName, model = "haiku", conversationHistory } = body;
+
+  const projectList =
+    cachedProjects.length > 0
+      ? cachedProjects
+      : [{ id: projectId, name: projectName }].filter((p) => p.id) as Array<{ id: number; name?: string }>;
+
+  const systemPrompt = `You are a general Teamwork.com assistant with access to Teamwork API tools.
+
+Your goal in general mode:
+- Help with any Teamwork operations (projects, tasklists, tasks, status, time context).
+- When user asks to add/create a task, prepare a draft task proposal for review.
+- If tasklist is ambiguous, call get_tasklists_by_project first and ask one concise clarification.
+- Keep responses concise and action-focused.
+- If an active project is provided, ALWAYS use that project by default and DO NOT ask the user which project.
+- Only ask for project selection when there is no active project in context.
+- NEVER create tasks directly from this chat. Task creation happens only after user presses confirm in UI.
+
+Streaming output rules:
+- When proposing a task draft, output one NDJSON line:
+{"type":"general_task","id":"draft-1","name":"Task name","description":"Detailed description","projectId":456,"projectName":"Project name","tasklistId":789,"tasklistName":"Tasklist name","priority":"medium","startDate":"2026-02-26","dueDate":"2026-02-28","estimatedMinutes":120}
+- After all actions, output:
+{"type":"general_complete","message":"Short summary of what was completed"}
+- NDJSON must be plain lines (no markdown code fences).
+- Always include description in general_task (use empty string only if user explicitly wants none).
+- If no draft was prepared, skip general_task and only output general_complete.
+
+Current context:
+- Today's date: ${new Date().toISOString().split("T")[0]}
+- Available projects: ${JSON.stringify(projectList)}
+${projectId ? `- Active project: ${projectName || "Selected project"} (ID: ${projectId})` : "- No active project selected"}
+${projectId ? "- Treat the active project above as authoritative context from the UI project picker." : ""}
+`;
+
+  const stream = new ReadableStream({
+    async start(controller) {
+      const encoder = new TextEncoder();
+      let closed = false;
+      let fullText = "";
+
+      const safeEnqueue = (data: string) => {
+        if (!closed) {
+          try {
+            controller.enqueue(encoder.encode(data));
+          } catch {
+            closed = true;
+          }
+        }
+      };
+
+      const safeClose = () => {
+        if (!closed) {
+          closed = true;
+          try {
+            controller.close();
+          } catch {}
+        }
+      };
+
+      try {
+        let fullPrompt = message;
+        if (conversationHistory && conversationHistory.length > 0) {
+          const historyContext = conversationHistory
+            .map((m) => `${m.role === "user" ? "User" : "Assistant"}: ${m.content}`)
+            .join("\n\n");
+          fullPrompt = `## Previous Conversation:\n${historyContext}\n\n## Current Request:\n${message}`;
+        }
+
+        safeEnqueue(
+          `data: ${JSON.stringify({
+            type: "init",
+            model: "general-agent",
+            info: "Handling Teamwork request...",
+          })}\n\n`
+        );
+
+        const options: Options = {
+          cwd: process.cwd(),
+          model,
+          mcpServers: { teamwork: teamworkMcpServer },
+          disallowedTools: [
+            "Bash",
+            "Edit",
+            "Write",
+            "MultiEdit",
+            "Read",
+            "Glob",
+            "Grep",
+            "Task",
+            "WebSearch",
+            "WebFetch",
+            "TodoWrite",
+            "NotebookEdit",
+          ],
+          systemPrompt,
+          includePartialMessages: true,
+          permissionMode: "bypassPermissions",
+          allowDangerouslySkipPermissions: true,
+          maxTurns: 8,
+          env: sdkEnv,
+          ...(claudeCodePath && { pathToClaudeCodeExecutable: claudeCodePath }),
+        };
+
+        for await (const event of query({ prompt: fullPrompt, options })) {
+          if (event.type === "stream_event") {
+            const streamEvent = event.event;
+            if (streamEvent.type === "content_block_delta") {
+              const delta = (streamEvent as any).delta;
+              if (delta?.type === "text_delta" && delta.text) {
+                fullText += delta.text;
+                safeEnqueue(
+                  `data: ${JSON.stringify({
+                    type: "thinking",
+                    thinking: delta.text,
+                  })}\n\n`
+                );
+              }
+            }
+          } else if (event.type === "result" && event.subtype === "success") {
+            fullText = event.result || fullText;
+          }
+        }
+
+        const validation = validateAgentResponse(fullText);
+        if (!validation.safe) {
+          safeEnqueue(
+            `data: ${JSON.stringify({
+              type: "error",
+              error: "Safety check failed. Please try again.",
+            })}\n\n`
+          );
+          safeClose();
+          return;
+        }
+
+        let cleanText = fullText
+          .replace(/```json[\s\S]*?```/g, "")
+          .split("\n")
+          .filter((line) => {
+            const trimmed = line.trim();
+            if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
+              if (/"type"\s*:\s*"general_(task|complete)"/.test(trimmed)) {
+                return false;
+              }
+            }
+            return true;
+          })
+          .join("\n")
+          .trim();
+
+        if (cleanText) {
+          safeEnqueue(
+            `data: ${JSON.stringify({
+              type: "result",
+              text: cleanText,
+            })}\n\n`
+          );
+        }
+
+        safeEnqueue("data: [DONE]\n\n");
+        safeClose();
+      } catch (err) {
+        safeEnqueue(
+          `data: ${JSON.stringify({
+            type: "error",
+            error: err instanceof Error ? err.message : String(err),
+          })}\n\n`
+        );
+        safeClose();
+      }
+    },
+  });
+
+  return new Response(stream, {
+    headers: {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
       ...corsHeaders,
     },
   });
@@ -2837,6 +3075,64 @@ async function handleTimelogSubmit(body: {
   });
 }
 
+// Submit general task drafts (called when user confirms draft tasks)
+async function handleGeneralSubmit(body: {
+  tasks: Array<{
+    tasklistId: number;
+    name: string;
+    description: string;
+    priority?: "none" | "low" | "medium" | "high";
+    startDate?: string;
+    dueDate?: string;
+    estimatedMinutes?: number;
+  }>;
+}) {
+  const { tasks } = body;
+
+  if (!tasks || tasks.length === 0) {
+    return jsonResponse({ error: "No tasks to submit" }, 400);
+  }
+
+  const results: Array<{ success: boolean; taskId?: number; taskName: string; error?: string }> = [];
+
+  for (const task of tasks) {
+    try {
+      const created = await teamwork.tasks.create(Number(task.tasklistId), {
+        name: task.name,
+        description: task.description,
+        priority: task.priority === "none" ? undefined : (task.priority as any),
+        startDate: task.startDate,
+        dueDate: task.dueDate,
+        estimatedMinutes: task.estimatedMinutes,
+      });
+
+      results.push({
+        success: true,
+        taskId: created.id,
+        taskName: created.name,
+      });
+    } catch (err) {
+      results.push({
+        success: false,
+        taskName: task.name,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+
+  const submitted = results.filter((r) => r.success).length;
+  return jsonResponse({
+    success: submitted === tasks.length,
+    submitted,
+    total: tasks.length,
+    results,
+    message:
+      submitted === tasks.length
+        ? `Successfully created ${submitted} task${submitted === 1 ? "" : "s"}.`
+        : `Created ${submitted}/${tasks.length} tasks.`,
+  });
+}
+
 // ============================================================================
 // AI VISUALIZATION REQUEST HANDLER - Use AI to create custom visualizations
 // ============================================================================
@@ -3416,6 +3712,12 @@ const server = Bun.serve({
       if (path === "/api/agent/timelog/submit" && req.method === "POST") {
         const body = await req.json();
         return handleTimelogSubmit(body);
+      }
+
+      // General task submit endpoint (confirms and submits task drafts)
+      if (path === "/api/agent/general/submit" && req.method === "POST") {
+        const body = await req.json();
+        return handleGeneralSubmit(body);
       }
 
       // Project submit endpoint (confirms and creates project from draft)

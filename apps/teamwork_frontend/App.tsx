@@ -21,8 +21,9 @@ import { LoginButton, UserMenu } from "./components/LoginButton";
 import { LoginScreen } from "./components/LoginScreen";
 import SettingsModal, { type ModelConfig, DEFAULT_MODEL_CONFIG } from "./components/SettingsModal";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
-import { processChatCommand, processStreamingChat, processAgentStream, requestAdditionalChart, VisualizationSpec, TimelogDraftData, TimelogDraftEntry, submitTimelogEntries, submitProject } from "./services/claudeService";
+import { processChatCommand, processStreamingChat, processAgentStream, requestAdditionalChart, VisualizationSpec, TimelogDraftData, TimelogDraftEntry, submitTimelogEntries, submitProject, submitGeneralTasks } from "./services/claudeService";
 import { teamworkService, TeamworkTask, TeamworkTimeEntry } from "./services/teamworkService";
+import type { GeneralTaskItem } from "./streaming/accumulators/GeneralAccumulator";
 import * as supabaseService from "./services/supabaseService";
 import type { Conversation } from "./types/supabase";
 import { StreamProvider, useStreamContext, registerBuiltinPlugins } from "./streaming";
@@ -219,6 +220,7 @@ function AppContent() {
   // Project draft state
   const [projectDraft, setProjectDraft] = useState<ProjectDraftData | null>(null);
   const [isCreatingProject, setIsCreatingProject] = useState(false);
+  const [isSubmittingGeneral, setIsSubmittingGeneral] = useState(false);
 
   // Settings state
   const [showSettings, setShowSettings] = useState(false);
@@ -638,6 +640,47 @@ function AppContent() {
           : tl
       ),
     });
+  };
+
+  const handleGeneralDraftSubmit = async (tasks: GeneralTaskItem[]) => {
+    if (!tasks || tasks.length === 0) return;
+    setIsSubmittingGeneral(true);
+    try {
+      const payload = tasks.map((task) => ({
+        tasklistId: Number(task.tasklistId),
+        name: task.name.trim(),
+        description: task.description.trim(),
+        priority: task.priority || 'none',
+        startDate: task.startDate,
+        dueDate: task.dueDate,
+        estimatedMinutes: task.estimatedMinutes,
+      }));
+
+      const result = await submitGeneralTasks(payload);
+
+      const successMsg: ChatMessage = {
+        id: `msg-${Date.now()}`,
+        role: "assistant",
+        content: result.message,
+        timestamp: new Date().toISOString(),
+        topic: "general",
+      };
+      setMessages(prev => [...prev, successMsg]);
+
+      // Clear active stream draft display after successful submit
+      streamCtx.reset();
+    } catch (error) {
+      const errorMsg: ChatMessage = {
+        id: `msg-${Date.now()}`,
+        role: "assistant",
+        content: `Failed to create tasks: ${error instanceof Error ? error.message : "Unknown error"}`,
+        timestamp: new Date().toISOString(),
+        topic: "general",
+      };
+      setMessages(prev => [...prev, errorMsg]);
+    } finally {
+      setIsSubmittingGeneral(false);
+    }
   };
 
   // Handle custom visualization request from input - sends prompt to AI for interpretation
@@ -1949,6 +1992,8 @@ function AppContent() {
                 hourlyRate={hourlyRate}
                 isProcessing={isProcessing}
                 activeTopic={activeTopic}
+                onGeneralDraftSubmit={handleGeneralDraftSubmit}
+                isSubmittingGeneral={isSubmittingGeneral}
               />
             </div>
           </div>

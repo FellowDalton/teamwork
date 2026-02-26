@@ -5,17 +5,20 @@
  * Shows all active stream plugins' renderers, filtered by an optional `show` prop.
  */
 
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useStreamContext } from '../hooks/StreamContext';
 import { useStreamState, useActivePlugins } from '../hooks/useStreamState';
-import { Clock, FolderOpen, Loader2, BarChart3 } from 'lucide-react';
+import { Clock, FolderOpen, Loader2, BarChart3, ListTodo } from 'lucide-react';
 import type { ProjectDraftData, TasklistDraft, TaskDraft, TimelogDraftData, TimelogDraftEntry } from '../../types/conversation';
 import type { WebsiteDraftState } from '../accumulators/WebsiteAccumulator';
 import type { StatusDraftState } from '../accumulators/StatusAccumulator';
+import type { GeneralDraftState } from '../accumulators/GeneralAccumulator';
+import type { GeneralTaskItem } from '../accumulators/GeneralAccumulator';
 import { ProjectDraftRenderer } from './ProjectDraftRenderer';
 import { TimelogDraftRenderer } from './TimelogDraftRenderer';
 import { WebsiteRenderer } from './WebsiteRenderer';
 import { StatusRenderer } from './StatusRenderer';
+import { GeneralRenderer } from './GeneralRenderer';
 import { CheckCircle2, Rocket } from 'lucide-react';
 
 interface StreamDisplayPanelProps {
@@ -33,6 +36,9 @@ interface StreamDisplayPanelProps {
   onDraftRemove?: (id: string) => void;
   onDraftSubmit?: () => void;
   isSubmitting?: boolean;
+  // General task draft action props
+  onGeneralDraftSubmit?: (tasks: GeneralTaskItem[]) => void;
+  isSubmittingGeneral?: boolean;
 }
 
 /** Individual plugin renderer that subscribes to its accumulator */
@@ -75,6 +81,15 @@ const PluginRenderer: React.FC<{
         <StatusDashboardSection
           state={state as StatusDraftState}
           theme={theme}
+        />
+      );
+    case 'general':
+      return (
+        <GeneralTasksSection
+          state={state as GeneralDraftState}
+          theme={theme}
+          onGeneralDraftSubmit={props.onGeneralDraftSubmit}
+          isSubmittingGeneral={props.isSubmittingGeneral}
         />
       );
     default:
@@ -313,6 +328,93 @@ const StatusDashboardSection: React.FC<{
       </div>
 
       <StatusRenderer state={state} theme={theme} />
+    </div>
+  );
+};
+
+const GeneralTasksSection: React.FC<{
+  state: GeneralDraftState;
+  theme: 'light' | 'dark';
+  onGeneralDraftSubmit?: (tasks: GeneralTaskItem[]) => void;
+  isSubmittingGeneral?: boolean;
+}> = ({ state, theme, onGeneralDraftSubmit, isSubmittingGeneral }) => {
+  const isLight = theme === 'light';
+  const [tasks, setTasks] = useState<GeneralTaskItem[]>([]);
+
+  useEffect(() => {
+    setTasks(state.tasks.map((t) => ({ ...t, description: t.description || '' })));
+  }, [state.tasks]);
+
+  const canSubmit = useMemo(() => {
+    if (tasks.length === 0) return false;
+    return tasks.every((t) => !!t.tasklistId && !!t.name.trim() && t.description.trim().length > 0);
+  }, [tasks]);
+
+  const updateTask = (taskId: string, updates: Partial<GeneralTaskItem>) => {
+    setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, ...updates } : t)));
+  };
+
+  const removeTask = (taskId: string) => {
+    setTasks((prev) => prev.filter((t) => t.id !== taskId));
+  };
+
+  return (
+    <div className="mb-4">
+      <div className={`
+        flex items-center justify-between mb-3 pb-2 border-b
+        ${isLight ? 'border-zinc-300' : 'border-zinc-700'}
+      `}>
+        <div className="flex items-center gap-2">
+          <ListTodo size={14} className="text-blue-500" />
+          <span className={`text-sm font-medium ${isLight ? 'text-zinc-700' : 'text-zinc-200'}`}>
+            Draft Tasks
+          </span>
+          <span className={`text-xs ${isLight ? 'text-zinc-500' : 'text-zinc-500'}`}>
+            ({tasks.length} items)
+          </span>
+        </div>
+        {state.isBuilding && (
+          <div className="flex items-center gap-1.5">
+            <Loader2 size={12} className="text-blue-500 animate-spin" />
+            <span className="text-[10px] font-mono text-blue-500 animate-pulse">BUILDING...</span>
+          </div>
+        )}
+      </div>
+      <GeneralRenderer
+        state={{ ...state, tasks }}
+        theme={theme}
+        onTaskChange={updateTask}
+        onTaskRemove={removeTask}
+      />
+      {!state.isBuilding && tasks.length > 0 && (
+        <div className="mt-4 flex justify-end">
+          <button
+            onClick={() => onGeneralDraftSubmit?.(tasks)}
+            disabled={!canSubmit || isSubmittingGeneral}
+            className={`
+              flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm
+              transition-all duration-200
+              ${!canSubmit || isSubmittingGeneral
+                ? 'opacity-50 cursor-not-allowed bg-zinc-600 text-zinc-400'
+                : 'bg-blue-600 text-white hover:bg-blue-500 cursor-pointer shadow-lg hover:shadow-blue-500/25'
+              }
+            `}
+            title={!canSubmit ? 'Each task needs tasklist, name, and description' : undefined}
+          >
+            {isSubmittingGeneral ? (
+              <>
+                <Loader2 size={16} className="animate-spin" />
+                <span>Creating Tasks...</span>
+              </>
+            ) : (
+              <>
+                <CheckCircle2 size={16} />
+                <span>Confirm & Create Tasks</span>
+              </>
+            )}
+          </button>
+        </div>
+      )}
     </div>
   );
 };

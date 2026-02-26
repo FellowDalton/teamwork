@@ -25,10 +25,13 @@ export const supabase: SupabaseClient<Database> | null =
         auth: {
           autoRefreshToken: true,
           persistSession: true,
-          detectSessionInUrl: true,
+          // Disable auto-detection: AuthContext manually calls exchangeCodeForSession
+          // to provide precise error handling. With detectSessionInUrl: true, the
+          // Supabase client's internal _initialize() races the manual call to consume
+          // the one-time PKCE code, causing the manual exchange to silently return
+          // no session and ultimately timeout.
+          detectSessionInUrl: false,
           flowType: 'pkce',
-          // Disable browser lock to prevent deadlocks on getSession()
-          lock: false,
           storageKey: 'teamwork-ai-synth-auth',
         },
       })

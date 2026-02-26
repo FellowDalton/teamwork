@@ -88,8 +88,70 @@ export function AuthProvider({ children }: AuthProviderProps) {
         const timeoutMs = isCallback ? 30000 : 5000;
         console.log(`Getting session... (${isCallback ? 'OAuth callback' : 'normal'}, timeout: ${timeoutMs}ms)`);
 
+        let sessionFromCallback: Session | null = null;
+
+        if (isCallback) {
+          const callbackParams = new URLSearchParams(window.location.search);
+          const callbackCode = callbackParams.get('code');
+          const callbackError = callbackParams.get('error_description') || callbackParams.get('error');
+
+          if (callbackError) {
+            window.history.replaceState({}, '', '/');
+            setState((prev) => ({
+              ...prev,
+              isLoading: false,
+              isAuthenticated: false,
+              authError: `Sign-in failed: ${decodeURIComponent(callbackError)}`,
+            }));
+            return;
+          }
+
+          if (callbackCode) {
+            console.log('Exchanging OAuth callback code for session...');
+            const exchangePromise = supabase.auth.exchangeCodeForSession(callbackCode);
+            const exchangeTimeoutPromise = new Promise<never>((_, reject) =>
+              setTimeout(() => reject(new Error(
+                'Authentication timed out while exchanging callback code.'
+              )), timeoutMs)
+            );
+
+            const { data, error } = await Promise.race([exchangePromise, exchangeTimeoutPromise])
+              .catch((err) => {
+                console.warn('OAuth code exchange timed out or failed:', err);
+                return { data: { session: null }, error: err };
+              }) as { data: { session: Session | null }, error: any };
+
+            if (error) {
+              const errorMessage = error instanceof Error ? error.message : (error?.message || String(error));
+              window.history.replaceState({}, '', '/');
+              setState((prev) => ({
+                ...prev,
+                isLoading: false,
+                isAuthenticated: false,
+                authError: `Sign-in failed during callback exchange: ${errorMessage}`,
+              }));
+              return;
+            }
+
+            sessionFromCallback = data?.session || null;
+
+            if (!sessionFromCallback) {
+              window.history.replaceState({}, '', '/');
+              setState((prev) => ({
+                ...prev,
+                isLoading: false,
+                isAuthenticated: false,
+                authError: 'Sign-in failed during callback exchange: No session was returned for the callback code.',
+              }));
+              return;
+            }
+          }
+        }
+
         // Add timeout to prevent infinite loading
-        const sessionPromise = supabase.auth.getSession();
+        const sessionPromise = sessionFromCallback
+          ? Promise.resolve({ data: { session: sessionFromCallback }, error: null })
+          : supabase.auth.getSession();
         const timeoutPromise = new Promise<never>((_, reject) =>
           setTimeout(() => reject(new Error(
             isCallback

@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Database, Inbox, BarChart3, Clock, FolderOpen, Plus, TrendingUp, LayoutGrid, Send, Sparkles, CheckCircle2, Loader2, Rocket } from 'lucide-react';
 import { DisplayData, DisplayType, ChartDisplayData, CustomDisplayData, TimelogDraftEntry, TimelogDraftData, ProjectDraftData, TasklistDraft, TaskDraft } from '../types/conversation';
 import type { StatusDraftState } from '../streaming/accumulators/StatusAccumulator';
+import type { GeneralDraftState } from '../streaming/accumulators/GeneralAccumulator';
+import type { GeneralTaskItem } from '../streaming/accumulators/GeneralAccumulator';
 import { DataCard } from './DataCard';
 import { ChartCard } from './ChartCard';
 import { TimelogDraftCard } from './TimelogDraftCard';
@@ -48,6 +50,9 @@ interface DataDisplayPanelProps {
   // Early indicator: show building spinner before NDJSON arrives
   isProcessing?: boolean;
   activeTopic?: string;
+  // General draft mode props
+  onGeneralDraftSubmit?: (tasks: GeneralTaskItem[]) => void;
+  isSubmittingGeneral?: boolean;
 }
 
 // Screw component for hardware aesthetic
@@ -77,6 +82,8 @@ export const DataDisplayPanel: React.FC<DataDisplayPanelProps> = ({
   hourlyRate = 1200,
   isProcessing = false,
   activeTopic,
+  onGeneralDraftSubmit,
+  isSubmittingGeneral = false,
 }) => {
   const isLight = theme === 'light';
   const [selectedVizType, setSelectedVizType] = useState('bar');
@@ -91,6 +98,7 @@ export const DataDisplayPanel: React.FC<DataDisplayPanelProps> = ({
   const { state: streamProjectState } = useStreamState<ProjectDraftData>(streamCtx?.router ?? null, 'project');
   const { state: streamTimelogState } = useStreamState<TimelogDraftData>(streamCtx?.router ?? null, 'timelog');
   const { state: streamStatusState } = useStreamState<StatusDraftState>(streamCtx?.router ?? null, 'status');
+  const { state: streamGeneralState } = useStreamState<GeneralDraftState>(streamCtx?.router ?? null, 'general');
 
   // Check if we're in draft mode (legacy or stream-based)
   const isDraftMode = draftData && draftData.isDraft && draftData.entries.length > 0;
@@ -106,12 +114,14 @@ export const DataDisplayPanel: React.FC<DataDisplayPanelProps> = ({
     ? !!(streamTimelogState as any)?.isBuilding
     : false;
   const isStatusBuilding = !!(streamStatusState as any)?.isBuilding;
+  const isGeneralBuilding = !!(streamGeneralState as any)?.isBuilding;
   const isStatusStreamActive = activeStreamPlugins.includes('status');
+  const isGeneralStreamActive = activeStreamPlugins.includes('general');
   // Early indicator: show building when agent is processing but NDJSON hasn't arrived yet
   const isTimelogPreparing = !isTimelogBuilding && isProcessing && activeTopic === 'timelog' && !isDraftMode;
   // Status preparing: only when processing hasn't produced any stream data yet
   const isStatusPreparing = !isStatusBuilding && !isStatusStreamActive && isProcessing && activeTopic === 'status';
-  const isBuilding = isProjectBuilding || isTimelogBuilding || isTimelogPreparing || isStatusBuilding || isStatusPreparing;
+  const isBuilding = isProjectBuilding || isTimelogBuilding || isTimelogPreparing || isStatusBuilding || isStatusPreparing || isGeneralBuilding;
 
   const handleVizInputSubmit = () => {
     if (vizInput.trim() && onVisualizationRequest) {
@@ -173,8 +183,8 @@ export const DataDisplayPanel: React.FC<DataDisplayPanelProps> = ({
   const isTimelogStreaming = activeStreamPlugins.includes('timelog');
   const isTimelogActive = isTimelogStreaming || isTimelogPreparing;
   const isStatusActive = isStatusStreamActive || isStatusPreparing;
-  const displayType = isStatusActive ? 'status' : isTimelogActive ? 'timelogs' : (data?.type || 'empty');
-  const title = isStatusActive ? 'STATUS DASHBOARD' : isTimelogActive ? 'DRAFT TIMELOGS' : (data?.title || 'DATA DISPLAY');
+  const displayType = isStatusActive ? 'status' : isTimelogActive ? 'timelogs' : isGeneralStreamActive ? 'tasks' : (data?.type || 'empty');
+  const title = isStatusActive ? 'STATUS DASHBOARD' : isTimelogActive ? 'DRAFT TIMELOGS' : isGeneralStreamActive ? 'GENERAL TASKS' : (data?.title || 'DATA DISPLAY');
 
   return (
     <div className={`
@@ -235,6 +245,8 @@ export const DataDisplayPanel: React.FC<DataDisplayPanelProps> = ({
             onDraftRemove={onDraftRemove}
             onDraftSubmit={onDraftSubmit}
             isSubmitting={isSubmitting}
+            onGeneralDraftSubmit={onGeneralDraftSubmit}
+            isSubmittingGeneral={isSubmittingGeneral}
           />
         )}
 

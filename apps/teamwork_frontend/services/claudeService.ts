@@ -959,6 +959,40 @@ export interface ProjectSubmitResult {
   error?: string;
 }
 
+export interface GeneralTaskSubmitResult {
+  success: boolean;
+  submitted: number;
+  total: number;
+  message: string;
+  results: Array<{ success: boolean; taskId?: number; taskName: string; error?: string }>;
+}
+
+export const submitGeneralTasks = async (
+  tasks: Array<{
+    tasklistId: number;
+    name: string;
+    description: string;
+    priority?: 'none' | 'low' | 'medium' | 'high';
+    startDate?: string;
+    dueDate?: string;
+    estimatedMinutes?: number;
+  }>
+): Promise<GeneralTaskSubmitResult> => {
+  const response = await fetch(apiUrl("/api/agent/general/submit"), {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ tasks }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to submit task drafts: ${response.status}`);
+  }
+
+  return response.json();
+};
+
 export const submitProject = async (
   projectData: {
     project: {
