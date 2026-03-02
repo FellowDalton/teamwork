@@ -77,62 +77,43 @@ export function AuthProvider({ children }: AuthProviderProps) {
       return;
     }
 
-    // Initialize auth state.
-    // For OAuth callbacks: getSession() hangs because Supabase's _initialize()
-    // promise never resolves during PKCE exchange. But onAuthStateChange DOES
-    // fire SIGNED_IN successfully. So for callbacks we skip getSession() and
-    // let onAuthStateChange (below) handle the session. We just clean the URL
-    // and set a safety timeout in case onAuthStateChange never fires.
+    // With implicit flow, the session token comes in the URL hash (#access_token=...).
+    // detectSessionInUrl: true handles parsing it. onAuthStateChange fires SIGNED_IN.
+    // We only need initAuth for the non-callback case (returning user with stored session).
     const initAuth = async () => {
       try {
-        const isCallback = window.location.pathname === '/auth/callback' ||
-          window.location.hash.includes('access_token') ||
-          new URLSearchParams(window.location.search).has('code');
+        // Check for explicit OAuth error in hash
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        const hashError = hashParams.get('error_description') || hashParams.get('error');
+        if (hashError) {
+          window.history.replaceState({}, '', window.location.pathname);
+          setState((prev) => ({
+            ...prev,
+            isLoading: false,
+            isAuthenticated: false,
+            authError: `Sign-in failed: ${decodeURIComponent(hashError)}`,
+          }));
+          return;
+        }
 
-        // Check for explicit OAuth error params
-        if (isCallback) {
-          const callbackParams = new URLSearchParams(window.location.search);
-          const callbackError = callbackParams.get('error_description') || callbackParams.get('error');
-          if (callbackError) {
-            window.history.replaceState({}, '', '/');
-            setState((prev) => ({
-              ...prev,
-              isLoading: false,
-              isAuthenticated: false,
-              authError: `Sign-in failed: ${decodeURIComponent(callbackError)}`,
-            }));
-            return;
-          }
-
-          // For callbacks, onAuthStateChange handles the session.
-          // DO NOT clear the URL here - Supabase's _initialize() needs to
-          // read the ?code= param. URL is cleaned in onAuthStateChange after
-          // the session is established.
-          console.log('OAuth callback detected, waiting for onAuthStateChange...');
+        // If hash contains access_token, Supabase handles it via detectSessionInUrl.
+        // onAuthStateChange will fire. Just set a safety timeout.
+        if (window.location.hash.includes('access_token')) {
+          console.log('OAuth implicit callback detected, Supabase will handle session...');
           setTimeout(() => {
             setState((prev) => {
               if (prev.isLoading) {
-                console.warn('Auth callback timeout - onAuthStateChange did not fire in time');
                 return { ...prev, isLoading: false, authError: 'Sign-in timed out. Please try again.' };
               }
               return prev;
             });
-          }, 30000);
+          }, 15000);
           return;
         }
 
-        // Normal (non-callback) session check
-        console.log('Getting session... (normal, timeout: 5000ms)');
-        const sessionPromise = supabase.auth.getSession();
-        const timeoutPromise = new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error('Session check timed out')), 5000)
-        );
-
-        const { data: { session }, error } = await Promise.race([sessionPromise, timeoutPromise])
-          .catch((err) => {
-            console.warn('Session check timed out or failed:', err);
-            return { data: { session: null }, error: err };
-          }) as { data: { session: any }, error: any };
+        // Normal session check for returning users
+        console.log('Checking existing session...');
+        const { data: { session }, error } = await supabase.auth.getSession();
 
         if (error) {
           console.error('Error getting session:', error);
@@ -140,23 +121,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
           return;
         }
 
-        console.log('Session:', session?.user?.email || 'none');
-
         if (session?.user) {
-          console.log('Fetching profile...');
-          try {
-            const { profile, workspace } = await fetchProfile(session.user.id);
-            setState({
-              user: session.user, profile, workspace, session,
-              isLoading: false, isAuthenticated: true, isConfigured: true, authError: null,
-            });
-          } catch (profileErr) {
-            console.error('Profile fetch error:', profileErr);
-            setState({
-              user: session.user, profile: null, workspace: null, session,
-              isLoading: false, isAuthenticated: true, isConfigured: true, authError: null,
-            });
-          }
+          const { profile, workspace } = await fetchProfile(session.user.id);
+          setState({
+            user: session.user, profile, workspace, session,
+            isLoading: false, isAuthenticated: true, isConfigured: true, authError: null,
+          });
         } else {
           setState((prev) => ({ ...prev, isLoading: false }));
         }
@@ -176,10 +146,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
       async (event, session) => {
         console.log('Auth state changed:', event, session?.user?.email);
 
-        // Handle both SIGNED_IN and INITIAL_SESSION (OAuth callback returns INITIAL_SESSION)
+        // Handle both SIGNED_IN and INITIAL_SESSION
         if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user) {
-          // Clean callback URL params now that session is established
-          if (window.location.pathname === '/auth/callback' || new URLSearchParams(window.location.search).has('code')) {
+          // Clean callback URL (hash fragments from implicit flow, or query params)
+          if (window.location.hash.includes('access_token') || window.location.pathname === '/auth/callback') {
             window.history.replaceState({}, '', '/');
           }
           const { profile, workspace } = await fetchProfile(session.user.id);

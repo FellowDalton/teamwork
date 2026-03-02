@@ -26,7 +26,7 @@ export const supabase: SupabaseClient<Database> | null =
           autoRefreshToken: true,
           persistSession: true,
           detectSessionInUrl: true,
-          flowType: 'pkce',
+          flowType: 'implicit',
           storageKey: 'teamwork-ai-synth-auth',
         },
       })
