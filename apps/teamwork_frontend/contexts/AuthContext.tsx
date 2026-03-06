@@ -77,78 +77,85 @@ export function AuthProvider({ children }: AuthProviderProps) {
       return;
     }
 
-    // With implicit flow, the session token comes in the URL hash (#access_token=...).
-    // detectSessionInUrl: true handles parsing it. onAuthStateChange fires SIGNED_IN.
-    // We only need initAuth for the non-callback case (returning user with stored session).
-    const initAuth = async () => {
+    // Supabase's _initialize() promise never resolves, which means:
+    // - getSession() hangs forever (awaits _initialize())
+    // - onAuthStateChange INITIAL_SESSION never fires for stored sessions
+    // So we read the stored session directly from localStorage on page load.
+
+    // Check for OAuth errors in URL hash
+    const hashParams = new URLSearchParams(window.location.hash.substring(1));
+    const hashError = hashParams.get('error_description') || hashParams.get('error');
+    if (hashError) {
+      window.history.replaceState({}, '', window.location.pathname);
+      setState((prev) => ({
+        ...prev,
+        isLoading: false,
+        isAuthenticated: false,
+        authError: `Sign-in failed: ${decodeURIComponent(hashError)}`,
+      }));
+      return;
+    }
+
+    // Recover session directly from localStorage (bypasses broken _initialize())
+    const recoverStoredSession = async () => {
       try {
-        // Check for explicit OAuth error in hash
-        const hashParams = new URLSearchParams(window.location.hash.substring(1));
-        const hashError = hashParams.get('error_description') || hashParams.get('error');
-        if (hashError) {
-          window.history.replaceState({}, '', window.location.pathname);
-          setState((prev) => ({
-            ...prev,
-            isLoading: false,
-            isAuthenticated: false,
-            authError: `Sign-in failed: ${decodeURIComponent(hashError)}`,
-          }));
-          return;
-        }
-
-        // If hash contains access_token, Supabase handles it via detectSessionInUrl.
-        // onAuthStateChange will fire. Just set a safety timeout.
-        if (window.location.hash.includes('access_token')) {
-          console.log('OAuth implicit callback detected, Supabase will handle session...');
-          setTimeout(() => {
-            setState((prev) => {
-              if (prev.isLoading) {
-                return { ...prev, isLoading: false, authError: 'Sign-in timed out. Please try again.' };
-              }
-              return prev;
-            });
-          }, 15000);
-          return;
-        }
-
-        // Normal session check for returning users
-        console.log('Checking existing session...');
-        const { data: { session }, error } = await supabase.auth.getSession();
-
-        if (error) {
-          console.error('Error getting session:', error);
-          setState((prev) => ({ ...prev, isLoading: false }));
-          return;
-        }
-
-        if (session?.user) {
-          const { profile, workspace } = await fetchProfile(session.user.id);
-          setState({
-            user: session.user, profile, workspace, session,
-            isLoading: false, isAuthenticated: true, isConfigured: true, authError: null,
-          });
-        } else {
-          setState((prev) => ({ ...prev, isLoading: false }));
+        const stored = localStorage.getItem('teamwork-ai-synth-auth');
+        if (stored) {
+          const data = JSON.parse(stored);
+          if (data?.access_token && data?.user) {
+            const now = Math.floor(Date.now() / 1000);
+            if (data.expires_at && now < data.expires_at) {
+              console.log('Recovered session from storage:', data.user.email);
+              const { profile, workspace } = await fetchProfile(data.user.id);
+              setState({
+                user: data.user,
+                profile,
+                workspace,
+                session: data as Session,
+                isLoading: false,
+                isAuthenticated: true,
+                isConfigured: true,
+                authError: null,
+              });
+              return;
+            } else {
+              console.log('Stored session expired, clearing');
+              localStorage.removeItem('teamwork-ai-synth-auth');
+            }
+          }
         }
       } catch (err) {
-        console.error('Error in initAuth:', err);
-        setState((prev) => ({
-          ...prev, isLoading: false,
-          authError: `Authentication error: ${err instanceof Error ? err.message : String(err)}`,
-        }));
+        console.warn('Failed to recover stored session:', err);
+      }
+      // No valid stored session - stop loading (show login screen)
+      // unless we're in an OAuth callback (onAuthStateChange will handle it)
+      if (!window.location.hash.includes('access_token')) {
+        setState((prev) => ({ ...prev, isLoading: false }));
       }
     };
 
-    initAuth();
+    recoverStoredSession();
 
-    // Listen for auth changes
+    // Safety timeout for OAuth callbacks
+    const safetyTimeout = setTimeout(() => {
+      setState((prev) => {
+        if (prev.isLoading) {
+          console.warn('Auth safety timeout');
+          return { ...prev, isLoading: false };
+        }
+        return prev;
+      });
+    }, 15000);
+
+    // Listen for auth changes (new logins, logouts, token refreshes).
+    // Stored session recovery is handled above via localStorage read.
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         console.log('Auth state changed:', event, session?.user?.email);
+        clearTimeout(safetyTimeout);
 
-        // Handle both SIGNED_IN and INITIAL_SESSION
-        if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user) {
-          // Clean callback URL (hash fragments from implicit flow, or query params)
+        if (event === 'SIGNED_IN' && session?.user) {
+          // New login (e.g. implicit OAuth callback)
           if (window.location.hash.includes('access_token') || window.location.pathname === '/auth/callback') {
             window.history.replaceState({}, '', '/');
           }
@@ -162,6 +169,27 @@ export function AuthProvider({ children }: AuthProviderProps) {
             isAuthenticated: true,
             isConfigured: true,
             authError: null,
+          });
+        } else if (event === 'INITIAL_SESSION' && session?.user) {
+          // _initialize() completed with a session - update if we haven't already
+          setState((prev) => {
+            if (!prev.isAuthenticated) {
+              return {
+                ...prev,
+                user: session.user,
+                session,
+                isLoading: false,
+                isAuthenticated: true,
+                isConfigured: true,
+                authError: null,
+              };
+            }
+            return prev;
+          });
+        } else if (event === 'INITIAL_SESSION' && !session) {
+          setState((prev) => {
+            if (prev.isLoading) return { ...prev, isLoading: false };
+            return prev;
           });
         } else if (event === 'SIGNED_OUT') {
           setState({
@@ -184,6 +212,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     );
 
     return () => {
+      clearTimeout(safetyTimeout);
       subscription.unsubscribe();
     };
   }, [fetchProfile]);

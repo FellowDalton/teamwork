@@ -28,6 +28,7 @@ export const supabase: SupabaseClient<Database> | null =
           detectSessionInUrl: true,
           flowType: 'implicit',
           storageKey: 'teamwork-ai-synth-auth',
+          lock: false,
         },
       })
     : null;
