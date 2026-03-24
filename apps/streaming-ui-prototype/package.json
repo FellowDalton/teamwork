@@ -1,0 +1,26 @@
+{
+  "name": "streaming-ui-prototype",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port 3060",
+    "build": "vite build",
+    "preview": "vite preview",
+    "build:worker": "vite build --mode worker"
+  },
+  "dependencies": {
+    "@tanstack/react-router": "^1.120.3",
+    "lucide-react": "^0.503.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  },
+  "devDependencies": {
+    "@tanstack/router-plugin": "^1.120.3",
+    "@types/react": "^19.1.4",
+    "@types/react-dom": "^19.1.5",
+    "@vitejs/plugin-react": "^4.5.2",
+    "typescript": "~5.8.3",
+    "vite": "^6.3.5"
+  }
+}
