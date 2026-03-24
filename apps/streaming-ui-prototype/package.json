@@ -5,15 +5,19 @@
   "type": "module",
   "scripts": {
     "dev": "vite --port 3060",
+    "dev:server": "bun run server/server.ts",
+    "dev:all": "bun run dev:server & bun run dev",
     "build": "vite build",
     "preview": "vite preview",
     "build:worker": "vite build --mode worker"
   },
   "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "0.2.45",
     "@tanstack/react-router": "^1.120.3",
     "lucide-react": "^0.503.0",
     "react": "^19.1.0",
-    "react-dom": "^19.1.0"
+    "react-dom": "^19.1.0",
+    "zod": "^3.24.1"
   },
   "devDependencies": {
     "@tanstack/router-plugin": "^1.120.3",

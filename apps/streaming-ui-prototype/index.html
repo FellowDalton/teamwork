@@ -20,6 +20,16 @@
         50% { opacity: 0.3; }
       }
       .pulse-dot { animation: pulse-dot 1.5s ease-in-out infinite; }
+      /* Shimmer for progress bar */
+      @keyframes shimmer {
+        0% { transform: translateX(-100%); }
+        100% { transform: translateX(400%); }
+      }
+      .animate-shimmer { animation: shimmer 1.5s ease-in-out infinite; }
+      /* Smooth scroll behavior */
+      html { scroll-behavior: smooth; }
+      /* Textarea auto-resize */
+      textarea { field-sizing: content; }
     </style>
   </head>
   <body class="bg-zinc-950 text-zinc-100">

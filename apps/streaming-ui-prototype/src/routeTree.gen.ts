@@ -10,12 +10,18 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as EdgeWorkerRouteImport } from './routes/edge-worker'
+import { Route as DemoRouteImport } from './routes/demo'
 import { Route as ArchitectureRouteImport } from './routes/architecture'
 import { Route as IndexRouteImport } from './routes/index'
 
 const EdgeWorkerRoute = EdgeWorkerRouteImport.update({
   id: '/edge-worker',
   path: '/edge-worker',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DemoRoute = DemoRouteImport.update({
+  id: '/demo',
+  path: '/demo',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ArchitectureRoute = ArchitectureRouteImport.update({
@@ -32,30 +38,34 @@ const IndexRoute = IndexRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/architecture': typeof ArchitectureRoute
+  '/demo': typeof DemoRoute
   '/edge-worker': typeof EdgeWorkerRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/architecture': typeof ArchitectureRoute
+  '/demo': typeof DemoRoute
   '/edge-worker': typeof EdgeWorkerRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/architecture': typeof ArchitectureRoute
+  '/demo': typeof DemoRoute
   '/edge-worker': typeof EdgeWorkerRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/architecture' | '/edge-worker'
+  fullPaths: '/' | '/architecture' | '/demo' | '/edge-worker'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/architecture' | '/edge-worker'
-  id: '__root__' | '/' | '/architecture' | '/edge-worker'
+  to: '/' | '/architecture' | '/demo' | '/edge-worker'
+  id: '__root__' | '/' | '/architecture' | '/demo' | '/edge-worker'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ArchitectureRoute: typeof ArchitectureRoute
+  DemoRoute: typeof DemoRoute
   EdgeWorkerRoute: typeof EdgeWorkerRoute
 }
 
@@ -66,6 +76,13 @@ declare module '@tanstack/react-router' {
       path: '/edge-worker'
       fullPath: '/edge-worker'
       preLoaderRoute: typeof EdgeWorkerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/demo': {
+      id: '/demo'
+      path: '/demo'
+      fullPath: '/demo'
+      preLoaderRoute: typeof DemoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/architecture': {
@@ -88,6 +105,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ArchitectureRoute: ArchitectureRoute,
+  DemoRoute: DemoRoute,
   EdgeWorkerRoute: EdgeWorkerRoute,
 }
 export const routeTree = rootRouteImport

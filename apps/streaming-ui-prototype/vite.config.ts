@@ -19,6 +19,12 @@ export default defineConfig({
   server: {
     host: '0.0.0.0',
     port: 3060,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3061',
+        changeOrigin: true,
+      },
+    },
   },
   build: {
     // Edge-worker friendly: single chunk, no code splitting for worker mode

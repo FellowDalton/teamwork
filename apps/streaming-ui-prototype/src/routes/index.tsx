@@ -1,122 +1,171 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { useStreamContext } from '../streaming/hooks/StreamContext';
 import { StreamPanel } from '../components/StreamPanel';
-import { simulateStream, type StreamScenario } from '../mock/streamSimulator';
+import { streamFromAgent } from '../services/streamService';
 
 export const Route = createFileRoute('/')({
-  component: DemoPage,
+  component: HomePage,
 });
 
-function DemoPage() {
-  const { feed, flush, reset } = useStreamContext();
-  const [isStreaming, setIsStreaming] = useState(false);
-  const [scenario, setScenario] = useState<StreamScenario>('project');
-  const [speed, setSpeed] = useState(80);
+const SUGGESTIONS = [
+  'Show me the sales dashboard',
+  'How is the engineering team doing?',
+  'Plan a website redesign project',
+  'Create a mobile app MVP plan',
+  'Show product metrics and user growth',
+  'Build an API platform project plan',
+];
 
-  const startStream = useCallback(async () => {
+function HomePage() {
+  const { feed, flush, reset } = useStreamContext();
+  const [input, setInput] = useState('');
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [hasStreamed, setHasStreamed] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+
+  const handleSubmit = useCallback(async (message?: string) => {
+    const msg = (message || input).trim();
+    if (!msg || isStreaming) return;
+
     reset();
     setIsStreaming(true);
-    await simulateStream(scenario, (chunk) => feed(chunk), { speedMs: speed });
+    setHasStreamed(true);
+    setError(null);
+
+    abortRef.current = new AbortController();
+
+    await streamFromAgent(msg, {
+      onChunk: (text) => feed(text),
+      onFlush: () => flush(),
+      onError: (err) => setError(err),
+      signal: abortRef.current.signal,
+    });
+
+    setIsStreaming(false);
+  }, [input, isStreaming, feed, flush, reset]);
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit();
+    }
+  };
+
+  const handleStop = () => {
+    abortRef.current?.abort();
     flush();
     setIsStreaming(false);
-  }, [scenario, speed, feed, flush, reset]);
+  };
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8">
-      {/* Hero */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-white mb-2">Self-Building UI</h1>
-        <p className="text-zinc-400 max-w-2xl">
-          Watch the UI construct itself in real-time from an NDJSON stream.
-          Each JSON line is parsed, routed to the right accumulator plugin,
-          and rendered progressively &mdash; no waiting for the full response.
-        </p>
-      </div>
-
-      {/* Controls */}
-      <div className="bg-zinc-900/60 backdrop-blur rounded-xl border border-zinc-800 p-4 mb-6">
-        <div className="flex flex-wrap items-center gap-4">
-          {/* Scenario Selector */}
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-zinc-500">Scenario:</span>
-            <div className="flex gap-1">
-              {(['project', 'dashboard', 'both'] as const).map((s) => (
-                <button
-                  key={s}
-                  onClick={() => setScenario(s)}
-                  disabled={isStreaming}
-                  className={`text-xs px-3 py-1.5 rounded-md transition-colors ${
-                    scenario === s
-                      ? 'bg-cyan-600 text-white'
-                      : 'bg-zinc-800 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700'
-                  } disabled:opacity-50`}
-                >
-                  {s === 'both' ? 'Multi-Plugin' : s.charAt(0).toUpperCase() + s.slice(1)}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Speed Control */}
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-zinc-500">Speed:</span>
-            <input
-              type="range"
-              min={20}
-              max={300}
-              value={speed}
-              onChange={(e) => setSpeed(Number(e.target.value))}
-              disabled={isStreaming}
-              className="w-24 accent-cyan-500"
-            />
-            <span className="text-xs text-zinc-400 font-mono w-12">{speed}ms</span>
-          </div>
-
-          {/* Start Button */}
-          <button
-            onClick={startStream}
-            disabled={isStreaming}
-            className={`ml-auto flex items-center gap-2 px-5 py-2 rounded-lg font-medium text-sm transition-all ${
-              isStreaming
-                ? 'bg-zinc-700 text-zinc-400 cursor-not-allowed'
-                : 'bg-gradient-to-r from-cyan-600 to-purple-600 text-white hover:from-cyan-500 hover:to-purple-500 shadow-lg hover:shadow-cyan-500/20'
-            }`}
-          >
-            {isStreaming ? (
-              <>
-                <span className="w-3 h-3 rounded-full bg-cyan-400 pulse-dot" />
-                Streaming...
-              </>
-            ) : (
-              <>Start Stream</>
-            )}
-          </button>
+    <div className={`max-w-4xl mx-auto px-4 transition-all duration-500 ${
+      hasStreamed ? 'py-6' : 'py-[20vh]'
+    }`}>
+      {/* Hero - collapses after first stream */}
+      {!hasStreamed && (
+        <div className="text-center mb-10 stream-item">
+          <h1 className="text-4xl font-bold text-white mb-3">
+            What do you need?
+          </h1>
+          <p className="text-zinc-500 text-lg max-w-lg mx-auto">
+            Describe what you want to see. The UI will build itself.
+          </p>
         </div>
+      )}
+
+      {/* Input Area */}
+      <div className={`relative mb-6 transition-all duration-300 ${
+        hasStreamed ? '' : 'max-w-2xl mx-auto'
+      }`}>
+        <div className="relative bg-zinc-900/80 backdrop-blur rounded-2xl border border-zinc-700/50 shadow-2xl shadow-black/20 focus-within:border-cyan-500/50 focus-within:shadow-cyan-500/5 transition-all">
+          <textarea
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Describe what you want to see..."
+            disabled={isStreaming}
+            rows={1}
+            className="w-full bg-transparent text-zinc-100 placeholder:text-zinc-600 px-5 py-4 pr-24 resize-none focus:outline-none text-base disabled:opacity-50"
+            style={{ minHeight: '56px', maxHeight: '120px' }}
+          />
+          <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
+            {isStreaming ? (
+              <button
+                onClick={handleStop}
+                className="px-3 py-1.5 rounded-lg bg-red-600/20 text-red-400 border border-red-500/30 text-xs font-medium hover:bg-red-600/30 transition-colors"
+              >
+                Stop
+              </button>
+            ) : (
+              <button
+                onClick={() => handleSubmit()}
+                disabled={!input.trim()}
+                className="px-4 py-1.5 rounded-lg bg-gradient-to-r from-cyan-600 to-purple-600 text-white text-sm font-medium disabled:opacity-30 disabled:cursor-not-allowed hover:from-cyan-500 hover:to-purple-500 transition-all shadow-lg"
+              >
+                Go
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Streaming Indicator */}
+        {isStreaming && (
+          <div className="flex items-center gap-2 mt-2 ml-1">
+            <span className="w-2 h-2 rounded-full bg-cyan-500 pulse-dot" />
+            <span className="text-xs text-zinc-500">Building UI from stream...</span>
+          </div>
+        )}
+
+        {/* Error */}
+        {error && (
+          <div className="mt-2 ml-1 text-xs text-amber-400">
+            {error}
+          </div>
+        )}
       </div>
+
+      {/* Suggestion Chips - only before first stream */}
+      {!hasStreamed && (
+        <div className="max-w-2xl mx-auto">
+          <div className="flex flex-wrap gap-2 justify-center">
+            {SUGGESTIONS.map((s) => (
+              <button
+                key={s}
+                onClick={() => {
+                  setInput(s);
+                  handleSubmit(s);
+                }}
+                disabled={isStreaming}
+                className="text-xs px-3 py-1.5 rounded-full bg-zinc-800/60 text-zinc-400 border border-zinc-700/50 hover:bg-zinc-700/60 hover:text-zinc-200 hover:border-zinc-600 transition-all disabled:opacity-50"
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Stream Output */}
       <StreamPanel />
 
-      {/* Architecture Note */}
-      <div className="mt-8 bg-zinc-900/40 rounded-xl border border-zinc-800/50 p-5">
-        <h3 className="text-sm font-medium text-zinc-300 mb-2">How it works</h3>
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-3 text-center">
-          {[
-            { step: '1', label: 'NDJSON Stream', desc: 'Typed JSON lines from edge worker' },
-            { step: '2', label: 'NdjsonParser', desc: 'Buffers & splits into objects' },
-            { step: '3', label: 'StreamRouter', desc: 'Routes lines by type to plugins' },
-            { step: '4', label: 'Accumulators', desc: 'Build domain-specific state' },
-            { step: '5', label: 'React Renders', desc: 'useSyncExternalStore updates' },
-          ].map(({ step, label, desc }) => (
-            <div key={step} className="bg-zinc-800/40 rounded-lg p-3 border border-zinc-800">
-              <div className="text-cyan-400 font-mono font-bold text-lg mb-1">{step}</div>
-              <div className="text-xs font-medium text-zinc-300">{label}</div>
-              <div className="text-[10px] text-zinc-500 mt-0.5">{desc}</div>
-            </div>
-          ))}
+      {/* New prompt after streaming completes */}
+      {hasStreamed && !isStreaming && (
+        <div className="mt-6 text-center">
+          <button
+            onClick={() => {
+              reset();
+              setHasStreamed(false);
+              setInput('');
+              setError(null);
+            }}
+            className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
+          >
+            Start over
+          </button>
         </div>
-      </div>
+      )}
     </div>
   );
 }
